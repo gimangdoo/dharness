@@ -34,7 +34,8 @@
 - **SKILL.md 슬림화** — 612줄 → 344줄(44% 감소). 각 Phase를 "골격(목적 한 줄 + 표/리스트 + references 포인터)"으로 압축, 상세는 references/로 이관. 자기 참조 가이드라인(SKILL.md 본문 ≤500줄) 충족. 모든 Phase 헤딩(0~10)과 sub-section 번호(7-0~5, 9-1~5, 10-1~5) 보존하여 cross-reference 무결성 유지
 - **Phase 9·10 인트로 중복 제거** — "하네스는 한 번 만들고 끝나는 정적 산출물이 아니다" 동일 문장이 두 Phase에 중복 → Phase 10은 "Phase 9가 수동 / Phase 10이 자동"로 차별화 시작
 - **참고 섹션 확장** — references 11개 한 곳에 인덱싱(기존 8개 → 11개). 본문 인라인 포인터 + 마지막 §참고 통합 인덱스 이중 안전망
-- **SKILL.md 산출물 체크리스트 L2 한정 명시** — 기존 ".claude/commands/ — 아무것도 생성하지 않음"의 적용 범위가 모호 → "**사용자 프로젝트의** `.claude/commands/`에는 아무것도 생성하지 않음 (harness 플러그인 본체의 `commands/`는 별개 — L1 진입점)"으로 변경. L1(플러그인) vs L2(사용자 산출물) 구분 명문화
+- **SKILL.md 산출물 체크리스트 L2 한정 명시** — 기존 ".claude/commands/ — 아무것도 생성하지 않음"의 적용 범위가 모호 → "**사용자 프로젝트의** `.claude/commands/`에는 아무것도 생성하지 않음 (harness 플러그인 본체의 `commands/`는 별개 — L1 진입점)"으로 변경. L1(플러그인) vs L2(사용자 산출물) 구분 명문화. Phase 8 §1 구조 검증의 동일 문구도 일관되게 수정
+- **SKILL.md 본문 cross-reference 보강** — slash command를 다음 5곳에 명시: Phase 7-4 CLAUDE.md 템플릿(트리거 라인에 `/harness-*` 대안 추가), Phase 9-4 진화 트리거(반복 피드백/에이전트 실패/오케스트레이터 우회 → `/harness-evolve`·`/harness-audit`·`/harness-adapt` 매핑), Phase 9-5 운영/유지보수 진입점(`/harness-audit`), Phase 10-2 수동 트리거(`/harness-adapt` 명시 호출). SKILL.md(자연어 워크플로우)와 commands/(명시 진입점)의 양방향 cross-link 완성
 - **루트 `README.md`** — "호출 방식 두 가지" 섹션 + slash command 카탈로그 7개 추가, 프로젝트 구조 트리에 `commands/` 추가, 문서 인덱스에 `commands/README.md` 추가
 - **`skills/README.md`** — harness 트리거 예시에 "또는 Slash command로 명시적 호출" 단락 추가, `commands/README.md` cross-link
 
