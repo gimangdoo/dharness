@@ -48,11 +48,35 @@ claude "하네스 구성해줘 — 핀테크 리스크 평가 팀"
 
 ---
 
+## 호출 방식 두 가지
+
+| 방식 | 발동 | 비용 통제 | 용도 |
+|---|---|---|---|
+| **자연어 트리거** | "하네스 구성해줘" 등 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화, 일반 사용 |
+| **Slash command** | `/harness-new`, `/harness-add-agent` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, CI 자동화, 트리거 확률 의존 제거 |
+
+**Slash command 카탈로그 (7개):**
+
+```
+/harness-new <도메인>          # Phase 0~8 전체 (신규 구축)
+/harness-add-agent <역할>      # Phase 4·5·7·8 (1·2·3 skip)
+/harness-add-skill <스킬>      # Phase 6·7·8 (1~5 skip)
+/harness-baseline              # Phase 1·2 재실행 + drift 분석
+/harness-audit                 # 정합성 감사 (read-only)
+/harness-evolve <피드백>       # Phase 9 수동 진화
+/harness-adapt                 # Phase 10 telemetry drift 점검
+```
+
+전체 가이드: [`commands/README.md`](./commands/README.md).
+
+---
+
 ## 프로젝트 구조
 
 ```
 .
 ├── .claude-plugin/        # 플러그인·마켓플레이스 메타데이터
+├── commands/              # Slash command 진입점 7종 (명시적 호출)
 ├── skills/
 │   └── harness/           # 메타 스킬 본체 (SKILL.md + references/)
 ├── docs/                  # 사용자 문서
@@ -74,6 +98,7 @@ claude "하네스 구성해줘 — 핀테크 리스크 평가 팀"
 |------|------|
 | [`docs/quickstart.md`](./docs/quickstart.md) | 5분 안에 첫 하네스 생성 |
 | [`docs/experimental-dependency.md`](./docs/experimental-dependency.md) | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` 플래그 의존성 설명 |
+| [`commands/README.md`](./commands/README.md) | Slash command 7종 카탈로그 + 의사결정 트리 |
 | [`skills/README.md`](./skills/README.md) | 스킬 디렉토리 인덱스 + 11개 references 가이드 |
 | [`skills/harness/SKILL.md`](./skills/harness/SKILL.md) | 메타 스킬 정의 (11 Phase 워크플로우) |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 기여 가이드 + 응답 SLA |

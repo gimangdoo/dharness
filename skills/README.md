@@ -23,6 +23,8 @@ Claude Code 플러그인 `harness`가 제공하는 스킬 디렉토리.
 
 전체 트리거 규칙은 [`harness/SKILL.md`](./harness/SKILL.md) frontmatter 참조.
 
+**또는 Slash command로 명시적 호출:** description 매칭 확률에 의존하지 않고 `/harness-new`, `/harness-add-agent`, `/harness-adapt` 등으로 결정적 호출. 카탈로그는 [`../commands/README.md`](../commands/README.md).
+
 ### 워크플로우 11단계
 
 | Phase | 이름 | 역할 |

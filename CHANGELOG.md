@@ -2,6 +2,42 @@
 
 이 프로젝트는 [Semantic Versioning](https://semver.org/)을 따릅니다.
 
+## [Unreleased]
+
+> 다음 릴리스 권장: **[1.3.0]** (Phase 10 Runtime Adaptation 신기능 + Phase 1·2 schema 신규 → minor bump). 컷 시 `.claude-plugin/plugin.json` · `.claude-plugin/marketplace.json` 버전 동기화 필요.
+
+### Added
+
+- **Phase 10: Runtime Adaptation** — 하네스 자동 진화 메커니즘 신규. 3 레이어(Capture/Diagnostic/Adapt) + telemetry 기반 drift 감지 + **제안+승인** 모델(자동 적용 없음). baseline drift(프로젝트 변화)와 사용 drift(하네스 사용 패턴 변화) 2종으로 분리 보고. 신뢰도 가중치 적용(`meta.inferred_fields − meta.user_confirmed_fields` 차집합). Phase 9(수동 진화)와 변경 이력 테이블 공유
+- **Phase 1: Code Research 모듈화** — greenfield/brownfield 자동 감지 + 5축 조사(Stack/Architecture/Convention/Maturity/Pain Points) + Quick Scan(≤100 파일) vs Deep Audit(>100 또는 명시 요청) 모드 선택. 사용자 키워드 오버라이드("간단히/빠르게" → Quick, "전체 점검/깊이" → Deep). 결과 `_workspace/_baseline/project_profile.md`는 Phase 3 입력 + Phase 10 t=0 anchor
+- **Phase 2: Project Inquiry 7섹션 스키마** — vision/scope/constraints/architecture/quality/workflow/meta. greenfield/brownfield 동일 schema(`project_type` 필드로 분기). 필수 5개 필드 강제(`tech_stack`, `team.size`, `timeline.horizon`, `deployment_target`, `test_rigor`). brownfield는 4단계(자동 추론 → 확인 → 갭 메우기 → 코드 grounded 질문)
+- **신규 references 5종** — `code-research.md` (5축 조사 방법론), `project-profile-schema.md` (Phase 1 출력 스키마), `project-inquiry.md` (두 브랜치 채우기 전략 + 13종 코드 grounded 질문 패턴), `intent-profile-schema.md` (Phase 2 출력 스키마 + 인스턴스 예시), `runtime-adaptation.md` (Phase 10 telemetry · capture 7종 이벤트 · drift 룰 · 승인 UX)
+- **루트 `README.md`** — 프로젝트 진입점. 6 팀 아키텍처 패턴 표 + Quickstart 3단계 + 프로젝트 구조 트리 + 문서 인덱스 + 11 Phase 미리보기. 이전 README.md / README_KO.md / README_JA.md 부재 상태 해소
+- **`skills/README.md`** — 스킬 디렉토리 인덱스. 수록 스킬 표 + harness 워크플로우 11 Phase + references 11개 매핑 표(파일 ↔ Phase) + 산출물 위치 다이어그램(`{사용자 프로젝트}/.claude/agents/`, `_workspace/_baseline/`, `_workspace/_telemetry/`) + 새 스킬 추가 5단계
+- **산출물 체크리스트 3항목** — `_workspace/_telemetry/` 디렉토리 사전 생성, 오케스트레이터에 telemetry capture 훅 삽입(매 실행마다 `{date}.jsonl` append), Phase 10 트리거 키워드("점검", "drift", "적응", "baseline 갱신")를 오케스트레이터 description에 포함
+- **Slash command 진입점 7종** (`commands/`) — description 매칭 확률에 의존하지 않는 **명시적 호출** 방식 추가. Phase 0 매트릭스와 1:1 매핑:
+  - `/harness-new <도메인>` (Phase 0~8 전체, 신규 구축)
+  - `/harness-add-agent <역할>` (Phase 4·5·7·8, baseline 재분석 회피)
+  - `/harness-add-skill <스킬>` (Phase 6·7·8, 에이전트 정의 보존)
+  - `/harness-baseline` (Phase 1·2 재실행 + drift 분석 리포트)
+  - `/harness-audit` (Phase 9-5 §1 정합성 감사, read-only)
+  - `/harness-evolve <피드백>` (Phase 9 수동 진화, 9-2 매핑)
+  - `/harness-adapt` (Phase 10 Diagnostic + Adapt, telemetry 기반)
+- **`commands/README.md`** — slash command 카탈로그 + 의사결정 트리 + 설계 원칙(얇은 진입점, 4섹션 패턴: 컨텍스트/선조건/실행/범위 외) + L1(플러그인 진입점) vs L2(사용자 산출물 금지) 구분 명시
+- **자연어 트리거와 양립** — 두 호출 방식 모두 동일 SKILL.md 로직을 따르며 사용자가 상황에 따라 선택 가능
+
+### Changed
+
+- **Phase 0를 Pre-flight 메타 단계로 명확화** — "프로젝트 코드가 아니라 기존 하네스 산출물(`.claude/agents/`, `.claude/skills/`, `CLAUDE.md`) 감사"임을 인트로에 명시. 항상 실행 + 건너뛸 수 없음을 못박음. baseline 갱신 트리거 추가(사용자 명시 / Phase 10 큰 변화 감지 / 마지막 분석 후 3개월 경과)
+- **Phase 4-2 패턴 표 변환** — 슬래시 구분 한 줄(파이프라인 / 팬아웃·팬인 / 전문가 풀 / 생성-검증 / 감독자 / 계층적 위임) → 6행 표(패턴명 + 한 줄 설명)로 가독성 향상
+- **Phase 8 검증을 7단계로 통합** — "6단계 + 반복 개선" 분리 구조 → §7 "반복 개선"으로 승격하여 번호 일관성 부여(구조/모드/실행/트리거/드라이런/시나리오/반복 개선)
+- **SKILL.md 슬림화** — 612줄 → 344줄(44% 감소). 각 Phase를 "골격(목적 한 줄 + 표/리스트 + references 포인터)"으로 압축, 상세는 references/로 이관. 자기 참조 가이드라인(SKILL.md 본문 ≤500줄) 충족. 모든 Phase 헤딩(0~10)과 sub-section 번호(7-0~5, 9-1~5, 10-1~5) 보존하여 cross-reference 무결성 유지
+- **Phase 9·10 인트로 중복 제거** — "하네스는 한 번 만들고 끝나는 정적 산출물이 아니다" 동일 문장이 두 Phase에 중복 → Phase 10은 "Phase 9가 수동 / Phase 10이 자동"로 차별화 시작
+- **참고 섹션 확장** — references 11개 한 곳에 인덱싱(기존 8개 → 11개). 본문 인라인 포인터 + 마지막 §참고 통합 인덱스 이중 안전망
+- **SKILL.md 산출물 체크리스트 L2 한정 명시** — 기존 ".claude/commands/ — 아무것도 생성하지 않음"의 적용 범위가 모호 → "**사용자 프로젝트의** `.claude/commands/`에는 아무것도 생성하지 않음 (harness 플러그인 본체의 `commands/`는 별개 — L1 진입점)"으로 변경. L1(플러그인) vs L2(사용자 산출물) 구분 명문화
+- **루트 `README.md`** — "호출 방식 두 가지" 섹션 + slash command 카탈로그 7개 추가, 프로젝트 구조 트리에 `commands/` 추가, 문서 인덱스에 `commands/README.md` 추가
+- **`skills/README.md`** — harness 트리거 예시에 "또는 Slash command로 명시적 호출" 단락 추가, `commands/README.md` cross-link
+
 ## [1.2.1] - 2026-04-18
 
 ### Fixed
