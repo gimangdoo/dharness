@@ -79,10 +79,13 @@ LIMIT 5;
 
 | 우선순위 | 대상 | 이유 |
 |----------|------|------|
-| 1 | observations_fts (FTS5) | 가장 빠른 전문 검색 |
-| 2 | clusters/ 파일 | 승격된 패턴 — 고품질 정보 |
-| 3 | daily_summaries/ | 날짜 기반 검색에 적합 |
-| 4 | sessions/*/digest.md | 직접 파일 검색 |
+| 1 | `observations_fts` (FTS5) | 가장 빠른 전문 검색 |
+| 2 | `clusters` 테이블 | 승격된 패턴 — 고품질 정보 |
+| 3 | `daily_summaries` 테이블 | 날짜 범위 쿼리에 최적 (`WHERE date BETWEEN ? AND ?`) |
+| 4 | `sessions/*/digest.md` 파일 | DB가 비어 있을 때 fallback |
+
+`daily_summaries`는 cm-curator가 SessionEnd 이후 그날의 모든 세션을 집계하여 생성한다
+(memory-curate 스킬의 "Daily summary 생성" 섹션 참조).
 
 ## 쿼리 파싱 규칙
 
@@ -106,18 +109,27 @@ LIMIT 5;
 
 ## 클러스터 검색 통합
 
-observations 검색과 동시에 clusters도 확인:
+observations 검색과 동시에 clusters도 확인. `clusters` 테이블 스키마는
+`session-digest` 스킬의 "CM 메모리 DB 스키마 (단일 진실 원천)" 섹션이 권위 있는 정의다.
 
 ```sql
-SELECT cluster_id, theme, confidence, tags
+SELECT cluster_id, theme, confidence, tags, promoted_path
 FROM clusters
-WHERE tags LIKE '%{keyword}%'
+WHERE tags LIKE '%' || ? || '%'
   AND confidence > 0.3
 ORDER BY confidence DESC
 LIMIT 3;
 ```
 
-클러스터 결과가 있으면 Tool 1 결과 상단에 "관련 패턴" 섹션으로 표시.
+조회된 cluster의 `last_accessed`를 현재 시각으로 UPDATE한다 (memory-curate의
+confidence 갱신 룰에서 +0.03 적용 트리거).
+
+```sql
+UPDATE clusters SET last_accessed = ? WHERE cluster_id IN (...);
+```
+
+클러스터 결과가 있으면 Tool 1 결과 상단에 "관련 패턴" 섹션으로 표시. 승격된
+클러스터(`promoted_path` IS NOT NULL)는 별도 마커로 강조한다.
 
 ## 토큰 예산 관리
 

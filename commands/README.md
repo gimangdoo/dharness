@@ -13,6 +13,8 @@ Harness 플러그인의 명시적 진입점 — slash command. `description` 매
 
 ## 명령어 카탈로그 (Phase 0 매트릭스 매핑)
 
+### Harness 메타 스킬 진입점 (7개)
+
 | 명령어 | 인자 | 실행 Phase 범위 | Phase 0 매트릭스 행 |
 |---|---|---|---|
 | [`/harness-new`](./harness-new.md) | `<도메인 한 문장>` | 0~8 전체 | 신규 구축 |
@@ -22,6 +24,18 @@ Harness 플러그인의 명시적 진입점 — slash command. `description` 매
 | [`/harness-audit`](./harness-audit.md) | – | 9-5 §1 (read-only 정합성 감사) | 운영/유지보수 |
 | [`/harness-evolve`](./harness-evolve.md) | `<피드백>` | 9 수동 진화 (피드백 → 9-2 매핑) | (Phase 9) |
 | [`/harness-adapt`](./harness-adapt.md) | – | 10 Diagnostic + Adapt | (Phase 10) |
+
+### Context Manager 도메인 진입점 (7개)
+
+| 명령어 | 인자 | 동작 | 실행 모드 |
+|---|---|---|---|
+| [`/cm-status`](./cm-status.md) | – | 메모리 통계 + DB 행 수 | 결정적 |
+| [`/cm-sessions`](./cm-sessions.md) | `[--limit N]` | 최근 세션 목록 | 결정적 |
+| [`/cm-clusters`](./cm-clusters.md) | `[--min-confidence X.XX]` | 클러스터 목록 (confidence 순) | 결정적 |
+| [`/cm-dashboard`](./cm-dashboard.md) | – | worker 상태 + URL | 결정적 |
+| [`/cm-init`](./cm-init.md) | – | 디렉토리 + DB 초기화 (재실행 안전) | 결정적 |
+| [`/cm-reset`](./cm-reset.md) | – | 메모리 전체 삭제 (확인 필수) | 결정적 |
+| [`/cm-curate`](./cm-curate.md) | – | cm-curator 단독 실행 (decay·승격·daily_summary) | 서브 에이전트 |
 
 ## 의사결정 트리
 

@@ -139,7 +139,58 @@ confidence < 0.05 또는 사용자 요청 시:
 
 ```
 1. 사용자에게 확인 요청
-2. cluster 파일 삭제
-3. member observations에서 cluster_id 참조 제거
+2. cluster 파일 삭제 + clusters 테이블 row 삭제
+3. member observations에서 cluster_id 참조 제거 (UPDATE observations SET cluster_id=NULL)
 4. telemetry: memory_decayed 이벤트
 ```
+
+## Daily Summary 생성
+
+cm-curator는 SessionEnd 처리 직후 (또는 `/cm-curate` 호출 시), 그날의 모든 세션을
+하나의 요약으로 집계하여 `daily_summaries` 테이블에 upsert한다. cm-injector가
+SessionStart 시점에 이를 읽어 컨텍스트 한 단락으로 주입하는 입력이 된다 (claude-remember
+계층 요약 패턴).
+
+### 입력
+- 그날 ended_at IS NOT NULL인 sessions
+- 각 세션의 digest.md 또는 observations 행
+
+### 처리
+```
+1. 그날의 모든 session_id 목록 조회
+2. 각 세션의 What 섹션 핵심 항목 + Do 섹션 미완료 항목 수집
+3. ~300토큰 통합 요약 생성
+4. daily_summaries 테이블 upsert
+```
+
+```sql
+INSERT INTO daily_summaries (date, summary, session_ids, generated_at)
+VALUES (?, ?, ?, ?)
+ON CONFLICT(date) DO UPDATE
+SET summary = excluded.summary,
+    session_ids = excluded.session_ids,
+    generated_at = excluded.generated_at;
+```
+
+### 요약 형식
+
+```markdown
+**{YYYY-MM-DD}** ({n}세션, {tools_used 합집합})
+- {What 통합 1-2문장}
+- 미완료 Do: {n}건 — {대표 항목}
+- 주의: {Warn 통합 1문장 (있을 때만)}
+```
+
+## 주기 실행 트리거
+
+cm-curator는 SessionEnd 외에도 **주기적으로 단독 실행**되어 decay 적용·승격 후보
+스캔·daily_summary 보강을 수행한다. 진입 경로는 다음 세 가지다:
+
+| 트리거 | 빈도 | 진입 경로 |
+|--------|-----|----------|
+| SessionEnd 팀 모드 | 매 세션 종료 | cm-orchestrator → cm-digester → SendMessage |
+| `/cm-curate` 명시 호출 | 사용자 호출 | cm-orchestrator → cm-curator 단독 |
+| 누적 N=10 SessionEnd | 자동 | cm-orchestrator가 카운터 임계 도달 시 cm-curator 단독 호출 |
+
+자동 N=10 임계는 `_workspace/_telemetry/`에서 `session_digest_created` 이벤트를
+세어 마지막 `memory_decayed` 이벤트 이후 10건 이상이면 트리거한다.

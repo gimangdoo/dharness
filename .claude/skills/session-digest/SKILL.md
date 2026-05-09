@@ -57,32 +57,68 @@ tags: [<topic>, ...]
 - 주의해야 할 제약사항 (도구 한계, 환경 특이사항)
 - 의도적으로 미완성으로 둔 항목
 
-## Observations DB 스키마
+## CM 메모리 DB 스키마 (단일 진실 원천)
 
-`_workspace/_memory/observations/observations.db` (SQLite + FTS5):
+`_workspace/_memory/observations/observations.db` (SQLite + FTS5)는 CM 시스템의 모든 영속 메모리를 담는다. 다른 스킬(`memory-curate`, `memory-search`, `dashboard-render`)이 참조하는 모든 테이블 정의는 **이 섹션이 유일한 진실 원천**이다. 다른 스킬은 이 섹션을 인용하기만 하고 자체 정의를 갖지 않는다.
 
 ```sql
-CREATE TABLE observations (
-  id TEXT PRIMARY KEY,          -- obs_{session_id}_{n}
-  session_id TEXT NOT NULL,
-  date TEXT NOT NULL,           -- YYYY-MM-DD
-  section TEXT NOT NULL,        -- what | when | do | warn
-  content TEXT NOT NULL,        -- 원문 bullet 내용
-  tags TEXT,                    -- JSON 배열 ["python", "sqlite"]
-  embedding BLOB,               -- sqlite-vec: 벡터 (S4 이후)
-  created_at TEXT NOT NULL      -- ISO8601
+-- ========== 1. observations: 세션 디지스트 bullet 단위 ==========
+CREATE TABLE IF NOT EXISTS observations (
+  id           TEXT PRIMARY KEY,    -- obs_{session_id}_{n}
+  session_id   TEXT NOT NULL,
+  date         TEXT NOT NULL,       -- YYYY-MM-DD
+  section      TEXT NOT NULL,       -- what | when | do | warn
+  content      TEXT NOT NULL,       -- 원문 bullet 내용
+  tags         TEXT,                -- JSON 배열 ["python", "sqlite"]
+  embedding    BLOB,                -- sqlite-vec 벡터 (S4 이후)
+  completed    INTEGER DEFAULT 0,   -- do 항목 완료 여부 (0/1)
+  cluster_id   TEXT,                -- 병합된 cluster (없으면 NULL)
+  created_at   TEXT NOT NULL        -- ISO8601
 );
 
-CREATE VIRTUAL TABLE observations_fts USING fts5(
-  content,
-  session_id,
-  tags,
-  content="observations",
-  content_rowid="rowid"
+CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
+  content, session_id, tags,
+  content="observations", content_rowid="rowid"
+);
+
+-- ========== 2. sessions: 세션 메타 (cm-digester가 SessionEnd에 upsert) ==========
+CREATE TABLE IF NOT EXISTS sessions (
+  session_id    TEXT PRIMARY KEY,   -- 6자 hex
+  date          TEXT NOT NULL,      -- YYYY-MM-DD
+  started_at    TEXT NOT NULL,      -- ISO8601
+  ended_at      TEXT,
+  duration_min  INTEGER,
+  tools_used    TEXT,               -- JSON 배열
+  digest_path   TEXT,               -- _workspace/_memory/sessions/{id}/digest.md (NULL=미생성)
+  project       TEXT                -- working dir 이름
+);
+
+-- ========== 3. clusters: cm-curator가 관리 ==========
+CREATE TABLE IF NOT EXISTS clusters (
+  cluster_id     TEXT PRIMARY KEY,  -- c_{6자 hex}
+  theme          TEXT NOT NULL,
+  confidence     REAL NOT NULL,     -- 0.0 ~ 1.0
+  member_count   INTEGER NOT NULL DEFAULT 0,
+  tags           TEXT,              -- JSON 배열
+  embedding      BLOB,              -- sqlite-vec (S4 이후)
+  promoted_path  TEXT,              -- 승격된 .claude/skills/.../SKILL.md (없으면 NULL)
+  created_at     TEXT NOT NULL,
+  last_updated   TEXT NOT NULL,
+  last_accessed  TEXT               -- memory_query 마지막 시각
+);
+
+-- ========== 4. daily_summaries: cm-curator가 SessionEnd 이후 생성/갱신 ==========
+CREATE TABLE IF NOT EXISTS daily_summaries (
+  date          TEXT PRIMARY KEY,   -- YYYY-MM-DD
+  summary       TEXT NOT NULL,      -- 그날 세션들의 통합 요약 (~300토큰)
+  session_ids   TEXT NOT NULL,      -- JSON 배열
+  generated_at  TEXT NOT NULL
 );
 ```
 
-각 digest bullet이 하나의 observation row가 된다.
+`telemetry_tool_outputs`는 별도 테이블이 아니라 `_workspace/_telemetry/*.jsonl`에서 `type='tool_output_captured'` 이벤트를 적재한 임시 뷰다. `dashboard-render`가 필요할 때 JSONL을 SQLite 임시 DB로 로드한 후 SELECT한다 (cm-diagnostic-rules §1과 동일 패턴).
+
+각 digest bullet이 하나의 observation row가 된다. `sessions`는 cm-digester가 SessionEnd에 upsert하고, `clusters`/`daily_summaries`는 cm-curator가 관리한다.
 
 ## 품질 기준
 
@@ -95,17 +131,6 @@ CREATE VIRTUAL TABLE observations_fts USING fts5(
 
 ## DB 초기화
 
-`observations.db`가 없을 때 cm-digester가 다음 스크립트로 초기화:
+`observations.db`가 없을 때 cm-digester(또는 session-capture 스킬)가 위 4개 테이블 + FTS5 가상 테이블을 모두 한 번에 생성한다. 각 테이블 정의는 `IF NOT EXISTS`이므로 재실행에 안전하다.
 
-```python
-import sqlite3
-
-conn = sqlite3.connect("_workspace/_memory/observations/observations.db")
-conn.executescript("""
-  CREATE TABLE IF NOT EXISTS observations (...);
-  CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts ...;
-""")
-conn.close()
-```
-
-sqlite-vec 설치 시 벡터 컬럼 활성화 (S4에서 추가).
+sqlite-vec 설치 시 `observations.embedding`, `clusters.embedding` 컬럼이 활용된다 (S4 이후). sqlite-vec이 없어도 스키마는 그대로 두고, `memory-curate`의 키워드 기반 fallback 알고리즘이 동작한다.

@@ -106,27 +106,40 @@ harness 메타 스킬로 구축된 **context-management 도메인 하네스**가
 | `cm-curator` | SessionEnd + 주기 | 팀 (digester와) |
 | `cm-retriever` | 메모리 검색 on-demand | 서브 에이전트 |
 
-### 스킬 6종 (`.claude/skills/`)
+### 스킬 7종 (`.claude/skills/`)
 
 | 스킬 | 역할 |
 |------|------|
 | `cm-orchestrator` | 라이프사이클 이벤트 → 에이전트 라우터 |
+| `session-capture` | session_id 발급 + raw.jsonl/transcript.md 캡처 (S1) |
 | `tool-output-compress` | 도구별 압축 전략 + raw 보존 경로 |
-| `session-digest` | what/when/do/warn 구조 + observations.db 스키마 |
-| `memory-curate` | 클러스터링 알고리즘 + decay + 승격 임계치 |
+| `session-digest` | what/when/do/warn 구조 + **단일 DB 스키마 진실 원천** |
+| `memory-curate` | 클러스터링 + decay + 승격 + daily_summary + 주기 트리거 |
 | `memory-search` | 3-tool progressive disclosure |
-| `dashboard-render` | 4개 뷰 SQLite 집계 + FastAPI worker |
+| `dashboard-render` | 4개 뷰 SQLite 집계 + FastAPI worker (골격 포함) |
+
+### 결정적 부속 산출물
+
+| 위치 | 역할 |
+|------|------|
+| `_workspace/_hooks/session_start.py` | SessionStart 훅: ID 발급·DB 부트스트랩 |
+| `_workspace/_hooks/post_tool_use.py` | PostToolUse 훅: raw.jsonl + 10KB 캡처 |
+| `_workspace/_hooks/session_end.py` | SessionEnd 훅: transcript 평탄화 |
+| `_workspace/_hooks/cm_commands.py` | `/cm-*` 결정적 커맨드 핸들러 |
+| `_workspace/_hooks/INSTALL.md` | 훅 settings.json 등록 가이드 (사용자 수동) |
+| `_workspace/_worker/dashboard_server.py` | FastAPI localhost 워커 |
+| `commands/cm-*.md` | 7개 슬래시 커맨드 (status·sessions·clusters·dashboard·init·reset·curate) |
 
 ### 단계적 구현 현황
 
 | 단계 | 내용 | 상태 |
 |------|------|------|
-| S1 | cm-orchestrator + cm-injector + session-digest | ✅ |
-| S2 | cm-digester + observations.db | ✅ |
+| S1 | cm-orchestrator + cm-injector + **session-capture** | ✅ |
+| S2 | cm-digester + session-digest + observations.db (단일 진실 스키마) | ✅ |
 | S3 | cm-retriever + memory-search | ✅ |
 | S4 | cm-compressor + tool-output-compress | ✅ |
-| S5 | cm-curator + memory-curate | ✅ |
-| S6 | dashboard-render + worker | ✅ |
+| S5 | cm-curator + memory-curate (decay + daily_summary + 주기 트리거) | ✅ |
+| S6 | dashboard-render + FastAPI 워커 골격 | ✅ |
 | S7 | Phase 10 CM 진단 룰 (`_workspace/references/cm-diagnostic-rules.md`) | ✅ |
 
 ---

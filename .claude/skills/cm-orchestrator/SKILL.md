@@ -25,13 +25,16 @@ Context Manager 시스템의 진입점이자 이벤트 라우터.
 
 | 이벤트 | 핸들러 | 실행 모드 |
 |--------|--------|-----------|
-| SessionStart 훅 | cm-injector | 서브 에이전트 |
+| SessionStart 훅 (캡처) | session-capture 스킬 → 훅 스크립트 | 결정적 (LLM 없음) |
+| SessionStart 훅 (인젝션) | cm-injector | 서브 에이전트 |
+| PostToolUse 훅 (캡처) | session-capture (raw.jsonl append) | 결정적 |
 | PostToolUse 훅 (출력 >10KB) | cm-compressor | 서브 에이전트 |
 | PostToolUse 훅 (출력 ≤10KB) | 패스스루 (처리 없음) | — |
-| SessionEnd 훅 | cm-digester + cm-curator | 팀 (TeamCreate) |
+| SessionEnd 훅 (transcript) | session-capture (transcript.md 생성) | 결정적 |
+| SessionEnd 훅 (digest+curation) | cm-digester + cm-curator | 팀 (TeamCreate) |
 | 사용자 메모리 검색 키워드 | cm-retriever | 서브 에이전트 |
-| /cm-* 슬래시 커맨드 | 스크립트 (결정적, LLM 없음) | — |
-| 주기적 클러스터링 | cm-curator 단독 | 서브 에이전트 |
+| /cm-* 슬래시 커맨드 | 스크립트 또는 에이전트 (커맨드별) | — |
+| /cm-curate 또는 자동 N=10 임계 | cm-curator 단독 | 서브 에이전트 |
 
 ## Phase 1: 이벤트 판별
 
@@ -94,16 +97,20 @@ Agent(
 )
 ```
 
-### /cm-* 커맨드 → 스크립트 (결정적)
+### /cm-* 커맨드
 
-| 커맨드 | 동작 |
-|--------|------|
-| /cm-status | `_workspace/_memory/` 통계 출력 |
-| /cm-sessions | 세션 목록 + digest 여부 출력 |
-| /cm-clusters | 클러스터 목록 + confidence 출력 |
-| /cm-dashboard | localhost dashboard URL 출력 |
-| /cm-init | `_workspace/_memory/` 디렉토리 구조 초기화 |
-| /cm-reset | 확인 후 `_workspace/_memory/` 초기화 |
+| 커맨드 | 동작 | 모드 |
+|--------|------|------|
+| /cm-status | `_workspace/_memory/` 통계 + DB 행 수 출력 | 결정적 |
+| /cm-sessions | 최근 세션 목록 + digest 여부 출력 | 결정적 |
+| /cm-clusters | 클러스터 목록 + confidence 출력 | 결정적 |
+| /cm-dashboard | localhost worker 상태 + URL 출력 | 결정적 |
+| /cm-init | `_workspace/_memory/` 디렉토리 + observations.db 초기화 | 결정적 |
+| /cm-reset | 확인 후 `_workspace/_memory/` 초기화 | 결정적 |
+| /cm-curate | cm-curator 단독 실행 (decay + daily_summary + 승격 후보 스캔) | 서브 에이전트 |
+
+각 커맨드 정의는 `commands/cm-*.md`에 있고, 결정적 커맨드는 `_workspace/_hooks/cm_commands.py`
+스크립트가 처리한다.
 
 ## Phase 3: Telemetry
 

@@ -1,0 +1,184 @@
+이 harness skill을 받고 나니 앞서 설계한 5-레이어 구조를 통째로 재고할 필요가 있어. **standalone tool로 짓는 게 아니라, harness가 생성하는 도메인 인스턴스로 만드는 게 맞아.** harness의 Phase 10 Runtime Adaptation이 이미 telemetry 기반 drift 감지 + 승인 모델 + atomic chain + rollback까지 제공하고, baseline anchor(`project_profile.md`, `intent_profile.md`)도 이미 자리 잡고 있기 때문이야. 이걸 무시하고 별도 시스템을 짓는 건 같은 인프라를 두 번 짓는 거야.
+
+핵심 재구성: **context manager는 "context-management" 도메인에 대해 harness skill을 한 번 호출한 결과물**이야. harness Phase 1-7을 거치면 .claude/agents/, .claude/skills/, CLAUDE.md 포인터가 만들어지고, Phase 10이 그 시스템을 자체 진화시켜.
+
+
+
+## 5 레이어 → harness 산출물 매핑핵심 절약은 L5 진화 — Phase 10이 이미 telemetry capture, drift diagnosis, atomic chain adapt, snapshot rollback, post-adapt 회귀 검증을 다 갖췄기 때문에 context manager의 자체 진화 로직을 새로 짤 필요가 없어. memory clustering 같은 도메인 특화 룰만 diagnostic rule로 추가하면 돼.
+
+## 도메인 분석 (Phase 3 결과)
+
+이 단계에서 핵심 결정 두 가지 — **실행 모드**와 **분리 기준**이야.
+
+**실행 모드: Hybrid** — context manager의 핸들러들은 서로 다른 라이프사이클 시점에 호출돼. SessionStart 인젝션, PostToolUse 압축, SessionEnd 다이제스트는 각자 단발성이라 **서브 에이전트**가 적합. 하지만 SessionEnd에서 digester가 추출한 결정을 curator가 클러스터링할 때는 두 에이전트가 같은 데이터를 보며 합의해야 하므로 **에이전트 팀**이 빛나. Phase 4-1의 hybrid 모드 그대로.
+
+**분리 기준** — 전문성과 컨텍스트 부담 두 축에서 분리가 정당화돼. compressor는 매 도구 호출마다 발화하므로 가벼워야 하고, curator는 가끔 발화하지만 전체 메모리를 봐야 하므로 무거워야 해. 한 에이전트로 묶으면 매번 컨텍스트가 비대해져서 압축 자체가 비싸져.
+
+## 팀 구성
+
+agent와 skill의 분담을 harness 룰("누가" vs "어떻게")에 맞춰 정리하면 이래.
+
+| 에이전트 | 타입 | 호출 시점 | 협업 | 핵심 책임 |
+|---|---|---|---|---|
+| `cm-injector` | general-purpose | SessionStart hook | 단독 (서브) | 직전 N개 세션 digest 읽고 짧은 메타 컨텍스트 주입 |
+| `cm-compressor` | general-purpose | PostToolUse (대용량 출력만) | 단독 (서브) | raw 출력 디스크 저장 + 의미 압축 요약 반환 |
+| `cm-digester` | general-purpose | SessionEnd | 팀 모드 (curator와) | 세션 transcript → what/when/do/warn 구조화 digest |
+| `cm-curator` | general-purpose | SessionEnd + 주기 | 팀 모드 (digester와) | 신규 메모리 클러스터링, confidence 갱신, skill 승격 판정 |
+| `cm-retriever` | general-purpose | 사용자/Claude의 메모리 검색 시 | 단독 (서브) | progressive disclosure 검색 (search → timeline → fetch) |
+
+dashboard는 의도적으로 에이전트가 아니라 **백그라운드 worker 프로세스 + dashboard-render 스킬** 조합. 이유는 대시보드 새로고침마다 Opus를 호출하면 비용이 폭증하고, 데이터 집계는 LLM 추론이 필요한 작업이 아니니까. 스킬에 SQL 쿼리 패턴을 번들링해두고 worker가 결정적으로 실행해.
+
+| 스킬 | 사용 에이전트 | 역할 |
+|---|---|---|
+| `cm-orchestrator` | (스킬 자체가 진입점) | 이벤트 타입 판별 → 적절한 에이전트로 라우팅 |
+| `tool-output-compress` | cm-compressor | 압축 정책, auto-expand 예외 룰, raw 보존 경로 |
+| `session-digest` | cm-digester | digest 구조 (what/when/do/warn), 결정·펜딩 추출 |
+| `memory-curate` | cm-curator | 클러스터링 알고리즘, decay half-life, 승격 임계 |
+| `memory-search` | cm-retriever | 3-tool progressive disclosure, 토큰 예산 |
+| `dashboard-render` | (worker가 직접 호출) | 4개 뷰별 데이터 집계 쿼리, 캐시 정책 |
+
+스킬과 에이전트가 1:1이 아닌 점에 주의해 — `cm-orchestrator`는 어떤 에이전트도 쓰지 않고 자기가 라우터 역할을 하고, `dashboard-render`는 에이전트 없이 worker가 직접 호출해.
+
+## 오케스트레이터 라이프사이클 라우팅
+
+*cm_orchestrator_event_routing.svg 참조*
+
+cm-orchestrator는 일반적인 harness 오케스트레이터와 한 가지 결정적으로 달라 — 사용자 키워드뿐 아니라 **Claude Code의 라이프사이클 훅이 직접 호출**해. description의 트리거 키워드와 hook 이벤트를 모두 진입점으로 다뤄야 해.핵심 포인트는 모든 핸들러가 자기 작업이 끝나면 telemetry 이벤트를 1줄 append한다는 점이야. 이게 단순한 로깅이 아니라 **harness Phase 10의 입력**이 돼. 즉 cm 시스템이 자기 자신을 관측하는 메커니즘이 별도가 아니라 harness 인프라 그 자체야.
+
+## 스토리지 레이아웃
+
+harness가 이미 정의한 `_workspace/` 위계를 그대로 따르고 새 디렉토리만 추가해.
+
+```
+_workspace/
+  _baseline/                          # harness Phase 1-2 (기존)
+    project_profile.md
+    intent_profile.md
+  _telemetry/                          # harness Phase 10 (기존, 이벤트 타입만 확장)
+    {date}.jsonl
+    _delta_{ts}.md
+    _rollback/
+  _memory/                             # 신규 — cm 영역
+    sessions/
+      {session_id}/
+        raw.jsonl                      # 세션 내 원본 이벤트
+        transcript.md                  # 풀 transcript (압축 안 함)
+        digest.md                      # what/when/do/warn 구조화
+    observations/
+      observations.db                  # SQLite + FTS5 + sqlite-vec
+    clusters/
+      {cluster_id}.md                  # 승격된 skill memory
+    daily_summaries/
+      {YYYY-MM-DD}.md                  # 계층 요약 (claude-remember 패턴)
+  _tool_outputs/                       # 신규 — 압축 전 raw 보존
+    {session_id}/
+      {ts}_{tool}_{n}.{ext}
+```
+
+원본을 절대 지우지 않는다는 원칙이 harness의 "스냅샷 보존" 철학과 정확히 같아. `_memory/sessions/*/transcript.md`는 압축의 압축 문제를 막는 anchor야 — 디지스트가 잘못되면 원본으로 돌아갈 수 있어.
+
+## 텔레메트리 확장
+
+harness 기존 이벤트 타입(`harness_invocation`, `agent_invocation`, `agent_failure`, `project_signal`, `user_bypass`, `user_feedback`)에 cm 영역 이벤트를 추가만 해.
+
+```jsonl
+{"ts":"...","type":"session_start","session_id":"a3f","project":"my-app","tokens_injected":847}
+{"ts":"...","type":"tool_output_captured","session_id":"a3f","tool":"WebFetch","raw_size":56812,"compressed_size":287,"ratio":0.005}
+{"ts":"...","type":"session_digest_created","session_id":"a3f","decisions":3,"pending":2,"size_bytes":1240}
+{"ts":"...","type":"memory_clustered","cluster_id":"c_42","members":7,"confidence":0.84}
+{"ts":"...","type":"memory_promoted","cluster_id":"c_42","new_artifact":".claude/skills/orm-patterns/SKILL.md"}
+{"ts":"...","type":"memory_decayed","memory_id":"m_891","reason":"unused_30d","confidence_before":0.42,"confidence_after":0.20}
+{"ts":"...","type":"memory_query","session_id":"b7e","query":"prisma transaction","tokens_returned":340,"results":4}
+```
+
+이렇게 하면 harness Phase 10 Diagnostic 룰을 자연스럽게 확장할 수 있어 — "compression_ratio 평균이 한 주 만에 0.05에서 0.3으로 악화" → cm-compressor 프롬프트 drift 신호, "특정 cluster가 10세션 0회 query" → 사문화 cluster 제거 후보 같은 식.
+
+## 자체 진화: harness 인프라의 재사용
+
+harness Phase 10이 cm 시스템에 그대로 적용되는 게 가장 큰 설계 절약이야. 어떻게 매핑되는지 보면:
+
+| harness Phase 10 메커니즘 | cm 시스템에서의 의미 |
+|---|---|
+| baseline drift 감지 | cm-compressor 압축률 악화, cm-injector 인젝션 사이즈 비대화 |
+| 사용 drift 감지 | 미사용 cluster, 반복 실패하는 retriever, dashboard 미접근 패턴 |
+| 신뢰도 가중 (`inferred − user_confirmed`) | 자동 추론된 cluster 승격을 user_confirmed_skills와 분리 |
+| Cross-artifact chain | cluster 승격 시 `.claude/skills/` 신규 + CLAUDE.md 변경 이력 + cm-curator 프롬프트 갱신을 atomic |
+| Snapshot + rollback | cluster 승격이 잘못됐을 때 사전 스냅샷으로 복원 |
+| Post-Adapt 회귀 검증 | 승격된 skill의 description 트리거 검증 16회 자동 재실행 |
+
+새 diagnostic rule만 5-6개 추가하면 cm 시스템이 자기 진화 회로를 가져. Phase 10에 `references/cm-diagnostic-rules.md`를 추가하는 식으로 분리하면 깨끗해.
+
+## Phase 1-2 시뮬레이션 — harness에 무엇을 입력할까
+
+이 시스템을 실제로 짓기 시작할 때 harness skill을 호출하면, Phase 1은 보통 "기존 프로젝트의 코드를 분석" 단계지만 cm은 *메타 도구*라 약간 다르게 흐를 거야. 도메인은 "cm 시스템 자체를 짓는 프로젝트"가 되고, intent_profile에 다음을 입력하는 시뮬레이션이 자연스러워.
+
+```yaml
+# _workspace/_baseline/intent_profile.md (Phase 2 입력 시뮬레이션)
+project_type: greenfield
+vision:
+  problem_statement: |
+    Claude Code 세션 간 컨텍스트 손실, 도구 출력의 컨텍스트 점유,
+    프로젝트별 도구/세션/메모리의 가시성 부재
+  target_users: ["Claude Code 헤비 유저", "장기 프로젝트 운영자"]
+  success_definition: |
+    세션당 토큰 사용량 30% 감소, 메모리 검색 응답 시간 < 2초,
+    승격된 skill memory가 월 5개 이상 누적
+scope:
+  must_have:
+    - "5개 라이프사이클 훅 점유 + telemetry 이벤트 발행"
+    - "PostToolUse 출력 압축 (>10KB만)"
+    - "SessionEnd 디지스트 + 클러스터링"
+    - "progressive disclosure 검색 (3-tool)"
+    - "로컬 dashboard 4개 뷰"
+  out_of_scope:
+    - "클라우드 동기화 (단일 머신만)"
+    - "실시간 협업 메모리"
+constraints:
+  tech_stack:
+    preferred: [Python, SQLite, sqlite-vec, FastAPI]
+    forbidden: [Chroma]   # 별도 서비스 부담
+    locked_in: []
+  team:
+    size: solo
+    expertise: mid
+  timeline:
+    horizon: prototype     # 본인 사용 검증 후 production
+    deadline: null
+architecture:
+  deployment_target: [server]   # localhost worker
+  scale_expectation: toy
+  data_sensitivity: personal
+quality:
+  test_rigor: smoke
+  documentation_level: code_comments
+  security_requirements:
+    - "모든 데이터 로컬 저장, 외부 송신 없음"
+workflow:
+  collaboration_mode: solo
+  review_style: self
+  ci_cd: lint
+```
+
+이 입력을 주면 harness가 Phase 4에서 위에 설명한 hybrid 모드 + 5개 에이전트 + 6개 스킬을 산출하고, Phase 7 오케스트레이터로 묶고, Phase 8에서 검증해. **새로 발명할 게 거의 없어**, harness가 이미 가진 결정 트리(팀 vs 서브, 패턴 선택, 분리 기준)를 그대로 따라가면 동일한 구조에 도달해.
+
+## 시작 순서 — 단계적 구현
+
+처음부터 5개 에이전트 + 6개 스킬을 다 짓지 말고 harness Phase 4-1의 "팀 재구성 가능" 원칙대로 단계별로 갖춰. 각 단계가 끝날 때마다 `_workspace/`가 살아있고 다음 단계가 그걸 그대로 활용해.
+
+| 단계 | 추가되는 산출물 | exit criteria |
+|---|---|---|
+| **S1** | cm-orchestrator + cm-injector + session-capture 스킬 | SessionStart에서 직전 세션 한 단락 인젝션 동작 |
+| **S2** | cm-digester + session-digest 스킬 + observations.db | SessionEnd에서 digest 생성 + DB 저장 |
+| **S3** | cm-retriever + memory-search 스킬 | Claude가 progressive disclosure로 과거 메모리 검색 |
+| **S4** | cm-compressor + tool-output-compress 스킬 | 50KB 출력이 컨텍스트에 500토큰 미만으로 진입 |
+| **S5** | cm-curator + memory-curate 스킬 (digester와 팀 모드) | 클러스터링·decay·승격 회로 동작 |
+| **S6** | dashboard-render 스킬 + worker 프로세스 | 4개 뷰가 localhost에서 렌더 |
+| **S7** | cm-diagnostic-rules.md (Phase 10 확장) | cm 자체 drift도 사용자 승인 모델로 진화 |
+
+S1-S3까지만 짜도 의미 있는 가치(영속 메모리)가 나오고, S4가 토큰 절약, S5-S6가 차별화, S7이 자체 진화 — 이 순서가 매 단계 효용 곡선이 가파르고 멈출 지점이 명확해.
+
+## 솔직한 평가
+
+이 재구성이 의미 있는 건 **harness가 이미 푼 문제를 다시 풀지 않게 된다**는 점이야. baseline anchor, telemetry 인프라, Phase 10 atomic chain + rollback + 회귀 검증 — 이건 진지한 시스템 디자인 결과물이고 너의 cm 시스템이 그 위에 얹히면 자체 진화 회로까지 무료로 얻어. standalone tool로 짓는 길은 같은 메커니즘을 ad-hoc으로 다시 만들어야 했고, 결과적으로 일관성이 떨어졌을 가능성이 커.
+
+한 가지 솔직히 짚어둘 것은, harness skill 자체가 매우 정교해서 처음 호출할 때 Phase 0-2가 한 번에 안 끝나. project_profile + intent_profile 채우고 검증 룰 통과까지 가는 데 시간이 걸리고, 그 산출물이 후속 Phase의 결정성을 결정해. 그래서 처음 cm 시스템 만들 때 harness를 호출하기 전에 위의 intent_profile 시뮬레이션을 텍스트로 미리 작성해두면 Phase 2가 훨씬 빨라져. harness Phase 2의 brownfield/greenfield 채우기 전략이 *coding curriculum Phase 2 진행 중인 너의 학습 부담*을 늘리지 않도록, intent profile을 사전에 한 번 prose로 정리하고 들어가는 걸 추천해.
