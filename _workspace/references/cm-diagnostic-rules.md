@@ -194,6 +194,8 @@ CM 도메인 drift → 변경 대상 산출물 매핑. runtime-adaptation.md §6
 | cm-compressor 미사용 | Claude Code settings.json (PostToolUse 훅) | cm-orchestrator 라우팅 조건 + CLAUDE.md 변경 이력 |
 | Skill memory 승격 | `.claude/skills/{name}/SKILL.md` 신규 생성 | `_workspace/_memory/clusters/{id}.md` `promoted_path` 갱신 + observations.db `clusters.promoted_path` UPDATE + CLAUDE.md 변경 이력 + (선택) `_baseline/cm_baseline.json`에 `user_confirmed_skills` 추가 |
 
+> **범위 외 (영구 제외):** 본 매핑은 의도적으로 `skills/harness/SKILL.md`, `skills/harness/references/*`, `commands/harness-*.md`, `skills/README.md`을 포함하지 **않는다**. 이 영역은 dharness 메타 스킬 본체이며, CM 도메인의 자동 적응(Phase 10 Adapt) 대상이 아니다. dharness 본체 변경이 필요하다고 판단되는 신호가 감지되면, Adapt를 트리거하지 말고 별도 항목 "dharness 일반화 후보"로 delta 리포트에 기록하고 사용자에게 Phase 9 (`/harness-evolve`) 명시 요청을 안내한다.
+
 ### Atomic 적용 — Skill memory 승격의 경우
 
 Skill 승격은 단일 원자적 변경이 아니라 4-5개 산출물을 동시에 갱신하는 chain이므로, 표준 Phase 10 rollback 인프라를 그대로 사용한다:

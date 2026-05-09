@@ -132,6 +132,26 @@ Phase 10 telemetry 카운터 확인:
 - CM baseline 기준값: `_workspace/_baseline/cm_baseline.json` (30 세션 누적 후 채워짐)
 - CM drift delta: 표준 `_delta_{ts}.md`의 "CM System Drift" 섹션에 append
 
+### CM 적응의 영구 범위 한정 (dharness 본체 보호)
+
+CM drift 적응은 **다음 경로로만 영향이 한정된다.** chain 정의·rollback manifest·승격 어떤 단계에서도 dharness 본체를 변경 대상에 포함시키지 않는다:
+
+**적응 가능 대상 (CM 도메인):**
+- `.claude/agents/cm-*.md`
+- `.claude/skills/cm-orchestrator/`, `session-capture/`, `session-digest/`, `tool-output-compress/`, `memory-curate/`, `memory-search/`, `dashboard-render/`
+- `.claude/skills/{승격 신규}/SKILL.md` (memory-curate 승격 산출물)
+- `_workspace/_memory/`, `_workspace/_baseline/cm_baseline.json`, `_workspace/_tool_outputs/`
+- `_workspace/references/cm-diagnostic-rules.md`
+- `CLAUDE.md` (변경 이력 행 추가만)
+
+**영구 제외 대상 (dharness 메타 스킬 본체):**
+- `skills/harness/SKILL.md`
+- `skills/harness/references/*`
+- `commands/harness-*.md`
+- `skills/README.md`
+
+dharness 본체에 대한 일반화 가치가 있는 신호가 발견되면, Adapt chain에 포함시키지 말고 delta 리포트의 별도 섹션 "dharness 일반화 후보"로 기록한 뒤 사용자에게 `/harness-evolve <피드백>`(Phase 9) 명시 요청을 안내한다.
+
 ## 에러 핸들링
 
 | 상황 | 처리 |
