@@ -94,12 +94,15 @@ if days_unused >= 30:
    "클러스터 '{theme}' 승격 후보 (confidence: 0.82, 7개 세션에서 관찰)
     .claude/skills/{name}/SKILL.md를 생성합니다. 진행할까요? [y/n]"
 
-2. 사용자 승인 시:
+2. 사용자 승인 시 (atomic chain — Phase 10 rollback 인프라 사용):
+   사전: `_workspace/_telemetry/_rollback/{ts}/`에 영향 받는 파일 .bak + manifest.json 스냅샷
    a. .claude/skills/{name}/SKILL.md 생성 (cluster 내용 기반)
-   b. CLAUDE.md 변경 이력 업데이트
-   c. cluster.promoted = ".claude/skills/{name}/SKILL.md" 기록
-   d. telemetry: memory_promoted 이벤트 append
-   e. 위 a-d는 atomic (실패 시 전체 rollback)
+   b. _workspace/_memory/clusters/{id}.md의 promoted_path 필드 갱신
+   c. observations.db: UPDATE clusters SET promoted_path=? WHERE cluster_id=?
+   d. CLAUDE.md 변경 이력 행 추가
+   e. telemetry: memory_promoted 이벤트 append
+   실패 시: manifest.json 역순 복구 (생성 파일 삭제 + .bak 복원).
+   상세 chain 매핑은 `_workspace/references/cm-diagnostic-rules.md` §4 "Skill memory 승격" 행 참조.
 
 3. 사용자 거부 시:
    - cluster confidence 재조정 (-0.10)

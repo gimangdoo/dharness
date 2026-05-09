@@ -192,6 +192,38 @@ CM 도메인 drift → 변경 대상 산출물 매핑. runtime-adaptation.md §6
 | Retriever 히트율 저하 | `.claude/skills/memory-search/SKILL.md` (fallback 강화) | CLAUDE.md 변경 이력 |
 | cm-curator 미실행 | `.claude/agents/cm-curator.md` + cm-orchestrator 훅 설정 | CLAUDE.md 변경 이력 |
 | cm-compressor 미사용 | Claude Code settings.json (PostToolUse 훅) | cm-orchestrator 라우팅 조건 + CLAUDE.md 변경 이력 |
+| Skill memory 승격 | `.claude/skills/{name}/SKILL.md` 신규 생성 | `_workspace/_memory/clusters/{id}.md` `promoted_path` 갱신 + observations.db `clusters.promoted_path` UPDATE + CLAUDE.md 변경 이력 + (선택) `_baseline/cm_baseline.json`에 `user_confirmed_skills` 추가 |
+
+### Atomic 적용 — Skill memory 승격의 경우
+
+Skill 승격은 단일 원자적 변경이 아니라 4-5개 산출물을 동시에 갱신하는 chain이므로, 표준 Phase 10 rollback 인프라를 그대로 사용한다:
+
+```
+1. 사전 스냅샷 (cm-curator):
+   _workspace/_telemetry/_rollback/{ts}/
+     ├── clusters_{id}.md.bak              # 원본 클러스터 파일
+     ├── observations.db.bak               # promoted_path 갱신 전 DB 스냅샷
+     ├── CLAUDE.md.bak                     # 변경 이력 추가 전 CLAUDE.md
+     └── manifest.json                     # 적용될 변경 chain 기술
+
+2. Chain 적용 (위 §4 표의 "Skill memory 승격" 행 순서대로):
+   a. .claude/skills/{name}/SKILL.md 생성 (신규)
+   b. _workspace/_memory/clusters/{id}.md의 promoted_path 갱신
+   c. observations.db UPDATE clusters SET promoted_path=? WHERE cluster_id=?
+   d. CLAUDE.md 변경 이력 행 추가
+   e. (선택) cm_baseline.json#user_confirmed_skills append
+   f. telemetry: memory_promoted 이벤트 append
+
+3. 검증 실패 시 (a-f 중 하나라도 실패):
+   _telemetry/_rollback/{ts}/manifest.json을 읽어 역순으로 복구.
+   manifest는 "각 단계가 무엇을 만들고 무엇을 수정했는가"를 기록하므로
+   생성된 파일은 삭제하고 수정된 파일은 .bak에서 복원한다.
+
+4. 성공 시:
+   _telemetry/_rollback/{ts}/는 30일 후 정리 (다른 rollback 스냅샷과 동일 정책).
+```
+
+이는 `references/runtime-adaptation.md` §6의 Cross-artifact propagation chain 메커니즘과 동일하므로 별도 인프라가 필요 없다. cm-curator는 승격 시 표준 rollback API만 호출한다.
 
 ---
 

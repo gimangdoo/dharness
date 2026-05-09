@@ -67,3 +67,4 @@
 | 2026-05-09 | 초기 구성 | 전체 (S1-S6 정의) | context-management 도메인 harness 신규 구축 |
 | 2026-05-09 | S7 완료 — CM 전용 Phase 10 진단 룰 추가 | `_workspace/references/cm-diagnostic-rules.md`, `_workspace/_baseline/cm_baseline.json`, cm-orchestrator 스킬 | Phase 10: CM drift 자체 진화 회로 완성 |
 | 2026-05-10 | 갭 9건 해소 (점검 결과 반영) | session-capture 스킬 신설, session-digest를 단일 DB 스키마 진실 원천으로 통합, dashboard-render/memory-search SQL 정합화, memory-curate에 daily_summary + 주기 트리거 추가, cm-injector daily_summaries 우선 입력, cm-curator 책임 확장, /cm-* 7종 커맨드 + 핸들러 스크립트 신설, FastAPI 워커 골격 작성, 훅 INSTALL.md 가이드 | 레퍼런스 line 168-176 정합 + 실행 가능성 확보 |
+| 2026-05-10 | Skill memory 승격을 Phase 10 rollback chain에 명시적으로 통합 | `_workspace/references/cm-diagnostic-rules.md` §4 표에 "Skill memory 승격" 행 + Atomic 적용 절차 추가, `.claude/skills/memory-curate/SKILL.md` 승격 프로세스를 표준 `_telemetry/_rollback/{ts}/` 인프라 사용으로 구체화 | 승격 시 다중 산출물(skill 파일/cluster md/DB/CLAUDE.md) chain의 dangling rollback 위험 제거 |
