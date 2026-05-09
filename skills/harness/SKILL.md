@@ -44,6 +44,7 @@ description: "하네스를 구성합니다. 전문 에이전트를 정의하며,
 프로젝트의 객관적 baseline을 추출. 결과 `_workspace/_baseline/project_profile.md`는 (a) Phase 3의 입력, (b) Phase 10의 t=0 anchor.
 
 **모드 선택:**
+
 | 모드 | 범위 | 자동 적용 조건 |
 |------|------|--------------|
 | **greenfield** | 최소 형태 (분류 결과 + 디렉토리 트리) | git/manifest/소스 신호 중 2+ 부재 |

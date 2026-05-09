@@ -54,7 +54,16 @@
 ├── commands/              # Slash command 진입점 7종 (명시적 호출)
 ├── skills/
 │   └── harness/           # 메타 스킬 본체 (SKILL.md + references/)
-└── README.md
+├── .claude/
+│   ├── agents/            # context-management 하네스 에이전트 5종
+│   └── skills/            # context-management 하네스 스킬 6종
+├── _workspace/
+│   ├── _baseline/         # Phase 1-2 산출물 + CM baseline 기준값
+│   ├── _telemetry/        # Phase 10 telemetry (append-only JSONL)
+│   ├── _memory/           # CM 런타임 메모리 (세션/클러스터/observations)
+│   ├── _tool_outputs/     # PostToolUse 원본 보존 (압축 전)
+│   └── references/        # CM 전용 Phase 10 진단 룰
+└── CLAUDE.md              # 하네스 포인터 + 변경 이력
 ```
 
 ---
@@ -81,6 +90,47 @@
 
 ---
 
+---
+
+## Context Manager 하네스 (구축 예시)
+
+harness 메타 스킬로 구축된 **context-management 도메인 하네스**가 이 레포에 포함되어 있습니다. 세션 간 컨텍스트 손실·도구 출력 비대화·메모리 미영속 문제를 해결하는 실제 구현체입니다.
+
+### 에이전트 5종 (`.claude/agents/`)
+
+| 에이전트 | 실행 시점 | 모드 |
+|--------|----------|------|
+| `cm-injector` | SessionStart 훅 | 서브 에이전트 |
+| `cm-compressor` | PostToolUse 훅 (>10KB) | 서브 에이전트 |
+| `cm-digester` | SessionEnd 훅 | 팀 (curator와) |
+| `cm-curator` | SessionEnd + 주기 | 팀 (digester와) |
+| `cm-retriever` | 메모리 검색 on-demand | 서브 에이전트 |
+
+### 스킬 6종 (`.claude/skills/`)
+
+| 스킬 | 역할 |
+|------|------|
+| `cm-orchestrator` | 라이프사이클 이벤트 → 에이전트 라우터 |
+| `tool-output-compress` | 도구별 압축 전략 + raw 보존 경로 |
+| `session-digest` | what/when/do/warn 구조 + observations.db 스키마 |
+| `memory-curate` | 클러스터링 알고리즘 + decay + 승격 임계치 |
+| `memory-search` | 3-tool progressive disclosure |
+| `dashboard-render` | 4개 뷰 SQLite 집계 + FastAPI worker |
+
+### 단계적 구현 현황
+
+| 단계 | 내용 | 상태 |
+|------|------|------|
+| S1 | cm-orchestrator + cm-injector + session-digest | ✅ |
+| S2 | cm-digester + observations.db | ✅ |
+| S3 | cm-retriever + memory-search | ✅ |
+| S4 | cm-compressor + tool-output-compress | ✅ |
+| S5 | cm-curator + memory-curate | ✅ |
+| S6 | dashboard-render + worker | ✅ |
+| S7 | Phase 10 CM 진단 룰 (`_workspace/references/cm-diagnostic-rules.md`) | ✅ |
+
+---
+
 ## 문서 인덱스
 
 | 문서 | 용도 |
@@ -88,3 +138,5 @@
 | [`commands/README.md`](./commands/README.md) | Slash command 7종 카탈로그 + 의사결정 트리 |
 | [`skills/README.md`](./skills/README.md) | 스킬 디렉토리 인덱스 + references 가이드 |
 | [`skills/harness/SKILL.md`](./skills/harness/SKILL.md) | 메타 스킬 정의 (11 Phase 워크플로우) |
+| [`CLAUDE.md`](./CLAUDE.md) | Context Manager 하네스 포인터 + 변경 이력 |
+| [`_workspace/references/cm-diagnostic-rules.md`](./_workspace/references/cm-diagnostic-rules.md) | Phase 10 CM 전용 drift 진단 룰 |
