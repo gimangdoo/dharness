@@ -3,15 +3,11 @@
 > 도메인 한 문장을 **에이전트 팀 + 스킬 세트**로 변환하는 메타 스킬.
 > A meta-skill that turns a domain description into an agent team and the skills they use.
 
-[![Version](https://img.shields.io/badge/version-1.2.0-7c6bf0)](./CHANGELOG.md)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
-[![Claude Code](https://img.shields.io/badge/Claude_Code-v2.x+-34d399)](https://claude.ai/code)
-
 ---
 
 ## 무엇인가
 
-`harness`는 Claude Code 플러그인입니다. 사용자가 도메인/프로젝트를 한 문장으로 설명하면, 해당 도메인에 특화된 **에이전트 3~5명**과 그들이 사용할 **스킬 세트**를 `.claude/agents/`·`.claude/skills/`에 자동 생성합니다.
+`harness`는 사용자가 도메인/프로젝트를 한 문장으로 설명하면, 해당 도메인에 특화된 **에이전트 3~5명**과 그들이 사용할 **스킬 세트**를 `.claude/agents/`·`.claude/skills/`에 자동 생성하는 메타 스킬입니다.
 
 다른 단일 에이전트/프롬프트 프레임워크와 달리, harness는 **팀 아키텍처 팩토리**입니다 — 6가지 사전 정의된 팀 패턴 중 도메인에 맞는 것을 선택하고 에이전트 협업 프로토콜을 함께 설계합니다.
 
@@ -28,32 +24,12 @@
 
 ---
 
-## Quickstart (5분)
-
-```bash
-# 1. 마켓플레이스 등록
-claude plugin marketplace add revfactory/harness
-
-# 2. 플러그인 설치 + Agent Teams 플래그
-claude plugin install harness@harness
-export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-
-# 3. 한 문장으로 하네스 생성
-claude "build a harness for a fintech risk-assessment team"
-# 또는
-claude "하네스 구성해줘 — 핀테크 리스크 평가 팀"
-```
-
-상세 절차·실패 FAQ는 [`docs/quickstart.md`](./docs/quickstart.md).
-
----
-
 ## 호출 방식 두 가지
 
 | 방식 | 발동 | 비용 통제 | 용도 |
 |---|---|---|---|
 | **자연어 트리거** | "하네스 구성해줘" 등 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화, 일반 사용 |
-| **Slash command** | `/harness-new`, `/harness-add-agent` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, CI 자동화, 트리거 확률 의존 제거 |
+| **Slash command** | `/harness-new`, `/harness-add-agent` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
 **Slash command 카탈로그 (7개):**
 
@@ -75,36 +51,15 @@ claude "하네스 구성해줘 — 핀테크 리스크 평가 팀"
 
 ```
 .
-├── .claude-plugin/        # 플러그인·마켓플레이스 메타데이터
 ├── commands/              # Slash command 진입점 7종 (명시적 호출)
 ├── skills/
 │   └── harness/           # 메타 스킬 본체 (SKILL.md + references/)
-├── docs/                  # 사용자 문서
-│   ├── quickstart.md
-│   └── experimental-dependency.md
-├── _workspace/            # 릴리스 감사·런치 산출물 (개발자용)
-├── .github/               # 이슈·PR 템플릿
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── LICENSE                # Apache-2.0
-└── index.html             # 랜딩 페이지 (GitHub Pages)
+└── README.md
 ```
 
 ---
 
-## 문서 인덱스
-
-| 문서 | 용도 |
-|------|------|
-| [`docs/quickstart.md`](./docs/quickstart.md) | 5분 안에 첫 하네스 생성 |
-| [`docs/experimental-dependency.md`](./docs/experimental-dependency.md) | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` 플래그 의존성 설명 |
-| [`commands/README.md`](./commands/README.md) | Slash command 7종 카탈로그 + 의사결정 트리 |
-| [`skills/README.md`](./skills/README.md) | 스킬 디렉토리 인덱스 + 11개 references 가이드 |
-| [`skills/harness/SKILL.md`](./skills/harness/SKILL.md) | 메타 스킬 정의 (11 Phase 워크플로우) |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 기여 가이드 + 응답 SLA |
-| [`CHANGELOG.md`](./CHANGELOG.md) | 버전별 변경 이력 |
-
-### Skill 워크플로우 한눈에
+## Skill 워크플로우 한눈에
 
 `harness` 메타 스킬은 11단계로 동작합니다:
 
@@ -126,23 +81,10 @@ claude "하네스 구성해줘 — 핀테크 리스크 평가 팀"
 
 ---
 
-## 사전 요구사항
+## 문서 인덱스
 
-- **Claude Code v2.x 이상** (Agent Teams API 지원)
-- 환경 변수 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` (왜 필요한지: [`docs/experimental-dependency.md`](./docs/experimental-dependency.md))
-
----
-
-## 기여
-
-기여 환영. 시작 전 [`CONTRIBUTING.md`](./CONTRIBUTING.md)의 **응답 SLA**(PR 1차 응답 72h, Issue triage 48h)와 PR 컨벤션을 확인해주세요.
-
-- 버그: `.github/ISSUE_TEMPLATE/bug_report.yml`
-- 기능 제안: `.github/ISSUE_TEMPLATE/feature_request.yml`
-- 토론: GitHub Discussions
-
----
-
-## 라이선스
-
-[Apache-2.0](./LICENSE) © revfactory
+| 문서 | 용도 |
+|------|------|
+| [`commands/README.md`](./commands/README.md) | Slash command 7종 카탈로그 + 의사결정 트리 |
+| [`skills/README.md`](./skills/README.md) | 스킬 디렉토리 인덱스 + references 가이드 |
+| [`skills/harness/SKILL.md`](./skills/harness/SKILL.md) | 메타 스킬 정의 (11 Phase 워크플로우) |
