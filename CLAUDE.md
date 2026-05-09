@@ -6,7 +6,6 @@
 - `skills/harness/SKILL.md` — harness 메타 스킬 (Phases 0-10)
 - `skills/harness/references/` — 설계 가이드 문서
 - `commands/` — `/harness-*` 슬래시 커맨드
-- `reference-file-for-context-manager/` — CM 시스템 설계 참고 문서
 
 ---
 
