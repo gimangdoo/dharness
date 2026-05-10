@@ -187,14 +187,34 @@ robocopy "$D\.claude\agents"    "$T\.claude\agents"    cm-*.md
 robocopy "$D\.claude\skills"    "$T\.claude\skills"    /E /XD harness  # CM 스킬만
 robocopy "$D\commands"          "$T\.claude\commands"  cm-*.md
 
-# 훅 + 대시보드 워커 + 레지스트리
-robocopy "$D\_workspace\_hooks"  "$T\_workspace\_hooks" /E
-robocopy "$D\_workspace\_worker" "$T\_workspace\_worker" /E
+# 훅 + 대시보드 워커 + 레지스트리 — `__pycache__`은 런타임 부산물이므로 제외
+robocopy "$D\_workspace\_hooks"  "$T\_workspace\_hooks"  /E /XD __pycache__
+robocopy "$D\_workspace\_worker" "$T\_workspace\_worker" /E /XD __pycache__
 Copy-Item "$D\_workspace\references\cm-diagnostic-rules.md" `
           "$T\_workspace\references\cm-diagnostic-rules.md" -Force
 ```
 
 > 변경 사항을 dharness와 동기화하고 싶다면 위 robocopy 대신 `mklink /J` 정션을 쓰세요.
+
+**1-1) 복사 후 검증 — 정의 파일만 옮겨졌는지 확인**
+
+대상 프로젝트가 git 저장소라면 (없다면 `git init` 후) `.gitignore`에 dharness의 런타임 패턴을 미리 병합한 뒤 다음을 실행해 누수가 없는지 확인합니다:
+
+```powershell
+# (한 번만) dharness의 .gitignore 룰을 대상 프로젝트에 병합
+Copy-Item "$D\.gitignore" "$T\.gitignore.dharness" -Force
+# 두 파일을 직접 합치거나, 처음 도입이라면 그대로 .gitignore로 사용
+
+# 검증
+cd "$T"
+git status --ignored
+```
+
+기대 출력:
+- 추적 대상에 `_workspace/_memory/`, `_workspace/_telemetry/`, `_workspace/_tool_outputs/`, `_workspace/_baseline/`, `__pycache__/`이 **나타나지 않아야** 함 (이들은 모두 런타임/프로젝트 고유 산출물)
+- `Ignored files:` 섹션에는 위 항목들이 등장 가능 — 정상 (실행 후 생성될 것들이 이미 ignore되어 있음)
+
+만약 추적 대상에 `__pycache__/`이 보이면 위 robocopy의 `/XD __pycache__`가 누락된 것이므로 `Remove-Item -Recurse "$T\_workspace\_hooks\__pycache__", "$T\_workspace\_worker\__pycache__"`로 정리합니다.
 
 **2) `_workspace/projects.json`에 대상 프로젝트 등록 (대시보드용)**
 
@@ -207,7 +227,9 @@ Copy-Item "$D\_workspace\references\cm-diagnostic-rules.md" `
 }
 ```
 
-이 파일은 dharness 쪽에 남기면 한 워커가 여러 프로젝트를 동시에 모니터링합니다. 또는 대상 프로젝트에 워커를 따로 띄워도 됩니다.
+**권장 — 이 파일은 dharness 쪽에만 둡니다.** 대시보드 워커 한 개가 여러 프로젝트를 한 화면에서 모니터링하는 것이 옵션 A 분산 DB 모델의 의도된 사용 방식입니다(cross-project SQL JOIN 없이 각 DB 독립 조회). 대상 프로젝트의 `_workspace/_worker/`는 정의(코드)만 보유하고 실행은 dharness 워커가 담당합니다 — 따라서 대상 프로젝트에는 워커를 띄우지 않으며, 그쪽 `projects.json`은 빈 채로 두거나 만들지 않습니다.
+
+> **예외:** 사내 보안 정책 등으로 dharness가 대상 프로젝트 디렉토리를 읽을 수 없는 환경이라면 대상에서 워커를 별도로 띄워야 합니다. 그 경우 대상 프로젝트의 `_workspace/projects.json`에 자기 자신만 등록하세요.
 
 **3) CM 메모리 초기화 + 훅 설치**
 
