@@ -1,7 +1,7 @@
 # CM Dashboard Worker
 
-`dashboard-render` 스킬이 정의한 5개 뷰를 SQLite + telemetry JSONL + 디렉토리 스캔에서
-집계하여 localhost로 서빙하는 결정적 워커. LLM 호출 없음.
+5개 뷰(세션·클러스터·압축·pending·인벤토리/로드맵)를 SQLite + telemetry JSONL +
+디렉토리 스캔에서 집계하여 localhost로 서빙하는 결정적 워커. LLM 호출 없음.
 
 옵션 A 분산 DB 모델: 각 프로젝트는 자기 `_workspace/_memory/observations/observations.db`를
 보유. 워커는 `_workspace/projects.json` 레지스트리를 읽어 프로젝트별 DB를 독립 조회한다.
@@ -82,9 +82,9 @@ Backward-compat (default project = 레지스트리 첫 항목):
 | 증상 | 원인 / 해결 |
 |------|-----------|
 | `ModuleNotFoundError: No module named 'fastapi'` | 의존성 미설치 — 위 "설치" 절 참조 |
-| `503 observations.db missing for project=<name>` | 그 프로젝트에서 `/cm-harness:cm-init` 미실행 또는 `projects.json` 경로 오타 |
+| `503 observations.db missing for project=<name>` | 그 프로젝트에서 새 Claude Code 세션을 한 번 열면 SessionStart 훅이 자동 생성, 또는 `projects.json` 경로 오타 |
 | `404 project not found: <name>` | `projects.json`에 해당 name이 없음 |
-| 압축 통계가 비어있음 | `<project>/_workspace/_telemetry/*.jsonl`에 `tool_output_captured` 이벤트 미발생 — cm-compressor 트리거 확인 |
+| 압축 통계가 비어있음 | `<project>/_workspace/_telemetry/*.jsonl`에 `tool_output_captured` 이벤트 미발생 — `post_tool_use.py` 훅 등록 확인 |
 | Roadmap 빈 배열 | CLAUDE.md에 markdown 표가 없거나 헤더-구분선이 깨짐 (silent fail — 의도된 동작) |
 | 포트 8765 충돌 | `dashboard_server.py`의 `port=` 변경 또는 기존 프로세스 종료 |
 | 외부 머신에서 접근 안 됨 | **의도된 동작** — 외부 노출 시 `host="0.0.0.0"`으로 변경 (보안 검토 필수) |

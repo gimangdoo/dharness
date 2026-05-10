@@ -15,7 +15,7 @@ argument-hint: "[--limit N] (기본 30)"
 
 ## 선조건 검증
 
-DB 미존재 시 → "/cm-harness:cm-init 후 다시 호출하세요".
+DB 미존재 시 → "새 Claude Code 세션을 한 번 열면 SessionStart 훅이 자동 생성합니다".
 
 ## 실행 절차
 
@@ -32,5 +32,5 @@ LIMIT ?;
 
 ## 범위 외 / 후속 명령
 
-- 특정 세션 디지스트 전문 — 메모리 검색 ("세션 {id} 전체 보기")으로 cm-retriever 호출
+- 특정 세션 디지스트 전문 — 자연어 메모리 검색 ("세션 {id} 전체 보기"). LLM이 `memory-search` 스킬의 3-tool progressive disclosure 규칙을 따라 직접 SQL/파일 조회
 - 전체 통계 — `/cm-harness:cm-status`

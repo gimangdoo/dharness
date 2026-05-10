@@ -7,12 +7,11 @@
   - `skills/harness/SKILL.md` — 메타 스킬 본체
   - `skills/harness/references/` — 설계 가이드 문서
   - `commands/harness-*.md` — `/harness:harness-*` 슬래시 커맨드 7종
-- `plugins/cm-harness/` — `cm-harness` plugin: Context Manager 런타임
-  - `agents/cm-*.md` — 에이전트 5종, `skills/<7>/SKILL.md` — 스킬 7종
-  - `commands/cm-*.md` — `/cm-harness:cm-*` 슬래시 커맨드 7종
-  - `hooks/` — 3종 lifecycle 훅 + `hooks.json` 자동 등록 매니페스트
-  - `worker/` — FastAPI 멀티 프로젝트 dashboard
-  - `references/cm-diagnostic-rules.md` — Phase 10 진단 룰
+- `plugins/cm-harness/` — `cm-harness` plugin: Context Manager 런타임 (결정적 데이터 파이프라인, LLM 호출 없음)
+  - `hooks/` — 3종 lifecycle 훅 (SessionStart/PostToolUse/SessionEnd) + `_schema.py` (DDL 단일 진실 원천) + `cm_commands.py` (결정적 커맨드 핸들러) + `hooks.json` 자동 등록 매니페스트
+  - `worker/` — FastAPI 멀티 프로젝트 dashboard (5 view, localhost only)
+  - `commands/cm-*.md` — `/cm-harness:cm-*` 슬래시 커맨드 4종 (status/sessions/dashboard/reset)
+  - `skills/memory-search/` — 1종 (LLM이 자연어 메모리 검색 시 따르는 3-tool progressive disclosure 규칙)
 - `.claude-plugin/marketplace.json` — 두 plugin git-subdir 카탈로그
 - `_workspace/` — DATA (사용자 프로젝트별 격리, plugin install 시 `${CLAUDE_PROJECT_DIR}` 기준)
 
@@ -20,21 +19,11 @@
 
 ## 하네스: context-management
 
-**목표:** Claude Code 세션 간 컨텍스트 손실 해소, 도구 출력 압축, 메모리 영속화
+**목표:** Claude Code 세션 간 컨텍스트 손실 해소, 도구 출력 캡처, 메모리 영속화
 
-**트리거:** context-management 관련 작업 요청 시 `cm-orchestrator` 스킬을 사용하라.
-또는 `/harness:harness-*` slash command로 명시적 호출 (카탈로그는 [`README.md`](./README.md) "Slash command 카탈로그" 섹션).
-단순 질문은 직접 응답 가능.
+**트리거:** context-management 관련 작업은 결정적 hooks + 워커가 자동 처리. 사용자 측 호출 채널은 `/cm-harness:cm-*` 4종 (status/sessions/dashboard/reset). 과거 메모리 자연어 검색 시에만 LLM이 `memory-search` 스킬 규칙을 따른다.
 
-**구성 산출물 카탈로그(에이전트 5종 / 스킬 7종 / 훅 3종 + 워커 1종 / `/cm-harness:cm-*` 7종):** 본 파일은 포인터만 유지한다 — 상세 카탈로그·역할 표는 [`README.md` "Context Manager 하네스"](./README.md#context-manager-하네스-구축-예시) 섹션을 단일 출처로 본다. plugin install 시 hooks.json이 자동 등록 — self-use(dharness 본 폴더 직접 작업) 시는 `plugins/cm-harness/hooks/INSTALL.md` 참조.
-
-**Phase 10 자동 알림:** 세션 시작 시 `_workspace/_telemetry/`의 최신 `.jsonl` 파일을 확인하라.
-마지막 Adapt 시각(= `_workspace/_telemetry/_delta_*.md` 또는 `_workspace/_telemetry/_rollback/{ts}/` 중 가장 최근 mtime,
-둘 다 없으면 telemetry 첫 이벤트의 ts) 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면,
-사용자에게 알린다: "CM 하네스가 {N}회 실행되었습니다. `/harness-adapt`로 drift 점검을 권장합니다."
-— telemetry 파일이 없거나 읽기 비용이 클 경우 건너뛴다.
-
-**단계적 구현 현황(S1~S7) / Phase 10 진단 룰·baseline 위치:** README.md의 "Context Manager 하네스" 섹션 + `plugins/cm-harness/references/cm-diagnostic-rules.md`를 단일 출처로 본다 (본 파일에서 중복 보유 금지 — Phase 7-4 포인터 룰).
+**구성 산출물 카탈로그(에이전트 0종 / 스킬 1종 / 훅 3종 + 워커 1종 / `/cm-harness:cm-*` 4종):** 본 파일은 포인터만 유지한다 — 상세 카탈로그·역할 표는 [`README.md` "Context Manager 하네스"](./README.md#context-manager-하네스-구축-예시--결정적-모델) 섹션을 단일 출처로 본다. plugin install 시 hooks.json이 자동 등록 — self-use(dharness 본 폴더 직접 작업) 시는 `plugins/cm-harness/hooks/INSTALL.md` 참조.
 
 **변경 이력:**
 
@@ -52,3 +41,4 @@
 | 2026-05-10 | Plugin 매니페스트 도입 — `/plugin install` 가능한 형태로 전환 (Step 1+1.6) | `.claude-plugin/plugin.json` 신설 (skills 2종/commands/agents/hooks 경로 선언) + `.claude-plugin/marketplace.json` 신설 (github source 단일 plugin 카탈로그) + `_workspace/_hooks/hooks.json` 신설 (`${CLAUDE_PLUGIN_ROOT}` 기반 3종 훅 등록) + `README.md` "다른 프로젝트에 dharness 도입하기"에 §0 (권장) Plugin 설치 섹션 추가 (A/B 절차는 보존) | 디렉토리 구조 변경 0, 코드 수정 0줄. 기존 `_schema.py`가 이미 `CLAUDE_PROJECT_DIR` env var로 데이터 경로를 잡고 있어서 plugin model과 자연 호환. 사용자가 `settings.json` 직접 편집 없이 `/plugin install dharness@dharness` 한 줄로 도입 가능. 메타 스킬과 CM 산출물이 한 plugin에 묶여 선택 install이 안 되는 한계는 Step 2(plugin 분리)에서 해소 예정 |
 | 2026-05-10 | Step 2 — monorepo subdirs 모델로 두 plugin 분리 (Step 2.1~2.5) | `plugins/harness/` 신설 (메타 스킬 + harness-* commands 이동) + `plugins/cm-harness/` 신설 (cm-* agents/skills/commands + hooks/ + worker/ + references/ 이동) + 각자 `.claude-plugin/plugin.json` + `plugins/cm-harness/hooks/hooks.json` 경로를 plugin-relative(`${CLAUDE_PLUGIN_ROOT}/hooks/...`)로 정정 + `_schema.py`에 `_walk_up_for_workspace()` fallback 추가 (manual self-use에서 `_workspace/` 디렉토리를 가진 가장 가까운 조상 탐색) + 기존 root `.claude-plugin/plugin.json` 삭제 + `marketplace.json`을 두 plugin git-subdir 카탈로그로 확장 + `.claude/settings.local.json` 훅 경로 갱신 (gitignore이라 commit에 미포함) + 기존 `commands/README.md`, `skills/README.md` 삭제 + `README.md` 전면 갱신 + `CLAUDE.md` 최상단 산출물 카탈로그 갱신 | 사용자가 "메타만" 또는 "CM만" 또는 "둘 다" 선택 install 가능. `harness:harness-*` vs `cm-harness:cm-*` 네임스페이스 분리. `plugins/`(코드, install 시 read-only) ↔ `_workspace/`(데이터, 사용자 프로젝트별 격리) invariant가 디렉토리 경계로 자연 강제됨. plugin 내부 SKILL.md/agent.md 파일들이 옛 경로(`_workspace/_hooks/...`)를 가리키는 잔존 참조는 다음 단계(Step 2.6)에서 일괄 갱신 |
 | 2026-05-10 | Step 2.6 — plugin 내부 잔존 참조 일괄 갱신 (Step 2 완전 완료) | 29개 파일에서 옛 경로/네임스페이스 일괄 치환: (a) `_workspace/_hooks/` → `plugins/cm-harness/hooks/`, `_workspace/_worker/` → `plugins/cm-harness/worker/`, `_workspace/references/cm-diagnostic-rules.md` → `plugins/cm-harness/references/cm-diagnostic-rules.md` (단, `_workspace/_baseline,_telemetry,_memory,_tool_outputs,projects.json`은 데이터 경로이므로 KEEP) + (b) cm-harness self-ref `.claude/agents/cm-*` → `plugins/cm-harness/agents/cm-*`, `.claude/skills/{cm-orchestrator|memory-curate|tool-output-compress|session-capture|session-digest|dashboard-render|memory-search}` → `plugins/cm-harness/skills/{name}` + (c) 슬래시 커맨드 네임스페이스 102건 (`/harness-X` → `/harness:harness-X`, `/cm-X` → `/cm-harness:cm-X`) + (d) harness self-ref `skills/harness/` → `plugins/harness/skills/harness/`, Pass A에서 삭제된 `commands/README.md` 잔존 참조 → `README.md` "Slash command 카탈로그" 섹션 포인터로 교체 + (e) `INSTALL.md` 매뉴얼 hook 경로를 `${CLAUDE_PROJECT_DIR}/plugins/cm-harness/hooks/...`로 정정 | install 동작에는 영향 없으나 SKILL/agent가 LLM 호출 시 잘못된 경로를 안내할 위험을 해소. dharness 본체 read-only invariant는 보존 (메타 harness skill 안의 일반 placeholder `.claude/{agents,skills}/`는 derived 프로젝트 대상이므로 의도적 유지). cm-harness 도메인 자체 적응 chain의 변경 대상 매핑이 새 경로로 정합화. 단일 commit, smoke test로 잔존 0건 확인 + JSON manifest 4종 + Python `_schema.py`/`cm_commands.py` import 정상 검증 |
+| 2026-05-10 | CM 수술적 재정비 — Phase 10/Orchestrator/agents 폐기, 결정적 모델로 축소 (Tier 1+2+3A) | (Tier 1) `_workspace/_baseline/`, `_telemetry/_rollback/`, `cm-diagnostic-rules.md`, debug `.curator_run.py`, leaked `_tool_outputs/unknown/` 삭제 (492줄). (Tier 2) cm-* 5 agents + cm-orchestrator/session-capture/session-digest/memory-curate/dashboard-render/tool-output-compress 6 skills + cm-curate/cm-clusters/cm-init 3 commands 삭제 (1558줄). (Tier 3A) `session_start.py`에서 `[CM Backfill]` LLM 분기 제거 + 최신 daily_summary 1건 inject로 교체, `session_end.py`/`post_tool_use.py` 잔존 dispatch 메시지 정리, `cm_commands.py`에서 cmd_init/cmd_clusters 제거 + cmd_reset이 사용하는 init 로직을 `_init_storage` private helper로 정리 + `_rollback` 디렉토리 생성 제거, `_schema.py` docstring 자기-진실-원천 명시, `memory-search/SKILL.md`에서 deleted 스킬 참조 제거, README/CLAUDE.md/2 plugin 매니페스트 narrative 갱신 ("5 agents/7 skills/Phase 10" → "3 hooks + 워커 + 4 commands + 1 skill"). | (1) "LLM이 매 SessionStart마다 자발적으로 dispatch chain을 실행해야" 가정 폐기 — 실측 compliance 0/5. (2) Phase 10 baseline/diagnostic/rollback DNA는 dharness 본체의 harness-evolve 채널과 중복되므로 CM-side 진입로 차단 (사용자 결정). (3) data layer (DB/hooks/workspace/dashboard) 100% 보존 — 11 sessions/63 obs/7 clusters/1 daily_summary 무손실. (4) Worker 측 digest job 통합(transcript→Anthropic API→DB)은 후속 작업(Tier 3B)으로 분리 — API 키 정책 사용자 결정 대기. dharness 본체 read-only invariant 보존 — `plugins/harness/`는 미변경 (다만 deleted CM-specific baseline/diagnostic 파일을 구체 예시로 참조하던 9개 reference에 dangling pointer 잔존, 별도 세션에서 정리 예정). |

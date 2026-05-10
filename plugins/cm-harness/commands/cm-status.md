@@ -14,7 +14,7 @@ Context Manager 시스템의 현재 상태를 출력한다.
 
 ## 선조건 검증
 
-`_workspace/_memory/` 미존재 시 → "/cm-harness:cm-init으로 초기화 후 다시 호출하세요" 안내.
+`_workspace/_memory/` 미존재 시 → "새 Claude Code 세션을 한 번 열면 SessionStart 훅이 자동 생성합니다" 안내.
 
 ## 실행 절차
 
@@ -29,5 +29,4 @@ Context Manager 시스템의 현재 상태를 출력한다.
 ## 범위 외 / 후속 명령
 
 - 세션 상세 — `/cm-harness:cm-sessions`
-- 클러스터 상세 — `/cm-harness:cm-clusters`
-- 시각화 — `/cm-harness:cm-dashboard`
+- 클러스터 상세 + 시각화 — `/cm-harness:cm-dashboard` (워커 띄운 후 브라우저)

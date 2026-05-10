@@ -1,7 +1,7 @@
 {
   "name": "cm-harness",
   "version": "0.1.0",
-  "description": "Context Manager harness — cross-session memory, tool output compression (>10KB), session digest with what/when/do/warn structure, observation clustering with decay, multi-project FastAPI dashboard. 5 agents + 7 skills + 3 lifecycle hooks (SessionStart/PostToolUse/SessionEnd).",
+  "description": "Context Manager harness — deterministic pipeline for cross-session memory and tool output capture. 3 lifecycle hooks (SessionStart/PostToolUse/SessionEnd) + FastAPI multi-project dashboard worker (5 views) + 4 slash commands + 1 memory-search skill. No LLM in the pipeline; latest daily_summary auto-injected on session start.",
   "author": {
     "name": "gimangdoo"
   },
@@ -10,9 +10,9 @@
   "keywords": [
     "context-management",
     "session-memory",
-    "agent-team",
-    "compression",
+    "session-capture",
     "observability",
+    "deterministic",
     "claude-code"
   ],
   "hooks": "./hooks/hooks.json"

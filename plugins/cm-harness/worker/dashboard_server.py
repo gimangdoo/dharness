@@ -4,7 +4,7 @@
 대시보드는 `_workspace/projects.json`(수동 레지스트리)을 읽어 여러 프로젝트의 데이터를
 독립적으로 조회한다 — cross-project SQL JOIN 없음. dharness 본체는 read-only.
 
-LLM 호출 없는 결정적 데이터 집계. dashboard-render 스킬의 SQL을 그대로 실행한다.
+LLM 호출 없는 결정적 데이터 집계 — 본 모듈이 SQL과 view 명세의 단일 진실 원천.
 정적 프론트엔드는 `plugins/cm-harness/worker/static/`에 mount되며 `/ui/`로 서빙된다
 (없으면 mount 생략). 외부 origin(예: Vite dev server)에서 API를 호출할 수 있도록
 localhost CORS를 허용한다.

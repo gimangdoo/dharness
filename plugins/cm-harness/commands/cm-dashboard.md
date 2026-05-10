@@ -28,4 +28,4 @@ localhost 대시보드 worker 상태를 점검하고 URL을 안내한다.
 ## 범위 외 / 후속 명령
 
 - worker 자동 시작/종료 — 의도적으로 미지원 (사용자가 명시적으로 시작)
-- 4개 뷰 데이터 직접 조회 — `/cm-harness:cm-status`, `/cm-harness:cm-sessions`, `/cm-harness:cm-clusters`
+- 콘솔 통계 직접 조회 — `/cm-harness:cm-status`, `/cm-harness:cm-sessions`

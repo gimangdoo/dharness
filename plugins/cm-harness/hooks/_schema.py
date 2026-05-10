@@ -1,7 +1,7 @@
 """CM hook 공용 인프라 — DDL 단일 정의 + session_id 파일 기반 전달.
 
-DDL은 `plugins/cm-harness/skills/session-digest/SKILL.md` §"CM 메모리 DB 스키마"의
-사양을 코드로 미러링한 것이다. 사양 변경 시 양쪽을 함께 수정한다.
+DDL은 본 모듈이 단일 진실 원천이다. observations/sessions/clusters/daily_summaries
+4개 테이블 + observations_fts FTS5 가상 테이블을 정의한다.
 
 session_id는 SessionStart hook 시점에 파일에 기록되고, PostToolUse/SessionEnd
 hook이 같은 파일에서 읽는다. hook은 별도 프로세스이므로 환경 변수로는 전달되지 않는다.

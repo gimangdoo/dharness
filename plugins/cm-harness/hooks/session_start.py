@@ -1,4 +1,4 @@
-"""SessionStart hook — session-capture 스킬의 결정적 부분 실행.
+"""SessionStart hook — 세션 부트스트랩 + 직전 dangling 세션 finalize + daily_summary inject.
 
 수행:
   1. 직전 세션이 dangling(ended_at IS NULL + raw.jsonl 비어있지 않음)인 경우 backfill finalize
@@ -9,11 +9,13 @@
   5. sessions 테이블 INSERT
   6. session_id를 _memory/.current_session에 기록 (다른 hook이 읽음)
   7. _workspace/_telemetry/{date}.jsonl에 session_capture_init + harness_invocation 이벤트 append
-  8. digest 누락 세션 목록을 additionalContext에 포함시켜 cm-orchestrator가 cm-digester
-     backfill을 cm-injector 전에 수행하도록 지시
+  8. 최신 daily_summary가 있으면 첫 줄을 additionalContext로 inject (순수 데이터 주입)
   9. stdout으로 hookSpecificOutput.additionalContext JSON 송출 (Claude Code 컨트랙트)
 
-LLM 호출 없음. 빠르게 종료해야 SessionStart 지연이 없다.
+LLM 호출도, LLM에 대한 instruction도 emit하지 않는다. 빠르게 종료.
+
+Digest/cluster/daily_summary 생성은 별도 워커 잡(worker/dashboard_server.py 통합 예정)이
+담당한다. 이 훅은 *읽기/주입*만 한다.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ import uuid
 from _schema import DDL, DB_PATH, MEMORY_ROOT, REPO_ROOT, TELEMETRY_DIR, write_session_id
 from session_end import flatten_to_transcript
 
-DIGEST_BACKFILL_LIMIT = 5
+DAILY_SUMMARY_INJECT_MAX_CHARS = 800
 
 
 def backfill_dangling_sessions(conn: sqlite3.Connection, now_iso: str) -> list[str]:
@@ -71,15 +73,14 @@ def backfill_dangling_sessions(conn: sqlite3.Connection, now_iso: str) -> list[s
     return finalized
 
 
-def find_digest_backfill_candidates(conn: sqlite3.Connection, limit: int) -> list[str]:
-    """종료되었지만 digest_path가 NULL인 세션 목록 (최신순, limit개)."""
-    rows = conn.execute(
-        "SELECT session_id FROM sessions "
-        "WHERE ended_at IS NOT NULL AND digest_path IS NULL "
-        "ORDER BY ended_at DESC LIMIT ?",
-        (limit,),
-    ).fetchall()
-    return [r[0] for r in rows]
+def fetch_latest_daily_summary(conn: sqlite3.Connection) -> tuple[str, str] | None:
+    """가장 최근 daily_summary 1건의 (date, summary)를 반환. 없으면 None."""
+    row = conn.execute(
+        "SELECT date, summary FROM daily_summaries ORDER BY date DESC LIMIT 1"
+    ).fetchone()
+    if not row:
+        return None
+    return row[0], row[1]
 
 
 def main() -> int:
@@ -93,7 +94,7 @@ def main() -> int:
 
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     backfilled: list[str] = []
-    digest_pending: list[str] = []
+    latest_summary: tuple[str, str] | None = None
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(DDL)
         try:
@@ -115,9 +116,9 @@ def main() -> int:
                 (session_id, today, now_iso, REPO_ROOT.name),
             )
         try:
-            digest_pending = find_digest_backfill_candidates(conn, DIGEST_BACKFILL_LIMIT)
+            latest_summary = fetch_latest_daily_summary(conn)
         except Exception as e:
-            print(f"[CM SessionStart] digest_pending lookup skipped: {e}", file=sys.stderr)
+            print(f"[CM SessionStart] daily_summary lookup skipped: {e}", file=sys.stderr)
 
     write_session_id(session_id)
 
@@ -139,19 +140,12 @@ def main() -> int:
                 "session_id": session_id, "backfilled": backfilled,
             }) + "\n")
 
-    additional_context = (
-        f"[CM] session_id={session_id} (project={REPO_ROOT.name}). "
-        "cm-orchestrator 스킬을 통해 cm-injector를 호출하여 직전 세션 요약을 주입하라."
-    )
-    if digest_pending:
-        sids_str = ", ".join(digest_pending)
-        additional_context += (
-            f" [CM Backfill] digest 누락 세션 {len(digest_pending)}건: {sids_str}. "
-            "cm-injector 호출 *전*에 cm-orchestrator를 통해 cm-digester를 각 세션에 순차 호출하고, "
-            "마지막에 cm-curator를 1회 호출하여 daily_summaries를 갱신하라. "
-            "transcript 경로: _workspace/_memory/sessions/{sid}/transcript.md. "
-            "토큰 예산을 고려해 가장 최근 1~3건만 처리해도 됨."
-        )
+    additional_context = f"[CM] session_id={session_id} (project={REPO_ROOT.name})."
+    if latest_summary:
+        date, summary = latest_summary
+        if len(summary) > DAILY_SUMMARY_INJECT_MAX_CHARS:
+            summary = summary[: DAILY_SUMMARY_INJECT_MAX_CHARS - 1] + "…"
+        additional_context += f"\n[CM] 최근 요약 ({date}):\n{summary}"
 
     print(json.dumps({
         "hookSpecificOutput": {

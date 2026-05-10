@@ -1,7 +1,10 @@
-"""PostToolUse hook — raw.jsonl 이벤트 append + 10KB 초과 시 cm-compressor 트리거 안내.
+"""PostToolUse hook — raw.jsonl 이벤트 append + 10KB 초과 시 _tool_outputs/에 보존.
 
 stdin으로 도구 결과 메타데이터를 받는다 (Claude Code hook payload).
 session_id는 _memory/.current_session 파일에서 읽는다 (hook 간 별도 프로세스이므로 환경변수 불가).
+
+10KB 초과 출력은 `_workspace/_tool_outputs/{session_id}/{ts}_{tool}_{n}.{ext}`에
+원본 그대로 저장되며, 별도 압축/요약 처리는 하지 않는다 (필요 시 워커가 후처리).
 """
 
 from __future__ import annotations
@@ -69,7 +72,7 @@ def main() -> int:
 
     print(
         f"[CM PostToolUse] {tool_name} 출력 {output_size}bytes 캡처: "
-        f"{raw_path.relative_to(REPO_ROOT)} — cm-compressor 호출 권장.",
+        f"{raw_path.relative_to(REPO_ROOT)}.",
         file=sys.stderr,
     )
     return 0
