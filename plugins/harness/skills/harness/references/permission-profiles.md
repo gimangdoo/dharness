@@ -16,6 +16,16 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 
 **우선순위:** A > B > C. 토큰 절감이 목적이면 A·B 조합, C는 보안 wrapper로만.
 
+> **빌트인 baseline — Claude Code deferred tool pool (§11-1 6차 사이클 발견)**
+>
+> Claude Code 현 빌드는 등록 MCP 도구를 *deferred pool*로 관리한다 — SessionStart 시 system prompt에 *이름 + 짧은 description*만 적재되고, 전체 JSON schema는 `ToolSearch select:<name>`로 lazy-fetch될 때 적재. 즉 *baseline 적재 비용*은 도구 수 × ~20-50 tokens (이름+설명) 수준이며, schema 풀 적재(~200-500 tokens/도구)는 호출 시점에만 발생. 17 MCP 도구 등록 상태에서 SessionStart 비용 추정 ≈ 17 × 30 ≈ **500 tokens** (이전 추정 17 × 350 = 6000 tokens 대비 ~12x 절감).
+>
+> **함의:**
+> - 의도 ②(적재 최소화)의 baseline 자체가 docs 추정보다 우호적. inline `mcpServers:` 패턴 없이도 약식 절감이 작동.
+> - 단 도구 *이름·description*은 여전히 등록 도구 수에 비례 → Layer A(서버 advertise 축소)의 가치 유효
+> - Layer B(subagent 격리)는 *deferred pool 자체를 subagent 안으로 이동* → parent에는 이름조차 안 나타남, schema lazy-fetch도 subagent 내부에서만 → 절감 폭은 더 큼
+> - **§11-3 측정 메트릭 재정의** (6차 사이클 갱신 완료): "도구 카운트 변화"에서 "M1=system prompt 토큰 / M2=deferred pool 카운트 / M3=schema fetch 빈도" 3축 조합으로 — `references/fixtures/verify_11_3.md` 본문 반영됨, 외부 실행자는 갱신본 사용
+
 ---
 
 ## 2. Capability Profiles (4종)
@@ -62,7 +72,7 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 | `git` * (Python, uvx) | T0 | code-test | `claude mcp add git <uvx-abs-path> -- mcp-server-git --repository <repo-abs>` ✓ (uvx는 `pip install --user uv` 후 `%APPDATA%\Python\Python312\Scripts\uvx.exe`) | 12종 ✓: `git_status`, `git_diff_unstaged`, `git_diff_staged`, `git_diff`, `git_commit`, `git_add`, `git_reset`, `git_log`, `git_create_branch`, `git_checkout`, `git_show`, `git_branch` (모두 `repo_path` required, 변형 도구는 `target`/`message`/`files`/`branch_name`/`revision`/`branch_type` 추가 required) |
 | `time` * | T0 | reasoning-aux | (PoC 미완) | (단일 도구 추정) |
 | `memory` * | T0 | reasoning-aux | (PoC 미완) | (PoC 미완) |
-| `sqlite` * | T0 | external-integration | (PoC 미완) | path 제한 |
+| `sqlite` * | T0 | external-integration | `claude mcp add sqlite <uvx-abs-path> -- mcp-server-sqlite --db-path <db-abs-path>` ✓ (8차 사이클, derived 프로젝트에서 검증; **`--db-path`는 절대경로 필수** — 상대경로면 health check `✗ Failed to connect`) | 6종 ✓: `read_query`, `write_query`, `create_table`, `list_tables`, `describe_table`, `append_insight` (read 3종을 allow, `write_query`/`create_table`/`append_insight` 3종을 deny/ask로 게이트 권장) |
 | `playwright` | T1 | code-test | (PoC 미완) | ✅ browser/api 분리 가능 |
 | `chrome-devtools` | T1 | code-test | (PoC 미완) | (PoC 미완) |
 | `brave-search` * | T1+ | research | (PoC 미완) | (PoC 미완) |
@@ -73,9 +83,17 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 | `slack` | T2~ | external-integration | (PoC 미완) | (PoC 미완) |
 | `postgres` * | T2~ | external-integration | (PoC 미완) | DB 접속 문자열로 제한 |
 
-> **검증된 도구 참조 패턴 (frontmatter `tools:`)**: `mcp__<server>__<tool>` — 예: `mcp__fetch__get_markdown`, `mcp__sequential-thinking__sequentialthinking`. 서버명·도구명의 하이픈/언더스코어는 등록 시 문자열 그대로 보존됨 (다음 세션 시작 시 실제 노출 형태 최종 확인 필요).
+> **검증된 도구 참조 패턴 (frontmatter `tools:`)**: `mcp__<server>__<tool>` — 예: `mcp__fetch__get_markdown`, `mcp__sequential-thinking__sequentialthinking`. **서버명·도구명의 하이픈/언더스코어는 문자열 그대로 보존됨 (§11-1 6차 사이클 ✓ 확정)** — sequential-thinking이 `mcp__sequential-thinking__sequentialthinking`으로 노출됨이 다음 세션 SessionStart deferred tool list로 측정 완료. 17종 모두 §3 인벤토리 enumeration과 100% 일치.
 
 > "검증 미완"은 본 문서 작성 시점에 실제 install·도구 enumeration·옵션 확인이 안 된 항목 — PoC에서 채워야 함.
+
+> ⚠️ **"install 명령" 컬럼의 용도 — 합성 산출물용 default 아님**
+>
+> 본 컬럼의 `claude mcp add ...` 명령은 *PoC enumeration·검증 환경 install* 형태이며, `~/.claude.json` projects.{cwd}.mcpServers (= scope `local`) 또는 `.mcp.json` (= scope `project`) 적재 = **parent 컨텍스트에 도구 정의 적재**. 이 경로는 §5-2의 anti-pattern과 동일한 토큰 비용을 부담한다.
+>
+> **합성 산출물에서는 §5-1 inline `mcpServers:`가 default** — 본 컬럼의 install 명령에서 *동일 패키지명·인자*를 추출해 inline `command:`/`args:`/`env:` 필드로 옮기되, 등록 자체(`claude mcp add`)는 **생략**한다. 예: `claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=... -e GITHUB_TOOLSETS=pull_requests -- npx -y @modelcontextprotocol/server-github` → §5-1-b의 inline `mcpServers.github` 블록으로 변환.
+>
+> 본 컬럼을 그대로 실행해도 되는 경우는 (1) 본 PoC처럼 도구 enumeration 검증 (2) §5-2의 3 예외 조건 — *그 외에는 §5-1 변환*.
 
 ---
 
@@ -91,29 +109,39 @@ Phase 5에서 에이전트 명세를 받았을 때:
 2. 사용자 confirm된 profile들에 대해 후보 MCP 열거
    → `claude mcp list`로 install 여부 체크
 
-3. 분기:
-   a) MCP install됨 + toolset 필터 지원 → Layer A 사용
-      → `.mcp.json`에 toolset env 명시
-      → 에이전트 frontmatter엔 필터링된 도구명만 allowlist
-   b) MCP install됨 + toolset 미지원 → Layer B 사용
-      → 서브에이전트로 격리, frontmatter `tools:`에 필요 도구만 열거
-   c) MCP 미install → 사용자에게 3택 제시
-      → install 안내 / 빌트인 대체 / 스킵
-   d) 어느 경우에도 자동 install·자동 키 발급 금지
+3. 분기 (default = inline `mcpServers:` parent 격리):
+   a) toolset 필터 지원 MCP (github/playwright 등) → §5-1-b Layer A+B 결합형
+      → inline `mcpServers:` 의 env/args에 toolset 필터 박음
+      → 에이전트 frontmatter `tools:`엔 필터링된 도구명만 allowlist (Layer C)
+      → parent 미적재 + 서버 측 advertise 축소 동시 달성
+   b) toolset 미지원 MCP (fetch/sqlite 등) → §5-1-a Layer B 단독
+      → 서브에이전트 inline `mcpServers:`로 격리
+      → frontmatter `tools:`에 필요 도구만 열거
+      → parent 미적재만 (서버 측 도구 풀은 그대로)
+   c) MCP 미install (런타임 신규 채택 필요) → §10 dynamic adoption 진입
+      → /harness:harness-mcp-adopt 5-step (discover → probe → confirm → install → reflect)
+      → 자동 install·자동 키 발급 금지 (§6)
+   d) parent 직접 호출 필연성 (드문 케이스) → §5-2 .mcp.json (anti-pattern)
+      → §5-2의 3 예외 조건 충족 시에만, enabledMcpjsonServers allowlist 의무
 
-4. 합성 산출물 3종 동시 패치:
-   - 에이전트 .md frontmatter `tools:`
-   - 프로젝트 .claude/settings.json `permissions.allow/ask`
-   - 프로젝트 .mcp.json mcpServers (필요 시)
+4. 합성 산출물 (default 패치):
+   - 에이전트 .md frontmatter `tools:` + inline `mcpServers:` (default)
+   - 프로젝트 .claude/settings.json `permissions.allow/ask/deny`
+   - 프로젝트 .mcp.json mcpServers (§5-2 예외 조건 시에만)
+   - CLAUDE.md 변경 이력 1행 (Phase 7-4)
 ```
 
 ---
 
 ## 5. 합성 산출물 템플릿
 
+> ✅ **9차 사이클 RESOLUTION (2026-05-10)** — 8차 EMPIRICAL CAVEAT(§11-2 spawn 시 도구 노출 0건)의 진짜 원인이 *frontmatter `mcpServers:` schema mismatch*임이 확정되었다. 공식 docs(`https://code.claude.com/docs/en/sub-agents` §"Scope MCP servers to a subagent") 발췌 결과 schema는 **list-of-dicts** 형태이며 inline definition에 `type: stdio`(또는 `http`/`sse`/`ws`) 필드가 *필수*. 우리 fixtures는 plain dict + type 누락이었음 → silent skip되어 inline MCP가 subagent에 connect되지 않았다. 9차 사이클에 모든 inline `mcpServers:` 예시를 list-of-dicts + `type:` 형태로 일괄 정정 완료. **재현 검증** (§11-2 spawn 재실행)으로 contradiction 해소를 확정 권장 — derived 프로젝트에서 정정된 fixture 사용 시 도구가 노출되어야 함.
+
 ### 5-1. 에이전트 frontmatter (Layer B 격리 — *권장*: inline `mcpServers`)
 
 inline로 MCP 서버를 선언하면 parent 대화에 도구 정의가 적재되지 않는다 (공식 docs §"Configure MCP servers"). 반면 `.mcp.json`에 등록하면 parent에 적재되며, `tools:` allowlist는 *subagent 측 가시성만* 통제한다.
+
+#### 5-1-a. Layer B 단독 (toolset 미지원 MCP — fetch/brave-search/sqlite 등)
 
 ```yaml
 ---
@@ -126,17 +154,71 @@ tools:
   - mcp__brave_search__web_search
   - mcp__fetch__fetch
 mcpServers:
-  brave-search:
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-brave-search"]
-    env: { BRAVE_API_KEY: "${BRAVE_API_KEY}" }
-  fetch:
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-fetch"]
+  - brave-search:
+      type: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-brave-search"]
+      env: { BRAVE_API_KEY: "${BRAVE_API_KEY}" }
+  - fetch:
+      type: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-fetch"]
 ---
 ```
 
-### 5-2. `.mcp.json` (Layer A 필터 케이스 — github 예, parent에서도 쓸 때만)
+> **Schema 정합 (9차 사이클 docs 발췌)**: `mcpServers:`는 **list-of-dicts** 형태 (`-`로 시작), 각 항목 안에 `<server-name>:` key + `type: stdio`(또는 `http`/`sse`/`ws`) 필수. dict-style (`-` 없음 + `type:` 누락)은 schema mismatch로 silent skip되어 inline MCP가 적재 안 됨이 §11-2 contradiction의 진짜 원인이었음.
+
+#### 5-1-b. Layer A+B 결합형 (toolset 지원 MCP — github/playwright 등) — *최강 패턴*
+
+inline `mcpServers:`의 `env:` 또는 `args:`에 toolset 필터까지 박으면 (1) 서버가 advertise하는 도구 자체가 줄고 (= **Layer A**, 진짜 토큰 절감) (2) 그 줄어든 풀이 subagent에만 connect됨 (= **Layer B**, parent 미적재) (3) 그 안에서도 `tools:` allowlist로 가시화 (= **Layer C**). **의도 ②③(세션 적재 최소화 + agent-only 접근)을 동시에 달성하는 정공법.**
+
+```yaml
+---
+name: gh-pr-reviewer
+description: GitHub PR 메타데이터 조회 + diff 리뷰 (read-only)
+model: opus
+tools:
+  - Read
+  - Grep
+  - mcp__github__list_pull_requests
+  - mcp__github__get_pull_request
+  - mcp__github__get_pull_request_diff
+mcpServers:
+  - github:
+      type: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-github"]
+      env:
+        GITHUB_PERSONAL_ACCESS_TOKEN: "${GH_TOKEN}"
+        GITHUB_TOOLSETS: "pull_requests"   # 19종 default+추가 toolsets 중 PR만 advertise → Layer A 서버측 필터
+---
+```
+
+**효과 (추정 — §11-3 측정 후 확정):**
+
+| 패턴 | 서버 advertise | subagent 컨텍스트 적재 | parent 컨텍스트 적재 |
+|------|---------------|----------------------|------------------|
+| `.mcp.json` + 무토글 (anti-pattern) | 19 toolset × 평균 ~5 도구 ≈ **90+** | ≈ 90+ (inherit) | **≈ 90+** ❌ |
+| 5-1-a (Layer B만) | (해당 없음 — toolset 미지원 MCP) | allowlist 도구만 | 0 ✓ |
+| **5-1-b (Layer A+B 결합)** | **PR toolset만 ≈ 5~7 도구** | 5~7 (allowlist 일치) | **0** ✓ |
+
+**toolset 필터 적용 가능 MCP** (§3 표 기준):
+
+- `github` — `env: GITHUB_TOOLSETS=...` (19종, §3 footnote 카탈로그)
+- `playwright` — `args: ["--caps=...", "--isolated", "--browser=chromium"]` 등 CLI flag
+- 기타 toolset 미지원 MCP — 5-1-a 패턴 사용
+
+> **선택 가이드:** 합성 대상 MCP가 toolset 필터를 지원하면 **무조건 5-1-b**. 미지원이면 5-1-a. 둘 다 inline `mcpServers:`라서 parent 미적재는 동일.
+
+### 5-2. `.mcp.json` — *예외* 케이스 (anti-pattern, parent 적재 불가피한 경우만)
+
+> ⚠️ **합성 default 아님 (의도 ②③ 위반 패턴)** — `.mcp.json` 등록은 parent 컨텍스트에도 도구 정의를 적재해 토큰을 소비하며, agent-only 접근 원칙도 깨진다. **합성 가이드의 default는 §5-1 inline `mcpServers:` 패턴**이며, 본 §5-2는 다음 *세 가지 예외 조건*에 한정해 사용한다:
+>
+> 1. **parent (메인 세션)가 해당 MCP 도구를 직접 호출**해야 하는 필연성 — 예: 슬래시 커맨드 본문에서 `mcp__<name>__<tool>` 직접 호출, 오케스트레이터가 subagent 위임 없이 직접 사용
+> 2. **여러 subagent가 같은 MCP를 공유**해야 하고 inline 중복 비용이 더 큰 경우 (드문 케이스)
+> 3. **개발팀 공유 (`-s project`)** — `.mcp.json`을 commit해서 모든 팀원이 동일 MCP 사용 (이 경우도 parent 적재 비용은 감수)
+>
+> 의심스러우면 §5-1로. 위 3 조건 어느 것도 명확히 충족 안 되면 **inline 패턴이 정답**.
 
 ```json
 {
@@ -149,9 +231,12 @@ mcpServers:
 }
 ```
 
-> 주의: `.mcp.json`은 parent 컨텍스트에도 도구 정의를 적재함. parent가 직접 호출 안 하는 MCP는 5-1처럼 subagent inline으로 옮길 것.
+> **본 패턴 사용 시 의무 사항:**
+> - `enabledMcpjsonServers` allowlist를 명시 — 적재 도구 제한 (§11-3 토글 효과 측정 후 확정)
+> - `permissions.deny`로 민감 도구 블랙리스트 동시 박제 (§5-3 + §6.3)
+> - parent 컨텍스트의 토큰 비용을 `/harness:harness-mcp-status` §섹션 1·6에서 정기 점검
 
-### 5-3. `.claude/settings.json`
+### 5-3. `.claude/settings.json` (모든 패턴 공통 — Layer C 게이트)
 
 ```jsonc
 {
@@ -170,6 +255,10 @@ mcpServers:
   "enabledMcpjsonServers": ["github", "brave-search", "fetch"]
 }
 ```
+
+> **`enabledMcpjsonServers` 적용 범위:** 본 키는 **§5-2 (`.mcp.json`) 패턴 사용 시에만 유효**. §5-1 inline `mcpServers:` 패턴은 본 키와 무관 — agent 시작 시 inline 정의로 직접 connect한다. 따라서 default 합성(§5-1)에서는 `enabledMcpjsonServers` 키 자체가 settings.json에 부재해도 무방 (`synthesis_example/settings.json` 박제 예시 참조).
+>
+> **`permissions.allow/ask/deny`**는 두 패턴 모두에 유효 — *호출 시점*에 적용되는 Layer C 게이트라서 inline·`.mcp.json` 무관하게 작동.
 
 ---
 
@@ -191,8 +280,12 @@ Phase 5-2: 도구·MCP 합성 (이 문서 적용 지점)
   a. 에이전트 description 분석 → profile 후보 제안
   b. `claude mcp list` 실행 → 인벤토리 확인
   c. 사용자에게 매핑 confirm (AskUserQuestion)
-  d. 산출물 3종(§5) 합성
+     - 토글 지원 MCP는 §5-1-b (Layer A+B 결합) 권장
+     - 미지원 MCP는 §5-1-a (Layer B 단독)
+     - parent 직접 호출 필연성 확인되면 §5-2 (anti-pattern, 예외 조건 명시)
+  d. 산출물 합성 (§4의 default 패치 4종)
   e. 변경 사항을 CLAUDE.md 변경 이력에 1줄로 기록
+  f. 사후 정합 점검: `/harness:harness-mcp-status` (parent 적재 비용 ⚠️ 항목 확인)
 ```
 
 ---
@@ -221,14 +314,28 @@ Phase 5-2: 도구·MCP 합성 (이 문서 적용 지점)
 - ✓ Playwright MCP 패키지(@playwright/mcp 또는 microsoft/playwright-mcp)의 카테고리 매핑(navigation/click/screenshot/keyboard/tabs + browser_run_code) 확인 — toolset 필터는 `--isolated`/`--browser`/`--headless`/`--caps`/`--save-session` 등 CLI flag 형태 (env 아님)
 - ✓ **mid-session MCP 등록은 본 세션 도구 풀에 미적재** (4차 사이클): 3개 MCP가 `claude mcp list`에서 `✓ Connected`인 동일 세션에서 (a) 부모 측 `ToolSearch` query `"mcp__"` → 0 hit (b) `Explore` 서브에이전트 spawn 후 inherit pool 점검 → 0 hit. **MCP 도구 풀은 세션 시작 시 1회 materialize되며 mid-session add는 다음 세션부터 반영**됨이 양면 empirical 확인 (subagent도 mid-session 추가분 inherit 안 함). → 운영 함의: Phase 5-2 합성 직후 즉시 사용 불가, 사용자에게 "다음 세션부터 사용 가능" 명시 필요.
 
-**미완 (다음 PoC, 외부 환경 필요):**
-- 다음 세션 시작 시 `mcp__fetch__get_markdown` / `mcp__git__git_status` / `mcp__sequential-thinking__sequentialthinking` 패턴이 실제 도구 목록에 노출되는지 (`mcp__<server>__<tool>` 명명 규칙 최종 검증) — 4차 사이클에서 mid-session 미적재만 확인, 다음 세션 후 노출 형태(특히 하이픈→언더스코어 변환 여부)는 별건. **레시피: §11-1**
-- 서브에이전트 inline `mcpServers:` 합성 산출물(§5-1)을 실제 spawn해서 (a) 해당 도구만 노출 + (b) parent 컨텍스트에는 안 실림 동시 실측 — Agent tool은 `mcpServers` 파라미터 미노출이라 .claude/agents/ 파일 경로 필요. dharness root `.claude/`는 self-host CM 격리 영역이므로 derived 프로젝트에서 검증 권장. **레시피: §11-2**
-- `tavily`/`exa`/`firecrawl`/`brave-search`의 키 발급 절차 + 무료 한도 → 사용자 측 키 보유 시점 별건
-- `enabledMcpjsonServers` 토글이 컨텍스트 적재까지 막는지 vs 호출만 막는지 (재시작 필요). **레시피: §11-3**
-- §10 dynamic adoption 워크플로우의 e2e 시연 — 가상 도메인(예: SQLite 분석) 5-step reproducer. **레시피: §11-4**
+**6차 사이클 추가 완료 (2026-05-10):**
+- ✓ **다음 세션 노출 형태 확정 (§11-1)** — 본 세션 SessionStart deferred tool list로 측정. 17종 모두 §3 enumeration과 일치. **하이픈 보존** (`mcp__sequential-thinking__sequentialthinking`). 결과 박제: [`./fixtures/README.md`](./fixtures/README.md) 결과 로그.
+- ✓ **deferred tool pool 모델 발견** (의도 ②에 자연 친화) — Claude Code 현 빌드는 MCP 도구를 *deferred*로 관리, schemas는 `ToolSearch select:<name>`로 lazy-fetch. SessionStart에서는 도구 *이름 + 짧은 description*만 system prompt에 적재되며, 전체 JSON schema는 호출 시점에만 적재. → **inline `mcpServers:` 패턴이 아니더라도 schemas는 lazy-load**되므로 의도 ②(적재 최소화)의 baseline 자체가 docs 추정보다 우호적. 단 *이름 + description* 적재 비용은 여전히 도구 수에 비례 — Layer A toolset 필터(§5-1-b)의 가치는 그대로 유효 (서버 advertise 단계에서 줄임). **§11-3 토글 측정의 정밀도 요구가 변경됨** — 도구 *목록* 변화가 아닌 *schema fetch 빈도* 측정이 더 정확.
 
-> **5차 사이클 진척:** 위 4종 미완 항목 모두 [`./fixtures/`](./fixtures/) 디렉토리에 *복사 실행 가능한 fixture*로 박제 완료 — `verify_11_1.md` / `mcp-isolation-probe.agent.md` / `verify_11_3.md` / `probe_sqlite.js`. 외부 실행자가 결과를 [`./fixtures/README.md`](./fixtures/README.md) "결과 로그"에 누적하면 본 §8-2 항목들이 차례로 ✓로 이동.
+**8차 사이클 추가 완료 (2026-05-10) — derived 프로젝트 e2e:**
+- ✓ **§11-4 §10 5-step e2e 시연 — Steps 1-4 empirical 완료** (사용자 명시 동의 게이트 통과). derived 프로젝트(`C:\Users\user01\dharness-probe-test`)에서 sqlite MCP 채택 워크플로우 일회 reproducer:
+  - **Step 1 Discover:** §3 인벤토리 sqlite 행 매칭 (T0/external-integration)
+  - **Step 2 Pre-install probe:** `probe_sqlite.js`(JSON-RPC stdio 핑) → **6 도구 확정** (`read_query`, `write_query`, `create_table`, `list_tables`, `describe_table`, `append_insight`) — fixture comment의 추정 5종에 `create_table`이 추가로 발견됨 → §3 sqlite 행 정정
+  - **Step 3 User confirm:** "차례대로 모두 진행해줘" 명시 동의 → §6 게이트 통과
+  - **Step 4 Install:** `claude mcp add sqlite <uvx-abs> -- mcp-server-sqlite --db-path <db-rel>` 1차 실행 시 `✗ Failed to connect`. **`--db-path` 절대경로로 재install** 시 ✓ Connected. → **§10 Step 4에 "경로 인자는 절대경로 필수" caveat 박제**
+  - **Step 5 Reflect 4 산출물 적용:** (a) §3 인벤토리 sqlite 행 enumeration ✓ (b) `<derived>/.claude/agents/data-analyst.md` 작성 ✓ (c) `<derived>/.claude/settings.json` permissions(allow=read 3종, deny=write_query/create_table/append_insight, ask=fetch) ✓ (d) `<derived>/CLAUDE.md` 변경 이력 1행 ✓
+- ✓ **§6 자동 install 금지 정책 self-test 재확인** — derived 프로젝트에 inline `mcpServers:` 갖는 agent 파일을 처음 작성 시도 시 auto-mode classifier가 *untrusted external code execution outside trusted repo*로 차단. 사용자 명시 동의 후 통과. **classifier가 dharness root 외부에서도 동일 enforcement** 확인 → §6 정책의 실효성 영역이 dharness 외부까지 확장됨이 empirical.
+- ✓ **§11-2 setup ready (실제 spawn은 외부 세션 의존)** — derived 프로젝트의 `.claude/agents/mcp-isolation-probe.md`에 inline `mcpServers: { fetch: { command: npx, args: ["-y", "mcp-server-fetch-typescript"] } }` 작성 완료. dharness 본 세션은 자기 디렉토리 스캔이라 derived 프로젝트의 agent를 인식할 수 없음 — 외부 실행자가 `cd <derived> && claude` 후 Agent tool spawn 시 본 fixture가 ready-to-run 상태.
+- ✅ **§11-2 contradiction 해소 (9차 사이클, 2026-05-10)** — 8차 spawn 결과(도구 노출 0건)의 진짜 원인 확정: `mcpServers:` frontmatter schema가 잘못됨. 공식 docs 발췌(WebFetch `https://code.claude.com/docs/en/sub-agents`)로 schema가 **list-of-dicts** + 각 항목에 `type: stdio` 필수임을 확인. 우리 fixtures는 plain dict + type 누락 → silent skip. 후보 매트릭스: ~~(a) 필드명~~ ✓ `mcpServers` 자체는 맞음 / ~~(b) `tools:` 표기~~ ✗ 제외 (8차 측정) / ~~(c) subagent 인식~~ — 무관 추정 (schema 정정 후 재검증 필요) / ~~(d) 빌드 차이~~ — 무관 추정. **진짜 원인 = (a) 하위 항목 = inline definition schema format**. dharness fixture·synthesis_example·permission-profiles.md §5-1 예시 일괄 정정 완료 (list-of-dicts + `type: stdio`). §8-1 사실 empirical 확정은 정정된 fixture로 §11-2 재spawn 후 확정 가능. 결과 로그 박제: [`./fixtures/README.md`](./fixtures/README.md) 9차 사이클 행.
+
+**여전히 미완 (외부 환경 필요):**
+- 서브에이전트 inline `mcpServers:` 합성 산출물(§5-1)을 실제 spawn해서 (a) 해당 도구만 노출 + (b) parent 컨텍스트에는 안 실림 동시 실측 — **8차 사이클 spawn 보고 (외부 실행자, 2026-05-10)**: subagent에 `Bash` 외 도구 0개, allowlist 명시 `mcp__fetch__get_markdown`도 미노출. **§5-1 합성 자체가 작동 안 한 신호** — §8-1 사실 확정 *보류*, §5-1 템플릿 재검토 필요. 후속 9차 사이클 핵심 의제. **레시피: §11-2**.
+- `tavily`/`exa`/`firecrawl`/`brave-search`의 키 발급 절차 + 무료 한도 → 사용자 측 키 보유 시점 별건
+- `enabledMcpjsonServers` 토글이 컨텍스트 적재까지 막는지 vs 호출만 막는지 (재시작 필요). **레시피: §11-3 — fixture 본문 6차 사이클 갱신 완료 (M1=system prompt 토큰 / M2=deferred pool 카운트 / M3=schema fetch 빈도 3축 메트릭). 단, dharness 자체는 `~/.claude.json` `local` 스코프 적재라 본 토글의 영향권 *밖* — fixture 선조건에 `.mcp.json` `-s project` 등록 MCP가 있는 derived 프로젝트 필수. derived 프로젝트는 8차 사이클에 setup 완료, 외부 측정만 남음.**
+- ~~§10 dynamic adoption 워크플로우의 e2e 시연~~ → **8차 사이클 ✓ 완료** (위 §11-4 항목 참조)
+
+> **5차 사이클 진척:** 4종 fixture 박제 완료. **6차 사이클 진척:** §11-1 ✓ + deferred-pool 신규 사실. **7차 사이클 진척:** §11-3 fixture 본문 갱신 (3축 메트릭). **8차 사이클 진척:** §11-4 e2e 시연 ✓ (Steps 1-4 empirical, sqlite 6 도구 enumeration·abs-path caveat·§6 self-test 박제) + §11-2 derived 프로젝트 setup ready. §11-2 spawn·§11-3 측정은 외부 Claude Code 세션 의존 잔존.
 
 ### 8-3. 재사용 가능한 검증 기법
 
@@ -293,6 +400,7 @@ Step 4. Install + 적재
       claude mcp add <name> <command> [args...] [-e KEY=VAL ...] [-s local|project|user]
   - toolset 필터 동시 적용 (Layer A): GitHub `GITHUB_TOOLSETS=...`, Playwright `--caps=...` 등
   - 검증: `claude mcp list` → `✓ Connected` 확인 (실패 시 stderr 확인)
+  - **경로 인자는 절대경로 필수** — `--db-path ./...`, `--repository ./...` 등 상대경로는 health check 실행 시 cwd가 `claude` 호출 디렉토리와 다를 수 있어 `✗ Failed to connect` 발생 (8차 사이클 sqlite 시연 empirical). uvx 실행자 자체도 PATH 미통과 시 spawn 실패하므로 절대경로 (`%APPDATA%\Python\Python312\Scripts\uvx.exe`) 권장.
 
 Step 5. Reflect — 4 산출물 동시 패치
   a. **§3 인벤토리 표** — 새 행 추가 (Tier·카테고리·install 명령·도구 enumeration)
@@ -387,9 +495,10 @@ Step 5. Reflect — 4 산출물 동시 패치
      - Bash
      - mcp__fetch__get_markdown
    mcpServers:
-     fetch:
-       command: npx
-       args: ["-y", "mcp-server-fetch-typescript"]
+     - fetch:
+         type: stdio
+         command: npx
+         args: ["-y", "mcp-server-fetch-typescript"]
    ---
 
    당신의 단일 책임: 자신의 도구 풀을 점검하여 다음을 보고한다.
@@ -414,22 +523,26 @@ Step 5. Reflect — 4 산출물 동시 패치
 
 ### 11-3. `enabledMcpjsonServers` 토글의 효과 측정 (재시작 필요)
 
-▶ **Fixture:** [`./fixtures/verify_11_3.md`](./fixtures/verify_11_3.md) — 베이스라인(N1) → 토글 OFF → 측정(N2) → 분기 판정 → 복원 4단계 + 결과 표 템플릿 박제 완료.
+▶ **Fixture:** [`./fixtures/verify_11_3.md`](./fixtures/verify_11_3.md) — 7차 사이클 갱신본. 베이스라인(B1) → 토글 OFF → 측정(B2) → 3축 메트릭 분기 판정 → 복원 4단계. **3축 메트릭 = M1(system prompt 토큰) / M2(deferred pool 카운트) / M3(schema fetch 빈도)** — deferred pool 발견 이후 도구 카운트 단독으로는 분기 표지가 되지 않으므로 3축 조합 필수.
 
 **목적:** `.claude/settings.json`의 `enabledMcpjsonServers` 배열에서 서버를 *빼면* — (A) 컨텍스트 적재 자체가 차단되는지 vs (B) 적재는 되고 호출만 차단되는지.
 
 **선조건:** 프로젝트에 `.mcp.json` 또는 `~/.claude.json` projects.{path}.mcpServers로 등록된 MCP 1개 이상.
 
-**절차:**
+**절차 (요약 — 자세한 입력 프롬프트는 fixture 참조):**
 ```
-1. 베이스라인: 모든 MCP enabled 상태에서 세션 시작 → ToolSearch "mcp__" 카운트 기록 (= N1)
+1. 베이스라인 측정: 모든 MCP enabled 상태에서 세션 시작 → 첫 turn에 (M1, M2, M3) 측정 → B1
+     M1: system prompt 토큰 — mcp__* 도구 이름·description 적재량 (근사)
+     M2: deferred pool 카운트 — ToolSearch "mcp__" 검색 hit 수
+     M3: schema fetch 빈도 — typical turn에서 ToolSearch select:<name> 발생 여부
 2. 세션 종료 후 .claude/settings.json 편집:
-     { "enabledMcpjsonServers": [] }   // 모든 MCP 비활성
-3. 세션 재시작 → ToolSearch "mcp__" 카운트 기록 (= N2)
-4. 분기:
-     N2 == 0   → 적재 차단 (= 토큰 절감 효과 ✓)
-     N2 == N1  → 호출만 차단 (= 적재는 그대로, 토큰 절감 X)
-     0 < N2 < N1 → 부분 적재 (서버별 차등)
+     { "enabledMcpjsonServers": [] }
+3. 세션 재시작 → 동일 절차로 B2 측정
+4. 분기 (3축 조합):
+     B2.M2 == 0  AND  B2.M1 << B1.M1   → 적재 자체 차단 ✓ (Layer A 진짜 효과)
+     B2.M2 == 0  AND  B2.M1 ≈ B1.M1     → 표면 카운트만 0 (재측정 권장)
+     B2.M2 == B1.M2 AND B2.M1 ≈ B1.M1   → 호출만 차단 (Layer A는 Layer C와 동급)
+     0 < B2.M2 < B1.M2                  → 서버별 차등 (분리 측정)
 ```
 
 **기록처:** §1 표의 Layer 비교 컬럼 "컨텍스트 절감" 셀에 검증 결과 footnote 추가.

@@ -6,9 +6,10 @@ tools:
   - Bash
   - mcp__fetch__get_markdown
 mcpServers:
-  fetch:
-    command: npx
-    args: ["-y", "mcp-server-fetch-typescript"]
+  - fetch:
+      type: stdio
+      command: npx
+      args: ["-y", "mcp-server-fetch-typescript"]
 ---
 
 # MCP Isolation Probe Agent

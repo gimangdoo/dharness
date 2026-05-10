@@ -52,6 +52,8 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 - 사용자 동의 후 Step 3 명령 그대로 `Bash`로 실행.
 - `claude mcp list` 재실행 → 새 서버가 `✓ Connected`인지 확인.
 - 실패 시 stderr 첨부 후 사용자에게 보고 — install 실패는 silent fallback 금지.
+- **경로 인자는 절대경로 필수** (8차 사이클 sqlite empirical) — `--db-path`, `--repository` 등 디렉토리/파일을 가리키는 인자에 상대경로(`./...`)를 사용하면 health check 실행 시 cwd 차이로 `✗ Failed to connect` 발생. uvx 실행자(`%APPDATA%\Python\Python312\Scripts\uvx.exe`) 자체도 PATH 미통과 시 spawn 실패하므로 절대경로 사용.
+- **첫 install이 ✗ Failed로 떴다면 잘못된 등록이 `~/.claude.json` 또는 `.mcp.json`에 남으므로 `claude mcp remove <name>` 후 절대경로로 재install** — silent fix 금지, 사용자에게 1차 실패 사실과 정정 명령을 보고.
 
 ### Step 5 — Reflect (4 산출물)
 

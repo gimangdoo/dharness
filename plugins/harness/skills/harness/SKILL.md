@@ -125,14 +125,18 @@ description: "하네스를 구성합니다. 전문 에이전트를 정의하며,
 
 > 정의 템플릿과 실제 파일 전문은 `references/agent-design-patterns.md` + `references/team-examples.md`. QA 상세 가이드는 `references/qa-agent-guide.md`.
 
-**도구·MCP 자동 할당 (Phase 5-2):** 에이전트의 `tools:` allowlist와 프로젝트 `.claude/settings.json`·`.mcp.json` 합성은 *제안 후 사용자 confirm* 절차를 따른다. capability profile 카탈로그(`code-test`/`web-research`/`external-integration`/`reasoning-aux`), 3-layer 권한 모델, 안전 정책, 결정 트리는 `references/permission-profiles.md` 단일 출처. 자동 install·자동 `allow` 승급은 T0(무키·로컬) 한정.
+**도구·MCP 자동 할당 (Phase 5-2):** 에이전트의 `tools:` allowlist와 프로젝트 `.claude/settings.json`·`.mcp.json` 합성은 *제안 후 사용자 confirm* 절차를 따른다. capability profile 카탈로그(`code-test`/`web-research`/`external-integration`/`reasoning-aux`), 3-layer 권한 모델, 안전 정책, 결정 트리는 `references/permission-profiles.md` 단일 출처. 자동 install·자동 `allow` 승급은 T0(무키·로컬) 한정. **default 합성 패턴은 §5-1 inline `mcpServers:` (parent 미적재 — 공식 docs 기반 권고)** — toolset 지원 MCP는 §5-1-b Layer A+B 결합형(서버 측 advertise 축소까지 동시 적용), 미지원 MCP는 §5-1-a Layer B 단독. `.mcp.json` 등록(§5-2)은 parent 직접 호출 필연성 등 *3 예외 조건* 충족 시에만 anti-pattern으로 한정. **inline `mcpServers:` schema는 *list-of-dicts + `type: stdio`* 필수** (9차 사이클 docs 발췌 확정 — plain dict는 silent skip).
 
 > **합성 시점 vs 런타임 시점 분리**
 > - *합성 시점*(Phase 5-2): `references/permission-profiles.md` §3-§7 — 에이전트 생성 시 1회.
 > - *런타임 시점*(프로젝트 진행 중 신규 MCP 채택 필요): `references/permission-profiles.md` §10 dynamic adoption — 트리거 신호 3종 + 5-step 절차 + 프로젝트 유형별 매트릭스(web/data/mobile/research/devops) + rollback. 진입 명령은 `/harness:harness-mcp-adopt <사유>`. 채택 *전후* 진단(인벤토리·매트릭스·정합·trigger 자동 감지)은 `/harness:harness-mcp-status` (read-only).
-> - *PoC 미완 항목*: `references/permission-profiles.md` §11 + `references/fixtures/` 4종 reproducer (`verify_11_1.md` / `mcp-isolation-probe.agent.md` / `verify_11_3.md` / `probe_sqlite.js`) — 외부 환경에서 복사 실행만으로 검증 가능, 결과는 `fixtures/README.md` 결과 로그에 누적.
+> - *PoC 진척*: `references/permission-profiles.md` §11 + `references/fixtures/` 4종 reproducer. **§11-1 ✓** (6차) / **§11-3 fixture 본문 갱신** (7차, 3축 메트릭) / **§11-4 e2e ✓** (8차, sqlite 시연으로 §10 5-step 검증) / §11-2 setup ready (8차, derived 프로젝트 외부 spawn만 잔존). 결과는 `fixtures/README.md` 결과 로그에 누적.
 >
-> **운영 함의:** mid-session `claude mcp add`는 본 세션·기 spawn된 서브에이전트에 *미전파* (empirical 4차 사이클 — 양면 검증). Phase 5-2 합성 직후 새 MCP 의존 에이전트 사용 시 사용자에게 **"다음 세션부터 사용 가능"** 명시 필수. 또한 plugin-bundled subagent는 `mcpServers`/`permissionMode`/`hooks` 무시(§9) — derived 하네스를 plugin 패키징 시 inline `mcpServers:`는 무력화됨에 주의.
+> **운영 함의 (cycle 8 누적):**
+> - mid-session `claude mcp add`는 본 세션·기 spawn된 서브에이전트에 *미전파* (4차 — 양면 검증). Phase 5-2 합성 직후 새 MCP 의존 에이전트 사용 시 **"다음 세션부터 사용 가능"** 명시 필수.
+> - **uvx-기반 MCP의 경로 인자(`--db-path`, `--repository` 등)는 절대경로 필수** (8차 sqlite empirical) — 상대경로면 health check `✗ Failed to connect`.
+> - **§6 자동 install 금지 정책은 dharness root 외부에서도 동일 enforcement** — derived 프로젝트의 inline `mcpServers:` 작성도 untrusted external code execution으로 차단됨 (8차 self-test 재확인). 사용자 명시 동의 후 통과.
+> - plugin-bundled subagent는 `mcpServers`/`permissionMode`/`hooks` 무시(§9) — derived 하네스를 plugin 패키징 시 inline `mcpServers:`는 무력화됨에 주의.
 
 ### Phase 6: 스킬 생성
 

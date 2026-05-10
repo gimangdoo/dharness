@@ -1,11 +1,11 @@
 ---
-description: 현재 derived 프로젝트의 MCP 상태 진단 — 등록 MCP·에이전트 도구 매트릭스·§3 인벤토리 정합·§10 trigger 신호 자동 감지. 읽기 전용.
+description: 현재 derived 프로젝트의 MCP 상태 진단 — 등록 MCP·에이전트 도구 매트릭스·토큰 비용 추정·§3 인벤토리 정합·§10 trigger 신호 자동 감지. 읽기 전용.
 argument-hint: (없음 또는 --verbose)
 ---
 
 # Harness — MCP Status
 
-기존 derived 프로젝트의 MCP·도구·권한 상태를 *읽기 전용*으로 진단한다. `/harness:harness-mcp-adopt`(쓰기)와 한 쌍을 이루는 진입점이며, §10 trigger 신호 자동 감지로 채택 시점 판정을 보조한다. description 매칭이 아닌 명시적 호출.
+기존 derived 프로젝트의 MCP·도구·권한 상태를 *읽기 전용*으로 진단한다. `/harness:harness-mcp-adopt`(쓰기)와 한 쌍을 이루는 진입점이며, §10 trigger 신호 자동 감지 + parent vs subagent 적재 토큰 비용 추정으로 채택 시점·격리 정합 판정을 보조한다. description 매칭이 아닌 명시적 호출.
 
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (없거나 `--verbose` — verbose면 §3 인벤토리 전체와 도구 enumeration까지 출력)
@@ -33,6 +33,7 @@ claude mcp list
 
 - 미연결(`✗`) 서버는 별도 강조 — install 실패 또는 stale 등록 가능성.
 - scope가 `user`인 경우 cross-project 영향 명시.
+- **경로 인자 검증 (8차 사이클 abs-path 사실):** `~/.claude.json` 또는 `.mcp.json`의 등록 명령에서 `--db-path`/`--repository`/`--root` 등 path 인자가 *상대경로*(`./...`, `../...`, `~/...`)면 ⚠️ 경고 — health check 실행 시 cwd 차이로 `✗ Failed to connect` 가능. uvx 실행자(`command:`) 자체도 PATH 미통과면 ⚠️. 권고: `claude mcp remove <name>` 후 절대경로로 재install.
 
 ### 섹션 2 — 에이전트별 도구 매트릭스
 
@@ -73,15 +74,54 @@ claude mcp list
 
 각 신호별로 *권고 수준*만 출력 — 자동 채택 금지 (§6).
 
+### 섹션 6 — 토큰 비용 추정 (parent vs subagent 적재)
+
+의도 ②(세션 적재 최소화) + ③(agent-only 접근)의 *측정 채널*. 각 MCP 도구 정의가 어느 컨텍스트에 적재되는지 분류 후 추정 토큰을 표로 출력.
+
+**적재 위치 판정 룰:**
+
+| 위치 | 출처 | parent 적재 | subagent 적재 |
+|------|------|------------|---------------|
+| `~/.claude.json` projects.{cwd}.mcpServers (= `claude mcp add -s local`) | parent + spawn된 모든 subagent (inherit) | ✓ | ✓ (inherit) |
+| `.mcp.json` (= `claude mcp add -s project`) + `enabledMcpjsonServers` allow | parent + 모든 subagent | ✓ | ✓ |
+| `.claude/agents/<name>.md` frontmatter `mcpServers:` (inline) | 해당 subagent만, 시작 시 connect / 종료 시 disconnect | ✗ | ✓ (해당 agent만) |
+
+**추정 토큰 룰:** 도구 1종당 200~500 tokens (name + description + JSON schema의 평균 길이). 표에는 저(200) / 고(500) 양 끝을 같이 출력.
+
+**출력 형식:**
+
+```
+| 위치               | MCP    | 도구 수 | 추정 tokens (저/고) | 정합 평가                          |
+|--------------------|--------|--------|---------------------|----------------------------------|
+| parent (적재됨)    | git    |     12 |    2,400 / 6,000    | ⚠️ 슬래시 커맨드 직접 호출 없으면 inline 이전 권고 |
+| parent (적재됨)    | fetch  |      4 |      800 / 2,000    | ⚠️ §5-2 예외 조건 미충족 → §5-1로 |
+| subagent only      | sqlite |      3 |      600 / 1,500    | ✓ data-analyst inline (§5-1-a)   |
+|--------------------|--------|--------|---------------------|----------------------------------|
+| 합계 parent        |        |     16 |  **3,200 / 8,000**  | (매 user turn마다 적재)           |
+| 합계 subagent only |        |      3 |      600 / 1,500    | (해당 subagent spawn 시에만)      |
+```
+
+**권고 트리거:**
+
+- **parent 적재 합계 > 5,000 tokens (고 추정)**: §5-1 inline로 이전 권고 — 적재 대상별로 §5-2의 3 예외 조건(parent 직접 호출 필연성 / 다중 subagent 공유 / 팀 commit) 충족 여부 사용자에게 질의.
+- **inline `mcpServers:` 가진 agent가 0개**인데 parent 적재가 있음: **격리 무결성 미구성** (의도 ③ 위반) — 합성 가이드 §5-1로 재구성 권고.
+- **§3 인벤토리 토글 지원 MCP가 toolset 필터 없이 적재됨** (예: github가 `GITHUB_TOOLSETS` 미설정으로 19종 toolset × 평균 5도구 ≈ 90+ 도구 전체 적재): §5-1-b Layer A+B 결합형으로 갱신 권고.
+
+**한계:**
+
+- 추정 tokens은 ±2.5x 변동 (실측은 Claude Code 빌드별로 다름). §11-3 fixture 결과 누적 후 보정 권고.
+- inline `mcpServers:`는 spawn 시에만 토큰 소비 → user turn당 누적 비용은 *agent 호출 빈도*에 비례. parent 적재는 매 turn 고정 비용 → 누적 격차가 큼.
+
 ## 출력 형식
 
-5섹션 보고서를 단일 메시지로 출력. `--verbose` 인자가 있으면 §3 인벤토리 전체 dump와 각 MCP의 도구 enumeration까지 포함 (없으면 카운트와 sample 2~3개만).
+6섹션 보고서를 단일 메시지로 출력. `--verbose` 인자가 있으면 §3 인벤토리 전체 dump와 각 MCP의 도구 enumeration, 섹션 6의 도구별 추정 토큰 분포까지 포함 (없으면 카운트와 sample 2~3개만).
 
 ## 후속 명령어
 
 - 신규 MCP 채택 권고가 있으면: `/harness:harness-mcp-adopt <사유>`
 - 정합 결손(섹션 4) 정정: 사용자가 `.claude/settings.json` / agent frontmatter 직접 수정 (자동 수정 금지)
 - §3 미박제 보고가 있고 dharness root 접근 가능하면: 사용자에게 footnote 추가 안내
+- 섹션 6의 parent 적재 ⚠️ 항목 정정: §5-2 예외 조건 미충족이면 해당 MCP를 §5-1 inline 패턴으로 이전 (사용자 수동 — 자동 수정 금지)
 
 ## 범위 외
 

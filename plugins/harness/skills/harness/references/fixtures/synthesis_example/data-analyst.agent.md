@@ -10,19 +10,20 @@ tools:
   - mcp__sqlite__list_tables
   - mcp__sqlite__describe_table
 mcpServers:
-  sqlite:
-    command: C:\Users\<user>\AppData\Roaming\Python\Python312\Scripts\uvx.exe
-    args:
-      - mcp-server-sqlite
-      - --db-path
-      - ./data/sales.db
+  - sqlite:
+      type: stdio
+      command: C:\Users\<user>\AppData\Roaming\Python\Python312\Scripts\uvx.exe
+      args:
+        - mcp-server-sqlite
+        - --db-path
+        - C:\Users\<user>\<derived-project>\data\sales.db
 ---
 
 # data-analyst — SQLite 분석 에이전트
 
 ## 단일 책임
 
-derived 프로젝트의 로컬 SQLite DB(`./data/sales.db`)에서 read-only 쿼리로 정량 분석을 수행하고, 결과를 markdown 리포트로 반환한다. **DB 변경(write/insert/update/delete)은 본 에이전트 책임 외** — 그 도구들은 `tools:` allowlist에서 의도적으로 제외(`write_query`, `append_insight`).
+derived 프로젝트의 로컬 SQLite DB에서 read-only 쿼리로 정량 분석을 수행하고, 결과를 markdown 리포트로 반환한다. **DB 변경(write/insert/update/delete/DDL)은 본 에이전트 책임 외** — write 계열 3종(`write_query`/`create_table`/`append_insight`)은 `tools:` allowlist에서 의도적으로 제외 + `.claude/settings.json` `permissions.deny`로 차단 (8차 사이클 6 도구 enumeration 확정 결과 반영).
 
 ## 입력 프로토콜
 
