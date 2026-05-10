@@ -25,31 +25,34 @@ CM 시스템이 라이프사이클 이벤트를 자동으로 캡처하려면 사
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "*",
         "hooks": [
-          { "type": "command", "command": "python _workspace/_hooks/session_start.py" }
+          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/session_start.py\"" }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": ".*",
+        "matcher": "",
         "hooks": [
-          { "type": "command", "command": "python _workspace/_hooks/post_tool_use.py" }
+          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/post_tool_use.py\"" }
         ]
       }
     ],
     "SessionEnd": [
       {
-        "matcher": "*",
         "hooks": [
-          { "type": "command", "command": "python _workspace/_hooks/session_end.py" }
+          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/session_end.py\"" }
         ]
       }
     ]
   }
 }
 ```
+
+**matcher 주의사항:**
+- `SessionStart` / `SessionEnd`는 matcher가 이벤트 서브타입(`startup`/`resume`/`clear` 등)으로 해석된다. 모든 서브타입에 대해 작동시키려면 matcher 키를 **생략**한다 (위 예시처럼).
+- `PostToolUse`는 matcher가 도구 이름 정규식이다. `""`(빈 문자열) 또는 `".*"`가 모든 도구 매칭. `"*"`는 정규식으로 무효이므로 사용 금지.
+- 경로는 `${CLAUDE_PROJECT_DIR}`로 안전하게 절대화. cwd가 프로젝트 루트가 아닌 환경에서도 정상 작동한다.
 
 기존 settings 파일에 다른 키가 있으면 `hooks` 키만 병합하라.
 
@@ -62,8 +65,7 @@ python _workspace/_hooks/cm_commands.py status
 ```
 
 - `sessions` 카운트가 1 이상 → SessionStart 훅 정상 동작
-- 어떤 도구 사용 후 `python _workspace/_hooks/cm_commands.py sessions` →
-  `tools_used` 컬럼이 채워짐 → PostToolUse 훅 정상 동작
+- 도구 사용 후 세션 종료 → 다음 세션에서 `python _workspace/_hooks/cm_commands.py sessions` 실행 시 직전 세션의 `tools_used` 컬럼이 채워짐 → PostToolUse + SessionEnd 훅 정상 동작 (`tools_used`는 SessionEnd 평탄화 단계에서 기록되므로 같은 세션 내에서는 비어있다)
 
 ## 비활성화
 

@@ -1,6 +1,7 @@
 ---
 name: cm-compressor
 model: opus
+tools: Read, Write, Edit, Bash
 description: |
   PostToolUse 훅에서 대용량 도구 출력(>10KB)을 압축한다. raw 출력을 디스크에 보존하고
   의미 압축 요약을 컨텍스트에 반환한다. 트리거: Claude Code PostToolUse 이벤트로

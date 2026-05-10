@@ -28,9 +28,12 @@ import uuid
 session_id = uuid.uuid4().hex[:6]   # 예: "a3f9b2"
 ```
 
-- 충돌 검사는 하지 않는다 (16M 공간, 충돌 확률 무시 가능)
+- 1차 충돌 시 8자 hex로 재발급 (sessions 테이블 PK INSERT OR IGNORE rowcount=0 감지)
 - 한 Claude Code 프로세스 라이프사이클 동안 동일 ID 유지
-- ID는 환경 변수 `CM_SESSION_ID`로 노출되어 cm-* 에이전트들이 참조한다
+- **ID 전달 메커니즘:** `_workspace/_memory/.current_session` 파일에 평문 기록. SessionStart hook이 쓰고, PostToolUse/SessionEnd hook이 읽는다. SessionEnd 종료 시 파일을 제거한다. (Claude Code hook은 별도 프로세스이므로 환경 변수로는 전달되지 않는다.)
+- **참조 방식:**
+  - **Python 스크립트** (`_workspace/_hooks/*.py`): `from _schema import read_session_id` 후 `read_session_id()` 호출.
+  - **cm-* 에이전트** (Markdown 정의이므로 모듈 import 불가): `Read` 도구로 `_workspace/_memory/.current_session` 파일을 직접 읽거나, `Bash`로 `python -c "from _schema import read_session_id; print(read_session_id())"` 호출. 통상 cm-orchestrator가 prompt 파라미터로 session_id를 직접 전달하므로 에이전트가 직접 읽을 일은 드물다.
 
 ## 디렉토리 부트스트랩 (SessionStart 시점)
 

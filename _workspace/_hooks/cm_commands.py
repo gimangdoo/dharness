@@ -7,6 +7,9 @@
     python _workspace/_hooks/cm_commands.py dashboard
     python _workspace/_hooks/cm_commands.py init
     python _workspace/_hooks/cm_commands.py reset --confirm
+
+/cm-curate는 LLM 작업이므로 commands/cm-curate.md가 cm-curator 에이전트를 직접 호출한다.
+이 스크립트는 결정적 작업만 처리한다.
 """
 
 from __future__ import annotations
@@ -15,18 +18,13 @@ import argparse
 import shutil
 import sqlite3
 import sys
-import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-MEMORY_ROOT = REPO_ROOT / "_workspace" / "_memory"
-DB_PATH = MEMORY_ROOT / "observations" / "observations.db"
-TOOL_OUTPUTS = REPO_ROOT / "_workspace" / "_tool_outputs"
+from _schema import DB_PATH, DDL, MEMORY_ROOT, REPO_ROOT, TELEMETRY_DIR, TOOL_OUTPUTS
+
 DASHBOARD_URL = "http://127.0.0.1:8765/"
-
-DDL = (Path(__file__).parent / "session_start.py").read_text(encoding="utf-8").split('DDL = """')[1].split('"""')[0]
+COUNT_TABLES = ("observations", "sessions", "clusters", "daily_summaries")
 
 
 def _connect() -> sqlite3.Connection:
@@ -35,13 +33,18 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _ensure_db() -> bool:
+    if DB_PATH.exists():
+        return True
+    print("observations.db 미존재 — /cm-init 먼저 실행하세요.")
+    return False
+
+
 def cmd_status() -> int:
-    if not DB_PATH.exists():
-        print("observations.db 미존재 — /cm-init 먼저 실행하세요.")
+    if not _ensure_db():
         return 1
     with _connect() as conn:
-        counts = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-                  for t in ("observations", "sessions", "clusters", "daily_summaries")}
+        counts = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in COUNT_TABLES}
         recent = conn.execute(
             "SELECT COUNT(*) FROM sessions WHERE date(started_at) >= date('now', '-7 days')"
         ).fetchone()[0]
@@ -61,8 +64,7 @@ def cmd_status() -> int:
 
 
 def cmd_sessions(limit: int) -> int:
-    if not DB_PATH.exists():
-        print("observations.db 미존재 — /cm-init 먼저 실행하세요.")
+    if not _ensure_db():
         return 1
     with _connect() as conn:
         rows = conn.execute("""
@@ -79,12 +81,11 @@ def cmd_sessions(limit: int) -> int:
 
 
 def cmd_clusters(min_conf: float) -> int:
-    if not DB_PATH.exists():
-        print("observations.db 미존재 — /cm-init 먼저 실행하세요.")
+    if not _ensure_db():
         return 1
     with _connect() as conn:
         rows = conn.execute("""
-            SELECT cluster_id, theme, confidence, member_count,
+            SELECT cluster_id, theme, confidence, member_count, last_accessed,
                    CAST(julianday('now') - julianday(last_accessed) AS INTEGER) AS days_since,
                    CASE WHEN promoted_path IS NOT NULL THEN '🏷️' ELSE '·' END AS p
             FROM clusters WHERE confidence >= ? ORDER BY confidence DESC
@@ -112,12 +113,13 @@ def cmd_dashboard() -> int:
 
 def cmd_init() -> int:
     created = []
-    for sub in ("sessions", "observations", "clusters", "daily_summaries"):
+    # daily_summaries는 SQL 테이블에만 존재 (DB observations.db) — 디렉토리 불필요.
+    for sub in ("sessions", "observations", "clusters"):
         p = MEMORY_ROOT / sub
         existed = p.exists()
         p.mkdir(parents=True, exist_ok=True)
         created.append((p, existed))
-    for p in (REPO_ROOT / "_workspace" / "_telemetry" / "_rollback", TOOL_OUTPUTS):
+    for p in (TELEMETRY_DIR / "_rollback", TOOL_OUTPUTS):
         existed = p.exists()
         p.mkdir(parents=True, exist_ok=True)
         created.append((p, existed))
@@ -137,8 +139,6 @@ def cmd_reset(confirmed: bool) -> int:
     if not confirmed:
         print("⚠️  --confirm 플래그 없이는 실행 불가. /cm-reset 슬래시 커맨드 본문의 확인 절차를 따르세요.")
         return 1
-    active = (Path(__file__).parent.parent.parent / "_workspace" / "_memory" / "sessions").glob("*")
-    # 단순화: 전체 _memory + _tool_outputs 삭제 후 init 재실행
     if MEMORY_ROOT.exists():
         shutil.rmtree(MEMORY_ROOT)
     if TOOL_OUTPUTS.exists():
@@ -148,7 +148,7 @@ def cmd_reset(confirmed: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog="cm")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
     p_sessions = sub.add_parser("sessions"); p_sessions.add_argument("--limit", type=int, default=30)

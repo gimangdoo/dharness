@@ -1,8 +1,10 @@
 ---
 name: cm-injector
 model: opus
+tools: Read, Bash, Glob, Grep
 description: |
-  SessionStart 훅에서 호출된다. 직전 N개 세션의 digest 파일을 읽고
+  SessionStart 훅에서 호출된다. observations.db의 daily_summaries 테이블(최근 7일)을
+  1순위로 읽고, 부족하면 직전 N개 세션의 digest.md → transcript.md 순으로 fallback하여
   현재 세션의 컨텍스트 상단에 짧은 메타 요약을 주입한다.
   트리거: Claude Code SessionStart 이벤트, 또는 "이전 세션 요약 주입", "컨텍스트 복원" 요청.
 ---

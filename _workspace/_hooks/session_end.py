@@ -1,30 +1,37 @@
 """SessionEnd hook — transcript.md 생성 + sessions UPDATE + cm-digester+cm-curator 팀 호출 지시.
 
 session-capture 스킬의 finalize 단계.
+session_id는 _memory/.current_session 파일에서 읽는다.
 """
 
 from __future__ import annotations
 
+import calendar
 import json
-import os
 import sqlite3
 import sys
 import time
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-MEMORY_ROOT = REPO_ROOT / "_workspace" / "_memory"
-DB_PATH = MEMORY_ROOT / "observations" / "observations.db"
-TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"
+from _schema import (
+    DB_PATH,
+    MEMORY_ROOT,
+    REPO_ROOT,
+    TELEMETRY_DIR,
+    clear_session_id,
+    read_session_id,
+)
 
 
-def flatten_to_transcript(raw_path: Path) -> tuple[str, set[str]]:
+def flatten_to_transcript(raw_path: Path) -> tuple[str, set[str], int]:
     """raw.jsonl을 사람이 읽을 수 있는 markdown으로 평탄화."""
     if not raw_path.exists():
-        return "", set()
+        return "", set(), 0
     lines = ["# Session Transcript\n"]
     tools_used: set[str] = set()
+    raw_count = 0
     for line in raw_path.read_text(encoding="utf-8").splitlines():
+        raw_count += 1
         try:
             evt = json.loads(line)
         except json.JSONDecodeError:
@@ -43,26 +50,25 @@ def flatten_to_transcript(raw_path: Path) -> tuple[str, set[str]]:
             tool = evt.get("tool", "?")
             tools_used.add(tool)
             lines.append(f"- {ts} tool_result: {tool} ({evt.get('output_size', 0)}b)\n")
-    return "".join(lines), tools_used
+    return "".join(lines), tools_used, raw_count
 
 
 def main() -> int:
-    session_id = os.environ.get("CM_SESSION_ID")
+    session_id = read_session_id()
     if not session_id:
-        print("[CM SessionEnd] CM_SESSION_ID 미설정 — finalize 스킵", file=sys.stderr)
+        print("[CM SessionEnd] session_id 미설정 — finalize 스킵", file=sys.stderr)
         return 0
 
     sess_dir = MEMORY_ROOT / "sessions" / session_id
     raw_path = sess_dir / "raw.jsonl"
     transcript_path = sess_dir / "transcript.md"
 
-    transcript, tools_used = flatten_to_transcript(raw_path)
+    transcript, tools_used, raw_lines = flatten_to_transcript(raw_path)
     if transcript:
         transcript_path.write_text(transcript, encoding="utf-8")
 
     now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     today = time.strftime("%Y-%m-%d", time.gmtime())
-    raw_lines = sum(1 for _ in raw_path.open(encoding="utf-8")) if raw_path.exists() else 0
 
     if DB_PATH.exists():
         with sqlite3.connect(DB_PATH) as conn:
@@ -71,7 +77,7 @@ def main() -> int:
             ).fetchone()
             duration_min = None
             if row and row[0]:
-                started = time.mktime(time.strptime(row[0], "%Y-%m-%dT%H:%M:%SZ"))
+                started = calendar.timegm(time.strptime(row[0], "%Y-%m-%dT%H:%M:%SZ"))
                 duration_min = max(0, int((time.time() - started) / 60))
             conn.execute(
                 "UPDATE sessions SET ended_at=?, duration_min=?, tools_used=? WHERE session_id=?",
@@ -86,8 +92,13 @@ def main() -> int:
             "transcript_size": transcript_path.stat().st_size if transcript_path.exists() else 0,
         }) + "\n")
 
-    print(f"[CM SessionEnd] session_id={session_id} transcript={transcript_path.relative_to(REPO_ROOT)} ({raw_lines} events)")
-    print("[CM SessionEnd] cm-orchestrator를 통해 cm-digester + cm-curator 팀을 호출하여 digest 생성과 클러스터링을 수행하라.")
+    clear_session_id()
+
+    print(
+        f"[CM SessionEnd] session_id={session_id} transcript={transcript_path.relative_to(REPO_ROOT) if transcript_path.exists() else '(none)'} "
+        f"({raw_lines} events) — cm-digester + cm-curator 팀 호출 권장.",
+        file=sys.stderr,
+    )
     return 0
 
 

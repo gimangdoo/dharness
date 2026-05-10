@@ -191,7 +191,7 @@ skill-name/
 
 **트리거:** {도메인} 관련 작업 요청 시 `{orchestrator-skill-name}` 스킬을 사용하라. 또는 `/harness-*` slash command로 명시적 호출 (`/harness-add-agent`, `/harness-adapt` 등 — 카탈로그는 본 플러그인의 `commands/README.md`). 단순 질문은 직접 응답 가능.
 
-**Phase 10 자동 알림:** 세션 시작 시 `_workspace/_telemetry/`의 최신 `.jsonl` 파일을 확인하라. 마지막 `"type":"adapt"` 이벤트 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면, 사용자에게 알린다: "하네스가 {N}회 실행되었습니다. `/harness-adapt`로 drift 점검을 권장합니다." — telemetry 파일이 없거나 읽기 비용이 클 경우 건너뛴다.
+**Phase 10 자동 알림:** 세션 시작 시 `_workspace/_telemetry/`의 최신 `.jsonl` 파일을 확인하라. 마지막 Adapt 시각(= `_workspace/_telemetry/_delta_*.md` 또는 `_workspace/_telemetry/_rollback/{ts}/` 중 가장 최근 mtime, 둘 다 없으면 telemetry 첫 이벤트의 ts) 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면, 사용자에게 알린다: "하네스가 {N}회 실행되었습니다. `/harness-adapt`로 drift 점검을 권장합니다." — telemetry 파일이 없거나 읽기 비용이 클 경우 건너뛴다.
 
 **변경 이력:**
 | 날짜 | 변경 내용 | 대상 | 사유 |
@@ -213,14 +213,14 @@ skill-name/
 
 생성된 하네스를 검증한다.
 
-**검증 7단계:**
-1. **구조 검증** — 파일 위치, frontmatter(name/description), 참조 일관성, **사용자 프로젝트의** `.claude/commands/` 미생성 확인 (harness 플러그인 본체의 `commands/`는 L1 진입점으로 별개)
-2. **실행 모드별 검증** — 팀: 통신 경로·작업 의존성·팀 크기 / 서브: 입출력 연결·`run_in_background`·반환값 수집 / 하이브리드: Phase별 모드 명시 + 경계 데이터 전달 끊김 없음
-3. **스킬 실행 테스트** — 각 스킬에 2~3개 현실적 테스트 프롬프트, 가능하면 with-skill vs without-skill(baseline) 병렬 비교, 객관 검증 가능 시 assertion + 주관은 사용자 피드백
-4. **트리거 검증** — should-trigger 8~10개(공식·캐주얼·명시·암시) + should-NOT-trigger(near-miss) 8~10개. 무관한 쿼리는 가치 없음, **경계가 모호한 쿼리**가 좋은 테스트
-5. **드라이런** — Phase 순서 논리, 데이터 전달 dead link, 입출력 매칭, 에러 시나리오별 폴백
-6. **테스트 시나리오 작성** — 오케스트레이터에 `## 테스트 시나리오` 섹션, 정상 1개 + 에러 1개 이상
-7. **반복 개선** — 피드백을 일반화하여 스킬 수정(좁은 수정 금지). 사용자 만족 또는 의미 있는 개선이 더 없을 때까지. 공통 코드는 `scripts/`에 번들링
+**검증 7단계 (Phase 9-5 / runtime-adaptation §6 회귀 검증이 8-N으로 참조하는 번호와 일치):**
+1. **8-1 구조 검증** — 파일 위치, frontmatter(name/description), 참조 일관성, **사용자 프로젝트의** `.claude/commands/` 미생성 확인 (harness 플러그인 본체의 `commands/`는 L1 진입점으로 별개)
+2. **8-2 실행 모드별 검증** — 팀: 통신 경로·작업 의존성·팀 크기 / 서브: 입출력 연결·`run_in_background`·반환값 수집 / 하이브리드: Phase별 모드 명시 + 경계 데이터 전달 끊김 없음
+3. **8-3 스킬 실행 테스트** — 각 스킬에 2~3개 현실적 테스트 프롬프트, 가능하면 with-skill vs without-skill(baseline) 병렬 비교, 객관 검증 가능 시 assertion + 주관은 사용자 피드백
+4. **8-4 트리거 검증** — should-trigger 10개 + should-NOT-trigger 10개(총 20개). 둘 다 공식·캐주얼·명시·암시 표현을 섞고, 특히 **경계가 모호한 near-miss**를 should-NOT 쪽에 다수 배치. (8개는 절대 floor — 미만은 트리거 정확도 보장 불가)
+5. **8-5 드라이런** — Phase 순서 논리, 데이터 전달 dead link, 입출력 매칭, 에러 시나리오별 폴백
+6. **8-6 테스트 시나리오 작성** — 오케스트레이터에 `## 테스트 시나리오` 섹션, 정상 1개 + 에러 1개 이상
+7. **8-7 반복 개선** — 피드백을 일반화하여 스킬 수정(좁은 수정 금지). 사용자 만족 또는 의미 있는 개선이 더 없을 때까지. 공통 코드는 `scripts/`에 번들링
 
 > 테스트 프롬프트 작성, with/without 비교, near-miss 작성, 트리거 충돌 진단은 `references/skill-testing-guide.md`.
 

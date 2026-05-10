@@ -36,7 +36,8 @@ cm-compressor가 도구 출력을 압축할 때 적용하는 정책과 전략을
 1. 사용자가 "전체 출력 보여줘" 또는 "압축하지 마"를 명시한 경우
 2. 출력이 에러 메시지인 경우 (오류 컨텍스트 손실 방지)
 3. 출력에 코드 diff가 포함된 경우 (patch 정합성 보장)
-4. 출력 크기가 10KB ~ 11KB 경계 (margin: 1KB 허용)
+
+PostToolUse hook은 임계치 10KB(=10240바이트) 초과 시에만 cm-compressor를 트리거하므로 경계값 처리에 별도 마진이 필요하지 않다. 임계치 자체를 변경하려면 `_workspace/_hooks/post_tool_use.py`의 `THRESHOLD_BYTES`와 `cm-compressor.md`/`cm-orchestrator/SKILL.md`의 ">10KB" 표기를 함께 갱신한다.
 
 ## Raw 보존 경로 규칙
 

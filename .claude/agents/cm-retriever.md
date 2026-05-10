@@ -1,6 +1,7 @@
 ---
 name: cm-retriever
 model: opus
+tools: Read, Bash, Glob, Grep
 description: |
   사용자나 Claude가 과거 메모리를 검색할 때 on-demand로 호출된다.
   3-tool progressive disclosure 패턴으로 search → timeline → fetch 순서로 정보를 반환한다.

@@ -113,6 +113,8 @@ if days_unused >= 30:
 
 `_workspace/_memory/clusters/{cluster_id}.md`:
 
+`session-digest` 스킬의 DB 스키마(`clusters` 테이블)에는 `member_observations` 컬럼이 없다. cluster ↔ observation 역참조는 `observations.cluster_id` 컬럼이 담당하며, `member_observations`는 **클러스터 MD 파일 frontmatter에만 materialize**된다 (사람이 클러스터를 열었을 때 어떤 observation이 묶였는지 한눈에 보기 위함). 권위적 출처는 항상 DB의 `SELECT id FROM observations WHERE cluster_id=?` 쿼리이고, MD frontmatter는 그 스냅샷이다.
+
 ```markdown
 ---
 cluster_id: c_{6자 hex}
@@ -121,7 +123,7 @@ last_updated: YYYY-MM-DD
 last_accessed: YYYY-MM-DD
 confidence: 0.0-1.0
 member_count: <n>
-member_observations: [obs_ids]
+member_observations: [obs_ids]   # DB observations.cluster_id의 스냅샷 — DB가 권위
 promoted: false | "<skill_path>"
 tags: [<topic_keywords>]
 ---
@@ -191,7 +193,7 @@ cm-curator는 SessionEnd 외에도 **주기적으로 단독 실행**되어 decay
 
 | 트리거 | 빈도 | 진입 경로 |
 |--------|-----|----------|
-| SessionEnd 팀 모드 | 매 세션 종료 | cm-orchestrator → cm-digester → SendMessage |
+| SessionEnd 순차 모드 | 매 세션 종료 | cm-orchestrator → cm-digester(Task 반환값) → cm-curator(반환값을 prompt payload로 포워딩) |
 | `/cm-curate` 명시 호출 | 사용자 호출 | cm-orchestrator → cm-curator 단독 |
 | 누적 N=10 SessionEnd | 자동 | cm-orchestrator가 카운터 임계 도달 시 cm-curator 단독 호출 |
 

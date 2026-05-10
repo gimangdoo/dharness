@@ -9,6 +9,7 @@ LLM 호출 없는 결정적 데이터 집계. dashboard-render 스킬의 SQL 쿼
 from __future__ import annotations
 
 import glob
+import html
 import json
 import sqlite3
 import time
@@ -20,27 +21,38 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = REPO_ROOT / "_workspace" / "_memory" / "observations" / "observations.db"
-TELEMETRY_GLOB = str(REPO_ROOT / "_workspace" / "_telemetry" / "*.jsonl")
-CACHE_TTL_SEC = 300  # 5 min
+TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"
+TELEMETRY_GLOB = str(TELEMETRY_DIR / "*.jsonl")
+CACHE_TTL_SEC = 300
 
 app = FastAPI(title="CM Dashboard")
-_cache: dict[str, tuple[float, object]] = {}
+_cache: dict[str, tuple[float, tuple[float, float], object]] = {}
+
+
+def _data_mtimes() -> tuple[float, float]:
+    db_mtime = DB_PATH.stat().st_mtime if DB_PATH.exists() else 0.0
+    telemetry_mtime = max(
+        (Path(p).stat().st_mtime for p in glob.glob(TELEMETRY_GLOB)),
+        default=0.0,
+    )
+    return db_mtime, telemetry_mtime
 
 
 def _cached(key: str, builder):
     now = time.time()
+    mtimes = _data_mtimes()
     if key in _cache:
-        ts, value = _cache[key]
-        if now - ts < CACHE_TTL_SEC:
+        ts, cached_mtimes, value = _cache[key]
+        if cached_mtimes == mtimes and now - ts < CACHE_TTL_SEC:
             return value
     value = builder()
-    _cache[key] = (now, value)
+    _cache[key] = (now, mtimes, value)
     return value
 
 
 def _connect() -> sqlite3.Connection:
     if not DB_PATH.exists():
-        raise HTTPException(503, f"observations.db not found: run /cm-init first")
+        raise HTTPException(503, "observations.db not found: run /cm-init first")
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -173,9 +185,9 @@ def dashboard() -> str:
         if not rows:
             return "<p><em>(no rows)</em></p>"
         cols = list(rows[0].keys())
-        head = "".join(f"<th>{c}</th>" for c in cols)
+        head = "".join(f"<th>{html.escape(str(c))}</th>" for c in cols)
         body = "".join(
-            "<tr>" + "".join(f"<td>{r[c]}</td>" for c in cols) + "</tr>"
+            "<tr>" + "".join(f"<td>{html.escape(str(r[c])) if r[c] is not None else ''}</td>" for c in cols) + "</tr>"
             for r in rows
         )
         return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"

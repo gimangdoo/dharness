@@ -57,9 +57,13 @@ tags: [<topic>, ...]
 - 주의해야 할 제약사항 (도구 한계, 환경 특이사항)
 - 의도적으로 미완성으로 둔 항목
 
-## CM 메모리 DB 스키마 (단일 진실 원천)
+## CM 메모리 DB 스키마 (사양 진실 원천)
 
-`_workspace/_memory/observations/observations.db` (SQLite + FTS5)는 CM 시스템의 모든 영속 메모리를 담는다. 다른 스킬(`memory-curate`, `memory-search`, `dashboard-render`)이 참조하는 모든 테이블 정의는 **이 섹션이 유일한 진실 원천**이다. 다른 스킬은 이 섹션을 인용하기만 하고 자체 정의를 갖지 않는다.
+`_workspace/_memory/observations/observations.db` (SQLite + FTS5)는 CM 시스템의 모든 영속 메모리를 담는다.
+
+**진실 원천 두 계층:**
+- **사양:** 본 섹션의 SQL 정의가 사람이 읽는 단일 진실 원천이다. 다른 스킬(`memory-curate`, `memory-search`, `dashboard-render`)은 이 섹션을 인용하기만 하고 자체 정의를 갖지 않는다.
+- **코드:** `_workspace/_hooks/_schema.py`의 `DDL` 상수가 본 섹션을 그대로 미러링한다. `session_start.py`, `cm_commands.py`가 `from _schema import DDL`로 import한다. 본 섹션을 변경할 때는 `_schema.py`도 함께 갱신한다 (Phase 10 진단룰의 chain 적용 대상).
 
 ```sql
 -- ========== 1. observations: 세션 디지스트 bullet 단위 ==========

@@ -48,7 +48,6 @@ workflow:
 
 meta:
   open_questions:
-    - "S6 dashboard worker 프로세스 관리 방식 (systemd vs 수동 실행) — 검증 후 결정"
     - "sqlite-vec 버전 호환성 — sqlite 3.x와의 pinning 필요 여부"
   explicit_assumptions:
     - "단일 머신(로컬) 운영 가정 — 네트워크 접근 없음"
@@ -116,5 +115,8 @@ S1 완료: SessionStart에서 직전 세션 한 단락 인젝션이 동작한다
 
 ### Open Questions
 
-- S6 dashboard worker 프로세스 관리 (systemd vs 수동)
 - sqlite-vec 버전 pinning 필요성 → S4 구현 시 결정
+
+### Resolved
+
+- S6 dashboard worker 프로세스 관리 방식 → **수동 실행으로 결정** (`_workspace/_worker/README.md`, `dashboard-render` 스킬). `/cm-dashboard`는 worker 미실행 감지 + 시작 명령 안내로 한정.

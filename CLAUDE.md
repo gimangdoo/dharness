@@ -17,48 +17,15 @@
 또는 `/harness-*` slash command로 명시적 호출 (`/harness-add-agent`, `/harness-adapt` 등 — 카탈로그는 `commands/README.md`).
 단순 질문은 직접 응답 가능.
 
-**에이전트 목록:**
-- `.claude/agents/cm-injector.md` — SessionStart 컨텍스트 주입
-- `.claude/agents/cm-compressor.md` — PostToolUse 출력 압축
-- `.claude/agents/cm-digester.md` — SessionEnd digest 생성 (팀)
-- `.claude/agents/cm-curator.md` — 클러스터링 + skill 승격 (팀)
-- `.claude/agents/cm-retriever.md` — 메모리 검색
-
-**스킬 목록:**
-- `.claude/skills/cm-orchestrator/` — 이벤트 라우터 (진입점)
-- `.claude/skills/session-capture/` — session_id 발급 + raw.jsonl/transcript.md 캡처
-- `.claude/skills/tool-output-compress/` — 압축 정책
-- `.claude/skills/session-digest/` — digest 구조 + **단일 DB 스키마 진실 원천**
-- `.claude/skills/memory-curate/` — 클러스터링 + decay + 승격 + daily_summary 생성
-- `.claude/skills/memory-search/` — 3-tool progressive disclosure
-- `.claude/skills/dashboard-render/` — 4개 뷰 데이터 집계
-
-**훅 + 워커:**
-- `_workspace/_hooks/{session_start,post_tool_use,session_end,cm_commands}.py` — 결정적 캡처/커맨드 핸들러
-- `_workspace/_hooks/INSTALL.md` — **사용자 직접 설치 필요** — `.claude/settings.json` 훅 등록 가이드. 자동 모드의 권한 정책상 에이전트는 hook 등록 파일을 쓸 수 없으므로 본 가이드대로 사용자가 직접 적용한다.
-- `_workspace/_worker/dashboard_server.py` — FastAPI 대시보드 (localhost:8765)
-
-**/cm-* 슬래시 커맨드:** `commands/cm-{status,sessions,clusters,dashboard,init,reset,curate}.md`
+**구성 산출물 카탈로그(에이전트 5종 / 스킬 7종 / 훅 4종 + 워커 1종 / `/cm-*` 7종):** 본 파일은 포인터만 유지한다 — 상세 카탈로그·역할 표·훅 설치 가이드는 [`README.md` "Context Manager 하네스"](./README.md#context-manager-하네스-구축-예시) 섹션을 단일 출처로 본다. 훅 등록은 사용자 직접(자동 모드 권한 정책) — `_workspace/_hooks/INSTALL.md` 참조.
 
 **Phase 10 자동 알림:** 세션 시작 시 `_workspace/_telemetry/`의 최신 `.jsonl` 파일을 확인하라.
-마지막 `"type":"adapt"` 이벤트 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면,
+마지막 Adapt 시각(= `_workspace/_telemetry/_delta_*.md` 또는 `_workspace/_telemetry/_rollback/{ts}/` 중 가장 최근 mtime,
+둘 다 없으면 telemetry 첫 이벤트의 ts) 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면,
 사용자에게 알린다: "CM 하네스가 {N}회 실행되었습니다. `/harness-adapt`로 drift 점검을 권장합니다."
 — telemetry 파일이 없거나 읽기 비용이 클 경우 건너뛴다.
 
-**단계적 구현 현황 (레퍼런스 line 168-176과 일치):**
-
-| 단계 | 산출물 | 상태 |
-|------|--------|------|
-| S1 | cm-orchestrator + cm-injector + **session-capture** 스킬 | ✅ 정의 완료 |
-| S2 | cm-digester + session-digest 스킬 + observations.db (단일 진실 스키마) | ✅ 정의 완료 |
-| S3 | cm-retriever + memory-search | ✅ 정의 완료 |
-| S4 | cm-compressor + tool-output-compress | ✅ 정의 완료 |
-| S5 | cm-curator + memory-curate (decay + daily_summary + 승격 + 주기 트리거) | ✅ 정의 완료 |
-| S6 | dashboard-render + worker (FastAPI 골격 코드 + README) | ✅ 정의 완료 |
-| S7 | cm-diagnostic-rules.md (Phase 10 확장) | ✅ 정의 완료 |
-
-**CM Phase 10 진단 룰 위치:** `_workspace/references/cm-diagnostic-rules.md`
-**CM baseline 기준값:** `_workspace/_baseline/cm_baseline.json` (30 세션 후 cm-curator가 자동 채움)
+**단계적 구현 현황(S1~S7) / Phase 10 진단 룰·baseline 위치:** README.md의 "Context Manager 하네스" 섹션 + `_workspace/references/cm-diagnostic-rules.md`를 단일 출처로 본다 (본 파일에서 중복 보유 금지 — Phase 7-4 포인터 룰).
 
 **변경 이력:**
 
@@ -69,3 +36,5 @@
 | 2026-05-10 | 갭 9건 해소 (점검 결과 반영) | session-capture 스킬 신설, session-digest를 단일 DB 스키마 진실 원천으로 통합, dashboard-render/memory-search SQL 정합화, memory-curate에 daily_summary + 주기 트리거 추가, cm-injector daily_summaries 우선 입력, cm-curator 책임 확장, /cm-* 7종 커맨드 + 핸들러 스크립트 신설, FastAPI 워커 골격 작성, 훅 INSTALL.md 가이드 | 레퍼런스 line 168-176 정합 + 실행 가능성 확보 |
 | 2026-05-10 | Skill memory 승격을 Phase 10 rollback chain에 명시적으로 통합 | `_workspace/references/cm-diagnostic-rules.md` §4 표에 "Skill memory 승격" 행 + Atomic 적용 절차 추가, `.claude/skills/memory-curate/SKILL.md` 승격 프로세스를 표준 `_telemetry/_rollback/{ts}/` 인프라 사용으로 구체화 | 승격 시 다중 산출물(skill 파일/cluster md/DB/CLAUDE.md) chain의 dangling rollback 위험 제거 |
 | 2026-05-10 | dharness 본체 read-only 경계 invariant 3곳 추가 | `.claude/agents/cm-curator.md` 작업 원칙, `_workspace/references/cm-diagnostic-rules.md` §4 범위 외 각주, `.claude/skills/cm-orchestrator/SKILL.md` Phase 10 연동 영구 범위 한정 섹션 | CM 자동 적응(Phase 10)이 dharness 메타 스킬 본체(`skills/harness/`, `commands/harness-*`)를 침범할 경로를 명시적으로 차단. dharness 일반화 가치가 있는 신호는 Phase 9(`/harness-evolve`)로만 진입 |
+| 2026-05-10 | 전체 review 결과 BLOCKER 8 + MAJOR 11 정합성 픽스 (Phase 9: 사용자 피드백 — 전체 파일 리뷰) | `_workspace/_hooks/_schema.py` 신설(DDL+session_id 헬퍼), `_hooks/{session_start,post_tool_use,session_end,cm_commands}.py` 재작성(파일 기반 sid + stdout 컨트랙트 정합 + TZ + dict 직렬화 + DDL import), `_hooks/INSTALL.md` matcher/`${CLAUDE_PROJECT_DIR}` 보강, `commands/cm-curate.md` Task 도구 호출로 정정, `commands/cm-reset.md` 약속 단순화, `commands/harness-new.md` Phase 0-8+10 명시, `cm-orchestrator/SKILL.md` 가상 API→Task 도구로 교체, `session-capture/SKILL.md` 환경변수→파일 기반 명시, `session-digest/SKILL.md` 진실 원천 2계층 명시, `tool-output-compress/SKILL.md` margin 룰 정리, `memory-curate/SKILL.md` member_observations 권위 출처 명시, `cm-injector.md` description 정정 + 5 cm-* 에이전트에 `tools:` allowlist, `_baseline/cm_baseline.json` notes/user_confirmed_skills 정렬, `_baseline/project_profile.md` detection_signals 갱신, `_worker/dashboard_server.py` XSS escape + mtime 캐시 무효화, `harness/SKILL.md` Phase 8 단계 8-1~8-7 명시 + should-trigger 10+10 통일, `runtime-adaptation.md` 8 → 10+10 정렬 | 4-그룹 병렬 리뷰에서 발견한 hook 컨트랙트 위반·DDL 진실원천 우회·가상 API·schema drift·XSS 등 정합성 버그 일괄 해소. dharness 본체 read-only invariant는 보존 (skills/harness/SKILL.md의 Phase 8 단계 번호 정합화는 사용자 직접 수정 영역) |
+| 2026-05-10 | 정합성 11건 일괄 정정 (Phase 9: 사용자 피드백 — 전체 폴더 review) | `CLAUDE.md`(Phase 7-4 포인터화 — 카탈로그·구현 현황·진단 룰 위치 README/skills 단일 출처로 위임) + `harness/SKILL.md` Phase 7-4 템플릿 + `cm-orchestrator/SKILL.md`(Phase 10 mtime-anchor 도입 + 라우팅 표 "훅 자율" 컬럼 분리) + `cm-digester.md` `cm-curator.md`(SendMessage→Task 반환값/prompt payload 정정 + obs_id 형식 통일 + SessionEnd 호출 타이밍 명시) + `session-capture/SKILL.md`(에이전트는 파일 직접 read, 스크립트만 `_schema.read_session_id()`) + `commands/cm-init.md`(baseline json 자동 생성 항목 제거) + `cm_commands.py`(미사용 `daily_summaries/` 디렉토리 생성 제거) + `intent_profile.md`(S6 dashboard 워커 open_question을 Resolved로 이전) + `session_start.py`(session_id 충돌 시 orphan 디렉토리 cleanup) | (1) Phase 10 카운터가 발행되지 않는 `type:adapt`에 의존하던 spec drift 해소 — `_delta_*.md`/`_rollback/{ts}/` mtime을 anchor로 사용. (2) 메시지 버스 부재 환경에서 SendMessage 잔재 정정. (3) CLAUDE.md가 자체 Phase 7-4 룰 위반(전체 카탈로그 중복 보유)을 자기 시연으로 해소. (4) 코드와 spec의 micro-drift 6건 동기화. dharness 본체(`skills/harness/SKILL.md` Phase 7-4 템플릿)는 사용자 명시 요청 — Phase 9 영역. |

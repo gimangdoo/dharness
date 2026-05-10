@@ -1,5 +1,5 @@
 ---
-description: 신규 도메인/프로젝트에 하네스를 처음 구축. Phase 0~8 전체 실행, baseline + 에이전트 + 스킬 + 오케스트레이터 + CLAUDE.md 포인터까지.
+description: 신규 도메인/프로젝트에 하네스를 처음 구축. Phase 0-8 전체 + Phase 10 인프라(telemetry 디렉토리, 자동 알림 포인터, 트리거 키워드)까지 실행.
 argument-hint: <도메인 한 문장 설명>
 ---
 
@@ -23,7 +23,7 @@ argument-hint: <도메인 한 문장 설명>
 
 ## 실행 절차
 
-`skills/harness/SKILL.md`의 워크플로우 **Phase 0~8 전체**를 따른다.
+`skills/harness/SKILL.md`의 워크플로우 **Phase 0-8 전체 + Phase 10 인프라**를 따른다 (Phase 9는 사후 진화 트리거이므로 초기 구축에서는 실행하지 않고, Phase 10은 capture 디렉토리·CLAUDE.md 자동 알림 블록·트리거 키워드 포함만 사전 배치).
 
 1. **Phase 0 (Pre-flight)**: 위 선조건이 통과했다면 신규 구축으로 분기.
 2. **Phase 1 (Code Research)**: greenfield/brownfield 자동 감지 + Quick/Deep 모드 선택. 결과 `_workspace/_baseline/project_profile.md`는 Phase 10의 t=0 anchor.
