@@ -28,7 +28,15 @@ import sys
 import time
 import uuid
 
-from _schema import DDL, DB_PATH, MEMORY_ROOT, REPO_ROOT, TELEMETRY_DIR, write_session_id
+from _schema import (
+    DB_PATH,
+    DDL,
+    MEMORY_ROOT,
+    REPO_ROOT,
+    TELEMETRY_DIR,
+    ensure_migrations,
+    write_session_id,
+)
 from session_end import flatten_to_transcript
 
 DAILY_SUMMARY_INJECT_MAX_CHARS = 800
@@ -97,6 +105,10 @@ def main() -> int:
     latest_summary: tuple[str, str] | None = None
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(DDL)
+        try:
+            ensure_migrations(conn)
+        except Exception as e:
+            print(f"[CM SessionStart] migration skipped: {e}", file=sys.stderr)
         try:
             backfilled = backfill_dangling_sessions(conn, now_iso)
         except Exception as e:
