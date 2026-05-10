@@ -983,7 +983,7 @@ table.tbl {
 
 /* ─── slideover ───────────────────────────────────────────────── */
 /* hidden attr must beat the layout displays below */
-.slideover[hidden], .slideover-scrim[hidden] { display: none !important; }
+.slideover[hidden], .slideover-scrim[hidden], .banner[hidden] { display: none !important; }
 
 .slideover-scrim {
   position: fixed; inset: 0;

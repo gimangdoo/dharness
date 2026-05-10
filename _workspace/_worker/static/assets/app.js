@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const API = 'http://127.0.0.1:8765';
+  const API = window.location.origin;
   const REFRESH_MS = 60_000;
   const TABS = ['overview', 'sessions', 'tools', 'memory', 'roadmap'];
   const CAT_VARS = ['--cat-1','--cat-2','--cat-3','--cat-4','--cat-5','--cat-6','--cat-7','--cat-8','--cat-9','--cat-10'];
@@ -49,6 +49,7 @@
   const tabsEl = $('tabs');
   const panel = $('panel');
   const banner = $('offline-banner');
+  { const bo = $('banner-origin'); if (bo) bo.textContent = API; }
   const compareToggle = $('compare-toggle');
   const compareHint = $('compare-hint');
   const editLink = $('edit-projects-link');
@@ -998,6 +999,7 @@
     if (state.selectedProject) await loadProjectData(state.selectedProject);
     state.lastUpdated = Date.now();
     renderSidebar();
+    renderHead();
     renderMain();
   };
 
