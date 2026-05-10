@@ -119,4 +119,4 @@ S1 완료: SessionStart에서 직전 세션 한 단락 인젝션이 동작한다
 
 ### Resolved
 
-- S6 dashboard worker 프로세스 관리 방식 → **수동 실행으로 결정** (`_workspace/_worker/README.md`, `dashboard-render` 스킬). `/cm-dashboard`는 worker 미실행 감지 + 시작 명령 안내로 한정.
+- S6 dashboard worker 프로세스 관리 방식 → **수동 실행으로 결정** (`plugins/cm-harness/worker/README.md`, `dashboard-render` 스킬). `/cm-harness:cm-dashboard`는 worker 미실행 감지 + 시작 명령 안내로 한정.

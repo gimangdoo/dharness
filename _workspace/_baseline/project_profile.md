@@ -10,12 +10,13 @@ architecture:
   structure_pattern: unknown
   entry_points: []
   key_directories:
-    - "skills/harness/"
-    - ".claude/agents/"
-    - ".claude/skills/"
-    - "commands/"
-    - "_workspace/_hooks/"
-    - "_workspace/_worker/"
+    - "plugins/harness/"
+    - "plugins/cm-harness/agents/"
+    - "plugins/cm-harness/skills/"
+    - "plugins/cm-harness/commands/"
+    - "plugins/cm-harness/hooks/"
+    - "plugins/cm-harness/worker/"
+    - "_workspace/"
   module_boundaries: []
 convention: {}
 
@@ -25,10 +26,10 @@ meta:
   total_loc: 0
   detection_signals:
     - "no package manifests found (package.json, requirements.txt, go.mod, Cargo.toml absent)"
-    - "directory contents: skills/, commands/, .claude/, _workspace/, CLAUDE.md, README.md"
-    - "Python hook scripts under _workspace/_hooks/ (stdlib only) — runtime infrastructure for the CM harness"
-    - "FastAPI dashboard worker under _workspace/_worker/ — single optional external dependency"
-    - "repo is the harness skill plugin itself + CM reference implementation — not a user application codebase"
+    - "directory contents: plugins/, _workspace/, .claude-plugin/, CLAUDE.md, README.md"
+    - "Python hook scripts under plugins/cm-harness/hooks/ (stdlib only) — runtime infrastructure for the CM harness"
+    - "FastAPI dashboard worker under plugins/cm-harness/worker/ — single optional external dependency"
+    - "repo is a Claude Code plugin monorepo (harness + cm-harness) — not a user application codebase"
 ---
 
 # Project Profile

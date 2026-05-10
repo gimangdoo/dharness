@@ -372,6 +372,6 @@ CM 전용 진단 룰 전체: [`plugins/cm-harness/references/cm-diagnostic-rules
 |------|------|
 | [`plugins/harness/skills/harness/SKILL.md`](./plugins/harness/skills/harness/SKILL.md) | 메타 스킬 정의 (11 Phase 워크플로우) |
 | [`plugins/cm-harness/hooks/INSTALL.md`](./plugins/cm-harness/hooks/INSTALL.md) | self-use 시 훅 수동 등록 절차 (plugin install 시 자동) |
-| [`_workspace/_worker/README.md`](./_workspace/_worker/README.md) | 대시보드 워커 명세 (엔드포인트·CORS·캐시) |
+| [`plugins/cm-harness/worker/README.md`](./plugins/cm-harness/worker/README.md) | 대시보드 워커 명세 (엔드포인트·CORS·캐시) |
 | [`CLAUDE.md`](./CLAUDE.md) | Context Manager 하네스 포인터 + 변경 이력 |
-| [`_workspace/references/cm-diagnostic-rules.md`](./_workspace/references/cm-diagnostic-rules.md) | Phase 10 CM 전용 drift 진단 룰 |
+| [`plugins/cm-harness/references/cm-diagnostic-rules.md`](./plugins/cm-harness/references/cm-diagnostic-rules.md) | Phase 10 CM 전용 drift 진단 룰 |
