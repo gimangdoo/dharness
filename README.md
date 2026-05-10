@@ -63,7 +63,7 @@ claude plugin install harness@dharness
 | **자연어 트리거** | "하네스 구성해줘" 등 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화, 일반 사용 |
 | **Slash command** | `/harness:harness-new`, `/cm-status` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-**Slash command 카탈로그 (`harness` 7개 + CM 6개 = 13개):**
+**Slash command 카탈로그 (`harness` 9개 + CM 6개 = 15개):**
 
 ```
 # harness plugin (메타 스킬 팩토리, 외부 install 가능)
@@ -74,6 +74,8 @@ claude plugin install harness@dharness
 /harness:harness-audit                 # 정합성 감사 (read-only)
 /harness:harness-evolve <피드백>       # Phase 9 수동 진화
 /harness:harness-adapt                 # Phase 10 telemetry drift 점검
+/harness:harness-mcp-adopt <사유>      # 런타임 시점 신규 MCP 채택 (§10 dynamic adoption)
+/harness:harness-mcp-status            # MCP 상태 진단 — 인벤토리·매트릭스·정합·trigger 자동 감지 (read-only)
 
 # CM (dharness self-host, root .claude/commands/)
 /cm-status                              # 메모리 통계 + DB 행 수 (dharness_event/pending draft 포함)

@@ -1,0 +1,17 @@
+{
+  "$comment_1": "Phase 5-2 합성 산출물 — derived 프로젝트의 .claude/settings.json. 기존 키가 있으면 deep merge.",
+  "$comment_2": "sqlite MCP read 3종은 자동 allow, write 2종은 매번 사용자 confirm (ask).",
+  "$comment_3": "enabledMcpjsonServers는 .mcp.json 패턴 사용 시에만 의미 — 본 예시는 inline 패턴이라 미사용 (§11-3 토글 측정 결과에 따라 정책 갱신).",
+
+  "permissions": {
+    "allow": [
+      "mcp__sqlite__read_query",
+      "mcp__sqlite__list_tables",
+      "mcp__sqlite__describe_table"
+    ],
+    "ask": [
+      "mcp__sqlite__write_query",
+      "mcp__sqlite__append_insight"
+    ]
+  }
+}

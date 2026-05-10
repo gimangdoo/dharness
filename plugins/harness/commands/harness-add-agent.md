@@ -36,6 +36,9 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
    - **빌트인 타입(`general-purpose`/`Explore`/`Plan`)이라도 파일 생성 필수**
    - `model: "opus"` 명시
    - 필수 섹션: 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업, 팀 통신 프로토콜
+   - **Phase 5-2 (도구·MCP 자동 할당)**: capability profile 매칭 → `claude mcp list`로 인벤토리 확인 → 사용자 confirm → frontmatter `tools:` allowlist 합성. 카탈로그·결정 트리·안전 정책은 `plugins/harness/skills/harness/references/permission-profiles.md` 단일 출처(§3-§7). 외부 MCP는 자동 install·자동 `allow` 금지(T0 한정).
+     - 신규 MCP를 *합성 시점*에 install했다면 사용자에게 **"다음 세션부터 사용 가능"** 명시 (mid-session 미전파 — empirical 확정).
+     - 프로젝트 진행 중 신규 MCP 채택은 **§10 dynamic adoption** — 별도 진입점 `/harness:harness-mcp-adopt <사유>` (본 명령 범위 외).
 3. **Phase 7-1·7-3 (오케스트레이터 수정)**: 기존 오케스트레이터 스킬에 새 에이전트 반영.
    - 팀 구성·작업 할당·데이터 흐름 갱신
    - description에 새 트리거 키워드(있으면) 추가
@@ -53,3 +56,4 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
 - **스킬은 새로 만들지 않는다** — 새 에이전트가 전용 스킬을 필요로 하면 별도로 `/harness:harness-add-skill`(차후 추가) 호출, 또는 사용자에게 안내
 - **baseline 갱신하지 않는다** — 코드/의도가 크게 바뀌었다고 판단되면 `/harness:harness-baseline`로 안내
 - **Phase 10 trigger 안 함** — drift 점검은 `/harness:harness-adapt`
+- **MCP 상태 진단 안 함** — 합성 *전후* 인벤토리/정합 진단이 필요하면 `/harness:harness-mcp-status` (read-only). 런타임 채택은 `/harness:harness-mcp-adopt <사유>`.
