@@ -5,13 +5,14 @@
   },
   "plugins": [
     {
-      "name": "dharness",
+      "name": "harness",
       "source": {
-        "source": "github",
-        "repo": "gimangdoo/dharness",
+        "source": "git-subdir",
+        "url": "https://github.com/gimangdoo/dharness.git",
+        "path": "plugins/harness",
         "ref": "main"
       },
-      "description": "Agent team and skill factory (harness meta-skill) bundled with a Context Manager harness for cross-session memory, tool output compression, and a multi-project FastAPI dashboard.",
+      "description": "Meta-skill that turns a domain description into an agent team and skill set. 6 team patterns, 11-phase factory workflow.",
       "version": "0.1.0",
       "author": {
         "name": "gimangdoo"
@@ -21,10 +22,34 @@
       "keywords": [
         "agents",
         "harness",
-        "context-management",
-        "multi-agent",
+        "skill-factory",
+        "meta-skill",
         "claude-code",
-        "skill-factory"
+        "multi-agent"
+      ]
+    },
+    {
+      "name": "cm-harness",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/gimangdoo/dharness.git",
+        "path": "plugins/cm-harness",
+        "ref": "main"
+      },
+      "description": "Context Manager harness — cross-session memory, tool output compression, session digest, observation clustering, multi-project FastAPI dashboard. 5 agents + 7 skills + 3 lifecycle hooks.",
+      "version": "0.1.0",
+      "author": {
+        "name": "gimangdoo"
+      },
+      "homepage": "https://github.com/gimangdoo/dharness",
+      "repository": "https://github.com/gimangdoo/dharness",
+      "keywords": [
+        "context-management",
+        "session-memory",
+        "agent-team",
+        "compression",
+        "observability",
+        "claude-code"
       ]
     }
   ]
