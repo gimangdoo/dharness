@@ -7,7 +7,10 @@
 
 ## 무엇인가
 
-`harness`는 사용자가 도메인/프로젝트를 한 문장으로 설명하면, 해당 도메인에 특화된 **에이전트 3~5명**과 그들이 사용할 **스킬 세트**를 `.claude/agents/`·`.claude/skills/`에 자동 생성하는 메타 스킬입니다.
+`dharness`는 두 개의 레이어를 한 저장소에 담은 Claude Code 플러그인입니다:
+
+1. **메타 스킬 본체** (`skills/harness/`, `commands/harness-*.md`) — 도메인을 입력 받아 에이전트 3~5명 + 스킬 세트를 자동 생성하는 팩토리.
+2. **구축 예시 (Context Manager 하네스)** (`.claude/agents/cm-*.md`, `.claude/skills/`, `_workspace/_hooks/`, `_workspace/_worker/`, `commands/cm-*.md`) — 메타 스킬을 context-management 도메인에 적용해 만든 실제 작동 인스턴스. 세션 간 컨텍스트 손실·도구 출력 비대화·메모리 미영속 문제를 해결합니다.
 
 다른 단일 에이전트/프롬프트 프레임워크와 달리, harness는 **팀 아키텍처 팩토리**입니다 — 6가지 사전 정의된 팀 패턴 중 도메인에 맞는 것을 선택하고 에이전트 협업 프로토콜을 함께 설계합니다.
 
@@ -24,6 +27,37 @@
 
 ---
 
+## 빠른 시작 (5분)
+
+### 1. 저장소 가져오기
+
+```powershell
+# 적당한 보관 위치에 clone
+git clone https://github.com/<your-fork>/dharness.git C:\path\to\dharness
+```
+
+### 2. 자기 자신에 대해 사용해 보기
+
+dharness 루트로 이동해 Claude Code를 연 뒤 다음 중 하나를 입력합니다:
+
+| 입력 | 효과 |
+|------|------|
+| `/cm-status` | 이 레포에 이미 구축된 CM 하네스의 상태 확인 (디렉토리 + DB 행 수) |
+| `/cm-init` | CM 메모리 디렉토리·`observations.db` 초기화 (재실행 안전) |
+| `/harness-audit` | 본 레포 산출물 정합성 read-only 감사 |
+
+`/cm-init`이 끝나면 [`_workspace/_hooks/INSTALL.md`](./_workspace/_hooks/INSTALL.md)의 절차대로 settings에 훅을 등록하면 세션 캡처가 시작됩니다.
+
+### 3. 새 도메인에 적용해 보기 (선택)
+
+```text
+/harness-new 코드 리뷰를 자동화하는 도메인
+```
+
+→ `.claude/agents/{name}.md`·`.claude/skills/{name}/SKILL.md`이 그 자리에 생성됩니다.
+
+---
+
 ## 호출 방식 두 가지
 
 | 방식 | 발동 | 비용 통제 | 용도 |
@@ -31,9 +65,10 @@
 | **자연어 트리거** | "하네스 구성해줘" 등 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화, 일반 사용 |
 | **Slash command** | `/harness-new`, `/harness-add-agent` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-**Slash command 카탈로그 (7개):**
+**Slash command 카탈로그 (Harness 7 + CM 7 = 14개):**
 
 ```
+# Harness 메타 스킬 진입점
 /harness-new <도메인>          # Phase 0~8 전체 (신규 구축)
 /harness-add-agent <역할>      # Phase 4·5·7·8 (1·2·3 skip)
 /harness-add-skill <스킬>      # Phase 6·7·8 (1~5 skip)
@@ -41,6 +76,15 @@
 /harness-audit                 # 정합성 감사 (read-only)
 /harness-evolve <피드백>       # Phase 9 수동 진화
 /harness-adapt                 # Phase 10 telemetry drift 점검
+
+# Context Manager 도메인 진입점
+/cm-status                     # 메모리 통계 + DB 행 수
+/cm-sessions [--limit N]       # 최근 세션 목록
+/cm-clusters [--min-conf X]    # 클러스터 (confidence desc)
+/cm-dashboard                  # worker 상태 + URL 확인
+/cm-init                       # 디렉토리 + DB 초기화
+/cm-reset                      # 메모리 전체 삭제 (확인 필수)
+/cm-curate                     # cm-curator 단독 실행
 ```
 
 전체 가이드: [`commands/README.md`](./commands/README.md).
@@ -51,26 +95,29 @@
 
 ```
 .
-├── commands/              # Slash command 진입점 7종 (명시적 호출)
+├── commands/              # Slash command 진입점 14종 (harness-* 7 + cm-* 7)
 ├── skills/
 │   └── harness/           # 메타 스킬 본체 (SKILL.md + references/)
 ├── .claude/
-│   ├── agents/            # context-management 하네스 에이전트 5종
-│   └── skills/            # context-management 하네스 스킬 6종
+│   ├── agents/            # context-management 하네스 에이전트 5종 (cm-*)
+│   └── skills/            # context-management 하네스 스킬 7종
 ├── _workspace/
 │   ├── _baseline/         # Phase 1-2 산출물 + CM baseline 기준값
 │   ├── _telemetry/        # Phase 10 telemetry (append-only JSONL)
 │   ├── _memory/           # CM 런타임 메모리 (세션/클러스터/observations)
+│   ├── _hooks/            # SessionStart/PostToolUse/SessionEnd 훅 + INSTALL.md
+│   ├── _worker/           # FastAPI 대시보드 워커 (+ static/ 프론트엔드)
 │   ├── _tool_outputs/     # PostToolUse 원본 보존 (압축 전)
+│   ├── projects.json      # 대시보드 멀티 프로젝트 레지스트리
 │   └── references/        # CM 전용 Phase 10 진단 룰
 └── CLAUDE.md              # 하네스 포인터 + 변경 이력
 ```
 
 ---
 
-## Skill 워크플로우 한눈에
+## Skill 워크플로우 11단계
 
-`harness` 메타 스킬은 11단계로 동작합니다:
+`harness` 메타 스킬은 다음 11단계로 동작합니다:
 
 | Phase | 이름 | 출력 |
 |-------|------|------|
@@ -89,6 +136,121 @@
 상세는 [`skills/harness/SKILL.md`](./skills/harness/SKILL.md).
 
 ---
+
+## 다른 프로젝트에 dharness 도입하기
+
+dharness는 두 가지 형태로 다른 프로젝트에 적용할 수 있습니다:
+
+- **A. 메타 스킬만 사용** — `/harness-new` 등으로 그 프로젝트만의 새 하네스를 생성
+- **B. CM 하네스(컨텍스트 매니저) 그대로 적용** — 본 레포의 cm-* 에이전트/스킬/훅/대시보드를 가져다 사용
+
+### A. 메타 스킬만 사용 (신규 도메인 구축)
+
+`skills/harness/`와 `commands/harness-*.md`만 대상 프로젝트에 노출시키면 됩니다. Windows에서는 관리자 PowerShell에서 디렉토리 정션을 거는 방식이 안전합니다 (mklink는 OneDrive와 잘 호환됨):
+
+```powershell
+# 대상 프로젝트 = C:\path\to\target
+$D = "C:\path\to\dharness"
+$T = "C:\path\to\target"
+
+# (없다면) .claude 골격 생성
+New-Item -ItemType Directory -Force "$T\.claude\skills" | Out-Null
+New-Item -ItemType Directory -Force "$T\.claude\commands" | Out-Null
+
+# 메타 스킬 + 슬래시 커맨드 노출
+cmd /c mklink /J "$T\.claude\skills\harness" "$D\skills\harness"
+Get-ChildItem "$D\commands\harness-*.md" | ForEach-Object {
+  cmd /c mklink "$T\.claude\commands\$($_.Name)" "$_.FullName"
+}
+```
+
+이후 그 프로젝트에서 Claude Code를 열고:
+
+```
+/harness-new <도메인 한 문장>
+```
+
+→ Phase 0~8을 거쳐 그 프로젝트의 `.claude/agents/`·`.claude/skills/`·`CLAUDE.md`에 산출물이 생성됩니다. dharness 본체는 read-only 경계가 보호하므로 침범하지 않습니다.
+
+### B. CM 하네스(컨텍스트 매니저) 그대로 적용
+
+본 레포에서 운영 중인 `cm-*` 에이전트/스킬/훅/대시보드를 다른 프로젝트로 옮기는 절차입니다.
+
+**1) 산출물 복사 또는 정션**
+
+```powershell
+$D = "C:\path\to\dharness"
+$T = "C:\path\to\target"
+
+# 에이전트 5종 + 스킬 7종 + cm-* 슬래시 커맨드 7종
+robocopy "$D\.claude\agents"    "$T\.claude\agents"    cm-*.md
+robocopy "$D\.claude\skills"    "$T\.claude\skills"    /E /XD harness  # CM 스킬만
+robocopy "$D\commands"          "$T\.claude\commands"  cm-*.md
+
+# 훅 + 대시보드 워커 + 레지스트리
+robocopy "$D\_workspace\_hooks"  "$T\_workspace\_hooks" /E
+robocopy "$D\_workspace\_worker" "$T\_workspace\_worker" /E
+Copy-Item "$D\_workspace\references\cm-diagnostic-rules.md" `
+          "$T\_workspace\references\cm-diagnostic-rules.md" -Force
+```
+
+> 변경 사항을 dharness와 동기화하고 싶다면 위 robocopy 대신 `mklink /J` 정션을 쓰세요.
+
+**2) `_workspace/projects.json`에 대상 프로젝트 등록 (대시보드용)**
+
+```json
+{
+  "projects": [
+    {"name": "dharness", "path": "C:/Users/user01/awesome-files/dharness"},
+    {"name": "target",   "path": "C:/path/to/target"}
+  ]
+}
+```
+
+이 파일은 dharness 쪽에 남기면 한 워커가 여러 프로젝트를 동시에 모니터링합니다. 또는 대상 프로젝트에 워커를 따로 띄워도 됩니다.
+
+**3) CM 메모리 초기화 + 훅 설치**
+
+대상 프로젝트에서 Claude Code를 열고:
+
+```
+/cm-init
+```
+
+그 다음 [`_workspace/_hooks/INSTALL.md`](./_workspace/_hooks/INSTALL.md)에 따라 `.claude/settings.json`(또는 `.claude/settings.local.json`)에 hooks 섹션을 병합합니다:
+
+```jsonc
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [
+      { "type": "command", "command": "py \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/session_start.py\"" }
+    ]}],
+    "PostToolUse": [{ "matcher": "", "hooks": [
+      { "type": "command", "command": "py \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/post_tool_use.py\"" }
+    ]}],
+    "SessionEnd": [{ "hooks": [
+      { "type": "command", "command": "py \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/session_end.py\"" }
+    ]}]
+  }
+}
+```
+
+> Windows에서 bare `python`은 Microsoft Store 스텁으로 매핑되어 exit 9009로 실패할 수 있습니다. 안전한 명령은 `py` 또는 절대경로(`C:\...\python.exe`).
+
+**4) 검증**
+
+새 세션을 연 뒤:
+
+```powershell
+py _workspace\_hooks\cm_commands.py status
+```
+
+- `sessions` 카운트 ≥ 1 → SessionStart 훅 정상
+- 도구 사용 후 세션을 끝내고 다시 열면 `tools_used`가 채워져 있음 → PostToolUse + SessionEnd 정상
+
+### 도입 후 권한 경계
+
+dharness 메타 스킬은 사용자 프로젝트의 `.claude/commands/`에 **아무것도 생성하지 않습니다** (read-only invariant). 위 B 절차의 `cm-*.md` 복사는 사용자 본인이 명시적으로 수행하는 작업이므로 invariant 위반이 아닙니다. CM 자동 적응(Phase 10) 영향 범위는 [`CLAUDE.md`](./CLAUDE.md)의 "CM 적응의 영구 범위 한정" 섹션 참조.
 
 ---
 
@@ -116,7 +278,7 @@ harness 메타 스킬로 구축된 **context-management 도메인 하네스**가
 | `session-digest` | what/when/do/warn 구조 + **단일 DB 스키마 진실 원천** |
 | `memory-curate` | 클러스터링 + decay + 승격 + daily_summary + 주기 트리거 |
 | `memory-search` | 3-tool progressive disclosure |
-| `dashboard-render` | 4개 뷰 SQLite 집계 + FastAPI worker (골격 포함) |
+| `dashboard-render` | 5개 뷰 SQLite 집계 + FastAPI worker 명세 |
 
 ### 결정적 부속 산출물
 
@@ -128,19 +290,126 @@ harness 메타 스킬로 구축된 **context-management 도메인 하네스**가
 | `_workspace/_hooks/cm_commands.py` | `/cm-*` 결정적 커맨드 핸들러 |
 | `_workspace/_hooks/INSTALL.md` | 훅 settings.json 등록 가이드 (사용자 수동) |
 | `_workspace/_worker/dashboard_server.py` | FastAPI localhost 워커 |
-| `commands/cm-*.md` | 7개 슬래시 커맨드 (status·sessions·clusters·dashboard·init·reset·curate) |
+| `_workspace/_worker/static/` | 정적 프론트엔드 (`/ui/` 마운트) |
+| `_workspace/projects.json` | 대시보드 멀티 프로젝트 레지스트리 |
+| `commands/cm-*.md` | 7개 슬래시 커맨드 |
 
 ### 단계적 구현 현황
 
 | 단계 | 내용 | 상태 |
 |------|------|------|
-| S1 | cm-orchestrator + cm-injector + **session-capture** | ✅ |
-| S2 | cm-digester + session-digest + observations.db (단일 진실 스키마) | ✅ |
-| S3 | cm-retriever + memory-search | ✅ |
-| S4 | cm-compressor + tool-output-compress | ✅ |
-| S5 | cm-curator + memory-curate (decay + daily_summary + 주기 트리거) | ✅ |
-| S6 | dashboard-render + FastAPI 워커 골격 | ✅ |
-| S7 | Phase 10 CM 진단 룰 (`_workspace/references/cm-diagnostic-rules.md`) | ✅ |
+| S1 | cm-orchestrator + cm-injector + **session-capture** | 완료 |
+| S2 | cm-digester + session-digest + observations.db (단일 진실 스키마) | 완료 |
+| S3 | cm-retriever + memory-search | 완료 |
+| S4 | cm-compressor + tool-output-compress | 완료 |
+| S5 | cm-curator + memory-curate (decay + daily_summary + 주기 트리거) | 완료 |
+| S6 | dashboard-render + FastAPI 워커 (멀티 프로젝트 옵션 A) | 완료 |
+| S7 | Phase 10 CM 진단 룰 (`_workspace/references/cm-diagnostic-rules.md`) | 완료 |
+
+---
+
+## CM Dashboard 사용법
+
+`_workspace/_worker/dashboard_server.py`(FastAPI + uvicorn 결정적 워커)를 직접 실행해 SQLite + telemetry JSONL + 디렉토리 스캔 결과를 한 화면에서 비교 열람합니다. **LLM 호출 없음**.
+
+### 1. 의존성 설치 (최초 1회)
+
+```powershell
+py -3 -m pip install -r _workspace\_worker\requirements.txt
+```
+
+`fastapi >= 0.110`, `uvicorn >= 0.27` 두 개만 필요합니다.
+
+### 2. 멀티 프로젝트 레지스트리 (선택)
+
+`_workspace/projects.json`에 모니터링할 프로젝트들을 수동 등록합니다. 파일이 없거나 비어 있으면 dharness 단일 프로젝트로 fallback.
+
+```json
+{
+  "projects": [
+    {"name": "dharness",     "path": "C:/Users/user01/awesome-files/dharness"},
+    {"name": "idea-catcher", "path": "C:/Users/user01/awesome-files/my-projects/idea-catcher"}
+  ]
+}
+```
+
+각 프로젝트는 자기 `_workspace/_memory/observations/observations.db`를 가져야 하며 (없으면 `/cm-init`로 생성), cross-project SQL JOIN은 발생하지 않습니다.
+
+### 3. 실행
+
+```powershell
+py -3 _workspace\_worker\dashboard_server.py
+```
+
+기본 바인딩 `127.0.0.1:8765` — 외부 노출 없음. 종료는 Ctrl+C. 백그라운드로 띄우는 가장 간단한 방법은 별도 PowerShell 창에서 위 명령을 그대로 실행해 두는 것입니다.
+
+### 4. 접속
+
+브라우저에서 한 곳만 열면 됩니다:
+
+- **http://127.0.0.1:8765/** — `_workspace/_worker/static/index.html`이 있으면 자동으로 `/ui/`로 redirect되어 정적 프론트엔드가 뜸. 없으면 minimal HTML 인덱스(레지스트리 표 + 엔드포인트 목록)로 fallback.
+
+`/cm-dashboard` 슬래시 커맨드는 워커 상태와 URL을 출력만 하는 결정적 핸들러이며, 워커 자체는 위 방식으로 직접 띄워야 합니다.
+
+### 5. 5개 View
+
+대시보드 워커는 dashboard-render 스킬이 정의한 5개 뷰를 제공합니다:
+
+| View | 엔드포인트 | 데이터 소스 | 의도 |
+|------|-----------|-----------|------|
+| 1. 세션 | `/api/projects/{name}/sessions` | `sessions` + `observations` | 최근 30 세션, pending/warn count, digest 보유 여부 |
+| 2. 클러스터 | `/api/projects/{name}/clusters` | `clusters` | confidence desc, 마지막 접근 후 경과일 |
+| 3. 압축 통계 | `/api/projects/{name}/compression` | telemetry JSONL | 도구별 raw/compressed 평균, 비율 (최근 30일) |
+| 4. Pending | `/api/projects/{name}/pending` | `observations.completed=0` | 미완료 do 항목 |
+| 5. Inventory + Roadmap | `/api/projects/{name}/inventory`, `/roadmap` | `.claude/`·`commands/`·`settings.json`·`CLAUDE.md` | skills/agents/commands/hooks/mcp 산출물 + CLAUDE.md 표 추출 |
+
+추가:
+- `/api/projects` — 등록 프로젝트 + rollup 통계 (sessions/clusters/pending/total_minutes)
+- `/api/projects/{name}/tool-timeline` — 일자별 도구 호출 (스택 차트용)
+
+Backward-compat (default project = 레지스트리 첫 항목):
+| 경로 | 비고 |
+|------|------|
+| `GET /api/{sessions,clusters,compression,pending}?project=<name>` | `?project=` 미지정 시 default project |
+
+### 6. CORS / 캐시 / 보안
+
+- **CORS:** `http://127.0.0.1` / `http://localhost`(any port) GET only — Vite 등 별도 dev server가 직접 API를 호출 가능
+- **캐시:** 메모리 내 5분 TTL, 프로젝트별 키 분리. 무효화 anchor = `observations.db` mtime + telemetry `*.jsonl` 최신 mtime + `CLAUDE.md` mtime + `.claude/settings.json` mtime. 4개 중 하나라도 바뀌면 다음 요청에서 재계산
+- **보안:** 외부 노출 없음 (`host="127.0.0.1"`). 외부 접근이 필요하면 코드의 `host="0.0.0.0"`으로 변경 + 자체 보안 검토 필수
+
+### 7. 트러블슈팅
+
+| 증상 | 원인 / 해결 |
+|------|-----------|
+| `ModuleNotFoundError: No module named 'fastapi'` | 의존성 미설치 — §1 다시 실행 |
+| `503 observations.db missing for project=<name>` | 그 프로젝트에서 `/cm-init` 미실행 또는 `projects.json` 경로 오타 |
+| `404 project not found: <name>` | `projects.json`에 해당 name이 없음 |
+| 압축 통계가 비어있음 | `<project>/_workspace/_telemetry/*.jsonl`에 `tool_output_captured` 이벤트 미발생 — cm-compressor 트리거 확인 |
+| Roadmap 빈 배열 | `CLAUDE.md`에 markdown 표가 없거나 헤더-구분선이 깨짐 (silent fail — 의도된 동작) |
+| 포트 8765 충돌 | `dashboard_server.py`의 `port=` 변경 또는 기존 프로세스 종료 |
+| 외부 머신에서 접근 안 됨 | **의도된 동작** — `host="0.0.0.0"`로 변경 후 직접 보안 검토 |
+
+### 8. 종료 / 재시작
+
+- 종료: 워커 콘솔에서 `Ctrl+C`
+- 재시작 시 캐시 전체 초기화. 코드를 수정했다면 그냥 재시작하면 됨 (auto-reload 미사용)
+
+워커 자체 README: [`_workspace/_worker/README.md`](./_workspace/_worker/README.md).
+
+---
+
+## 트러블슈팅 (CM 시스템 전반)
+
+| 증상 | 해결 |
+|------|------|
+| 훅이 동작하지 않음 | `py --version` 확인 → settings의 `command`를 `py ...`로 변경 (Microsoft Store 스텁 회피) |
+| `/cm-status`가 빈 결과 | `/cm-init` 실행 → 새 세션을 한 번 열어 SessionStart 훅 발동 확인 |
+| transcript는 있는데 digest.md가 없음 | SessionEnd 훅이 끝난 후 cm-digester 호출이 실패한 것 — `_workspace/_telemetry/{date}.jsonl`에서 `"fallback":"digester_failed"` 검색 |
+| daily_summaries 비어있음 | memory-curate 주기 트리거 미실행 — `/cm-curate`로 강제 실행 |
+| Phase 10 자동 알림 누락 | 마지막 `_delta_*.md`/`_rollback/{ts}/` mtime 이후 `harness_invocation` 이벤트 10회 미만 — 정상 |
+
+CM 전용 진단 룰 전체: [`_workspace/references/cm-diagnostic-rules.md`](./_workspace/references/cm-diagnostic-rules.md).
 
 ---
 
@@ -148,8 +417,10 @@ harness 메타 스킬로 구축된 **context-management 도메인 하네스**가
 
 | 문서 | 용도 |
 |------|------|
-| [`commands/README.md`](./commands/README.md) | Slash command 7종 카탈로그 + 의사결정 트리 |
+| [`commands/README.md`](./commands/README.md) | Slash command 14종 카탈로그 + 의사결정 트리 |
 | [`skills/README.md`](./skills/README.md) | 스킬 디렉토리 인덱스 + references 가이드 |
 | [`skills/harness/SKILL.md`](./skills/harness/SKILL.md) | 메타 스킬 정의 (11 Phase 워크플로우) |
+| [`_workspace/_hooks/INSTALL.md`](./_workspace/_hooks/INSTALL.md) | 훅 등록 절차 + matcher 주의사항 |
+| [`_workspace/_worker/README.md`](./_workspace/_worker/README.md) | 대시보드 워커 명세 (엔드포인트·CORS·캐시) |
 | [`CLAUDE.md`](./CLAUDE.md) | Context Manager 하네스 포인터 + 변경 이력 |
 | [`_workspace/references/cm-diagnostic-rules.md`](./_workspace/references/cm-diagnostic-rules.md) | Phase 10 CM 전용 drift 진단 룰 |

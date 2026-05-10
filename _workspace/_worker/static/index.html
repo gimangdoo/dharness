@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CM Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <header class="sidebar-head">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">CM Dashboard</span>
+        </div>
+        <span class="count-pill" id="proj-count" title="Projects">0</span>
+      </header>
+
+      <div class="sidebar-search">
+        <input id="proj-filter" type="text" placeholder="Filter projects" autocomplete="off" />
+      </div>
+
+      <nav class="proj-list" id="proj-list" aria-label="Projects"></nav>
+
+      <div class="sidebar-foot">
+        <label class="compare-toggle">
+          <input type="checkbox" id="compare-toggle" />
+          <span class="switch" aria-hidden="true"></span>
+          <span class="compare-label">Compare projects</span>
+        </label>
+        <div class="compare-hint" id="compare-hint" hidden>
+          Select 2&ndash;5 projects above. Other tabs disabled while comparing.
+        </div>
+        <a class="foot-link" id="edit-projects-link" href="#" title="">
+          <span class="dot"></span> Edit projects.json
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main" id="main">
+      <header class="main-head">
+        <div class="head-left">
+          <h1 class="proj-title" id="main-title">&mdash;</h1>
+          <code class="proj-path mono" id="main-path"></code>
+        </div>
+        <div class="head-right">
+          <div class="status-cluster">
+            <span class="status-dot" id="conn-dot" data-state="loading" aria-hidden="true"></span>
+            <span class="status-text" id="conn-text">connecting</span>
+          </div>
+          <span class="updated mono" id="last-updated">never</span>
+          <button class="icon-btn" id="reload-btn" type="button" title="Reload (R)">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M13 8a5 5 0 1 1-1.46-3.54M13 3v2.5h-2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Reload</span>
+          </button>
+        </div>
+      </header>
+
+      <nav class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" data-tab="overview"    aria-selected="true">  <kbd>1</kbd> Overview</button>
+        <button class="tab" role="tab" data-tab="sessions"    aria-selected="false"> <kbd>2</kbd> Sessions</button>
+        <button class="tab" role="tab" data-tab="tools"       aria-selected="false"> <kbd>3</kbd> Tools</button>
+        <button class="tab" role="tab" data-tab="memory"      aria-selected="false"> <kbd>4</kbd> Memory</button>
+        <button class="tab" role="tab" data-tab="roadmap"     aria-selected="false"> <kbd>5</kbd> Roadmap</button>
+      </nav>
+
+      <div class="banner" id="offline-banner" hidden>
+        <span class="banner-dot"></span>
+        <span class="banner-text">
+          Backend not reachable at <code class="mono">http://127.0.0.1:8765</code>.
+          Showing sample data so the UI is reviewable.
+          Start the worker and press Reload to load live data.
+        </span>
+        <button class="banner-x" id="banner-dismiss" type="button" aria-label="Dismiss">&times;</button>
+      </div>
+
+      <section class="tabpanel" id="panel"></section>
+    </main>
+
+    <!-- Slide-over panel (sessions detail) -->
+    <aside class="slideover" id="slideover" hidden>
+      <header class="slideover-head">
+        <div>
+          <div class="slideover-eyebrow">Session</div>
+          <code class="mono slideover-id" id="slideover-id">&mdash;</code>
+        </div>
+        <button class="icon-btn ghost" id="slideover-close" type="button" aria-label="Close">&times;</button>
+      </header>
+      <div class="slideover-body" id="slideover-body"></div>
+    </aside>
+    <div class="slideover-scrim" id="slideover-scrim" hidden></div>
+  </div>
+
+  <script src="sample-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
