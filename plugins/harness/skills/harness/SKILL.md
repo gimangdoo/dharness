@@ -125,6 +125,8 @@ description: "하네스를 구성합니다. 전문 에이전트를 정의하며,
 
 > 정의 템플릿과 실제 파일 전문은 `references/agent-design-patterns.md` + `references/team-examples.md`. QA 상세 가이드는 `references/qa-agent-guide.md`.
 
+**도구·MCP 자동 할당 (Phase 5-2):** 에이전트의 `tools:` allowlist와 프로젝트 `.claude/settings.json`·`.mcp.json` 합성은 *제안 후 사용자 confirm* 절차를 따른다. capability profile 카탈로그(`code-test`/`web-research`/`external-integration`/`reasoning-aux`), 3-layer 권한 모델, 안전 정책, 결정 트리는 `references/permission-profiles.md` 단일 출처. 자동 install·자동 `allow` 승급은 T0(무키·로컬) 한정.
+
 ### Phase 6: 스킬 생성
 
 각 에이전트가 사용할 스킬을 `프로젝트/.claude/skills/{name}/SKILL.md`에 생성.
