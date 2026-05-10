@@ -1,21 +1,21 @@
-"""SessionStart hook — 세션 부트스트랩 + 직전 dangling 세션 finalize + daily_summary inject.
+"""SessionStart hook — 세션 부트스트랩 + dangling 세션 finalize + 의미적 inject.
 
 수행:
   1. 직전 세션이 dangling(ended_at IS NULL + raw.jsonl 비어있지 않음)인 경우 backfill finalize
-     (이전 SessionEnd 훅이 발동되지 않고 종료된 세션 복구)
   2. session_id 발급 (UUIDv4 6자 hex)
   3. _workspace/_memory/sessions/{id}/ 부트스트랩 + raw.jsonl 빈 파일 생성
-  4. observations.db 미존재 시 4개 테이블 + FTS5 초기화 (스키마는 _schema.py)
+  4. observations.db 미존재 시 4개 테이블 + FTS5 초기화 + ensure_migrations 실행
   5. sessions 테이블 INSERT
-  6. session_id를 _memory/.current_session에 기록 (다른 hook이 읽음)
-  7. _workspace/_telemetry/{date}.jsonl에 session_capture_init + harness_invocation 이벤트 append
-  8. 최신 daily_summary가 있으면 첫 줄을 additionalContext로 inject (순수 데이터 주입)
-  9. stdout으로 hookSpecificOutput.additionalContext JSON 송출 (Claude Code 컨트랙트)
+  6. session_id를 _memory/.current_session에 기록
+  7. _workspace/_telemetry/{date}.jsonl에 라이프사이클 이벤트 append
+  8. 의미적 carry-over inject (단계 C):
+     a. 직전 1~3개 세션의 dharness_event category 카운트
+     b. 작업 중단점 (git status --short)
+     c. 최신 daily_summary (있으면)
+     모두 deterministic — LLM 호출 없음. 토큰 budget 2000자.
+  9. stdout으로 hookSpecificOutput.additionalContext JSON 송출
 
-LLM 호출도, LLM에 대한 instruction도 emit하지 않는다. 빠르게 종료.
-
-Digest/cluster/daily_summary 생성은 별도 워커 잡(worker/dashboard_server.py 통합 예정)이
-담당한다. 이 훅은 *읽기/주입*만 한다.
+Digest/cluster/daily_summary 자동 생성은 단계 D 이후 통합 (manual LLM trigger only).
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ import calendar
 import json
 import shutil
 import sqlite3
+import subprocess
 import sys
 import time
 import uuid
@@ -39,15 +40,14 @@ from _schema import (
 )
 from session_end import flatten_to_transcript
 
-DAILY_SUMMARY_INJECT_MAX_CHARS = 800
+INJECT_BUDGET = 2000
+DAILY_SUMMARY_MAX_CHARS = 600
+GIT_STATUS_MAX_LINES = 12
+PRIOR_SESSIONS = 3
 
 
 def backfill_dangling_sessions(conn: sqlite3.Connection, now_iso: str) -> list[str]:
-    """ended_at IS NULL + raw.jsonl 비어있지 않은 세션을 transcript 평탄화·UPDATE finalize.
-
-    이전 세션의 SessionEnd 훅이 발동되지 않은 채 다음 SessionStart가 발생하면
-    이전 세션이 영원히 ended_at=NULL로 남는다. 이 함수가 차순회 시 복구한다.
-    """
+    """ended_at IS NULL + raw.jsonl 비어있지 않은 세션을 transcript 평탄화·UPDATE finalize."""
     finalized: list[str] = []
     rows = conn.execute(
         "SELECT session_id, started_at FROM sessions WHERE ended_at IS NULL"
@@ -82,13 +82,106 @@ def backfill_dangling_sessions(conn: sqlite3.Connection, now_iso: str) -> list[s
 
 
 def fetch_latest_daily_summary(conn: sqlite3.Connection) -> tuple[str, str] | None:
-    """가장 최근 daily_summary 1건의 (date, summary)를 반환. 없으면 None."""
     row = conn.execute(
         "SELECT date, summary FROM daily_summaries ORDER BY date DESC LIMIT 1"
     ).fetchone()
     if not row:
         return None
     return row[0], row[1]
+
+
+def fetch_prior_sessions(conn: sqlite3.Connection, current_id: str, n: int) -> list[dict]:
+    """직전 N개 세션의 dharness_event category 카운트.
+
+    반환: [{session_id, date, started_at, categories: {category: count}}, ...]
+    가장 최근 세션이 첫 번째.
+    """
+    rows = conn.execute("""
+        SELECT session_id, date, started_at
+        FROM sessions
+        WHERE session_id != ?
+        ORDER BY started_at DESC
+        LIMIT ?
+    """, (current_id, n)).fetchall()
+    out: list[dict] = []
+    for sid, date, started_at in rows:
+        cur = conn.execute("""
+            SELECT category, COUNT(*) AS n
+            FROM observations
+            WHERE session_id = ? AND section = 'dharness_event' AND category IS NOT NULL
+            GROUP BY category
+            ORDER BY n DESC
+        """, (sid,))
+        cats = {row[0]: row[1] for row in cur.fetchall()}
+        out.append({
+            "session_id": sid,
+            "date": date,
+            "started_at": started_at,
+            "categories": cats,
+        })
+    return out
+
+
+def fetch_git_status_short(max_lines: int) -> list[str]:
+    """git status --short 출력. git 호출 실패 / repo 아님이면 빈 리스트."""
+    try:
+        result = subprocess.run(
+            ["git", "status", "--short"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=2,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return []
+    if result.returncode != 0:
+        return []
+    lines = [ln for ln in result.stdout.splitlines() if ln.strip()]
+    return lines[:max_lines]
+
+
+def format_inject(
+    session_id: str,
+    project_name: str,
+    prior: list[dict],
+    git_lines: list[str],
+    summary: tuple[str, str] | None,
+    budget: int,
+) -> str:
+    """직전 세션 사실 set + git status + daily_summary를 한 string으로 패킹."""
+    parts: list[str] = [f"[CM] session_id={session_id} (project={project_name})."]
+
+    if prior:
+        prior_chunks: list[str] = []
+        for sess in prior:
+            cats = sess["categories"]
+            if not cats:
+                cats_str = "(no dharness_event)"
+            else:
+                top = list(cats.items())[:5]
+                cats_str = " / ".join(f"{c}:{n}" for c, n in top)
+            label = f"{sess['date']} {sess['session_id']}"
+            prior_chunks.append(f"  · {label} — {cats_str}")
+        parts.append(
+            f"[CM] 직전 {len(prior)} 세션 dharness_event:\n" + "\n".join(prior_chunks)
+        )
+
+    if git_lines:
+        git_block = "\n".join(f"  {ln}" for ln in git_lines)
+        parts.append(f"[CM] 작업 중단점 (git status --short):\n{git_block}")
+
+    if summary:
+        date, summary_text = summary
+        if len(summary_text) > DAILY_SUMMARY_MAX_CHARS:
+            summary_text = summary_text[: DAILY_SUMMARY_MAX_CHARS - 1] + "…"
+        parts.append(f"[CM] 최근 요약 ({date}):\n{summary_text}")
+
+    out = "\n".join(parts)
+    if len(out) > budget:
+        out = out[: budget - 1] + "…"
+    return out
 
 
 def main() -> int:
@@ -103,6 +196,7 @@ def main() -> int:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     backfilled: list[str] = []
     latest_summary: tuple[str, str] | None = None
+    prior_sessions: list[dict] = []
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(DDL)
         try:
@@ -131,8 +225,14 @@ def main() -> int:
             latest_summary = fetch_latest_daily_summary(conn)
         except Exception as e:
             print(f"[CM SessionStart] daily_summary lookup skipped: {e}", file=sys.stderr)
+        try:
+            prior_sessions = fetch_prior_sessions(conn, session_id, PRIOR_SESSIONS)
+        except Exception as e:
+            print(f"[CM SessionStart] prior sessions lookup skipped: {e}", file=sys.stderr)
 
     write_session_id(session_id)
+
+    git_lines = fetch_git_status_short(GIT_STATUS_MAX_LINES)
 
     TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
     telemetry_path = TELEMETRY_DIR / f"{today}.jsonl"
@@ -152,12 +252,14 @@ def main() -> int:
                 "session_id": session_id, "backfilled": backfilled,
             }) + "\n")
 
-    additional_context = f"[CM] session_id={session_id} (project={REPO_ROOT.name})."
-    if latest_summary:
-        date, summary = latest_summary
-        if len(summary) > DAILY_SUMMARY_INJECT_MAX_CHARS:
-            summary = summary[: DAILY_SUMMARY_INJECT_MAX_CHARS - 1] + "…"
-        additional_context += f"\n[CM] 최근 요약 ({date}):\n{summary}"
+    additional_context = format_inject(
+        session_id=session_id,
+        project_name=REPO_ROOT.name,
+        prior=prior_sessions,
+        git_lines=git_lines,
+        summary=latest_summary,
+        budget=INJECT_BUDGET,
+    )
 
     print(json.dumps({
         "hookSpecificOutput": {
