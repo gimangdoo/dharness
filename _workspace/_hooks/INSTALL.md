@@ -74,3 +74,16 @@ python _workspace/_hooks/cm_commands.py status
 
 훅 스크립트는 표준 라이브러리만 사용하므로 추가 설치 불필요. Python 3.11+ 가정.
 대시보드 워커는 별도 — `_workspace/_worker/README.md` 참조.
+
+## Python 런처 선택 — 플랫폼별 주의
+
+훅 명령에서 사용할 인터프리터 이름은 **OS 환경에 따라 다르다**:
+
+| 플랫폼 | 권장 명령 | 이유 |
+|--------|----------|------|
+| **Windows (Python 공식 인스톨러 사용)** | `py` | bare `python`은 Microsoft Store 스텁(`%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe`)에 매핑되어 exit 9009로 실패할 수 있다. `py`는 Windows Python Launcher로 안정적. |
+| **Windows (Python을 PATH에 직접 추가했음)** | `python` 또는 `py` | 둘 다 동작 |
+| **macOS / Linux** | `python3` 또는 `python` | 보통 `python`이 Python 3을 가리키지만 일부 배포판은 `python3` 필요 |
+
+검증: `python --version` 실행 후 exit code가 0이 아니거나 Microsoft Store가 열리면
+`py --version`으로 대체 — 정상 출력되면 settings의 `command`를 `py ...`로 변경한다.

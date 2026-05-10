@@ -2,3 +2,15 @@
 .claude/settings.json
 .claude/settings.local.json
 .claude/mcp.json
+
+# CM 런타임 부산물 (스키마/디렉토리 구조는 .gitkeep으로 추적)
+__pycache__/
+_workspace/_memory/observations/observations.db
+_workspace/_memory/observations/observations.db-*
+_workspace/_telemetry/*.jsonl
+_workspace/_telemetry/_delta_*.md
+_workspace/_telemetry/_rollback/*/
+_workspace/_tool_outputs/*/
+_workspace/_memory/sessions/*/
+_workspace/_memory/clusters/*.md
+_workspace/_memory/daily_summaries/*.md
