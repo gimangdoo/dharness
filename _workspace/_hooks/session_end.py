@@ -2,6 +2,11 @@
 
 session-capture 스킬의 finalize 단계.
 session_id는 _memory/.current_session 파일에서 읽는다.
+
+주의: SessionEnd 시점에 .current_session 파일을 *지우지 않는다*. SessionEnd와 다음
+SessionStart 사이의 짧은 인터벌에 PostToolUse 훅이 발동되면 파일이 비어있을 때
+session_id="unknown"으로 도구 출력이 떨어지는 누수가 발생하기 때문. 다음 SessionStart의
+write_session_id()가 새 ID로 덮어쓰는 것에 의존한다.
 """
 
 from __future__ import annotations
@@ -18,7 +23,6 @@ from _schema import (
     MEMORY_ROOT,
     REPO_ROOT,
     TELEMETRY_DIR,
-    clear_session_id,
     read_session_id,
 )
 
@@ -92,11 +96,13 @@ def main() -> int:
             "transcript_size": transcript_path.stat().st_size if transcript_path.exists() else 0,
         }) + "\n")
 
-    clear_session_id()
+    # .current_session 파일은 의도적으로 지우지 않는다 (모듈 docstring 참조).
+    # 다음 SessionStart의 write_session_id()가 덮어쓴다.
 
     print(
         f"[CM SessionEnd] session_id={session_id} transcript={transcript_path.relative_to(REPO_ROOT) if transcript_path.exists() else '(none)'} "
-        f"({raw_lines} events) — cm-digester + cm-curator 팀 호출 권장.",
+        f"({raw_lines} events) — cm-digester + cm-curator 팀 호출은 다음 SessionStart의 "
+        f"backfill 흐름에서 자동 트리거됨.",
         file=sys.stderr,
     )
     return 0

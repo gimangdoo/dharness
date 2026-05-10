@@ -29,10 +29,11 @@ Context Manager 시스템의 진입점이자 이벤트 라우터.
 |--------|--------|-------------|-----------|
 | SessionStart 훅 (캡처) | `session_start.py` (session_id 발급·DB 부트스트랩·telemetry append) | 훅 자율 | 결정적 (LLM 없음) |
 | SessionStart 훅 (인젝션) | cm-injector | dispatch | 서브 에이전트 (Task) |
+| SessionStart 훅 (digest backfill) | cm-digester(다회) → cm-curator(1회) → cm-injector | dispatch | 서브 에이전트 N+2회 (Task) |
 | PostToolUse 훅 (캡처 + 10KB 분기 결정) | `post_tool_use.py` (raw.jsonl append + ≤10KB 패스스루 + >10KB raw 보존·`tool_output_captured` 이벤트 emit) | 훅 자율 | 결정적 |
 | PostToolUse 훅 (출력 >10KB의 압축 단계) | cm-compressor | dispatch | 서브 에이전트 (Task) |
 | SessionEnd 훅 (transcript+sessions UPDATE) | `session_end.py` (raw.jsonl 평탄화·sessions UPDATE·`session_capture_finalize` emit) | 훅 자율 | 결정적 |
-| SessionEnd 훅 후속 (digest+curation) | cm-digester → cm-curator (순차) | dispatch | 서브 에이전트 2회 (Task) |
+| SessionEnd 훅 후속 (digest+curation) | 다음 SessionStart의 backfill 라우트로 이월 | (deferred) | 다음 세션에서 dispatch |
 | 사용자 메모리 검색 키워드 | cm-retriever | dispatch | 서브 에이전트 |
 | /cm-* 슬래시 커맨드 | 스크립트 또는 에이전트 (커맨드별) | dispatch (LLM 커맨드만) | — |
 | /cm-curate 또는 자동 N=10 임계 | cm-curator 단독 | dispatch | 서브 에이전트 |
@@ -65,6 +66,38 @@ Task(
   prompt="현재 세션 시작 시점의 컨텍스트 인젝션을 수행하라. memory-curate의 daily_summaries 1순위, 없으면 직전 세션 digest fallback."
 )
 ```
+
+### SessionStart → digest backfill → cm-injector (`[CM Backfill]` 신호 시)
+
+`session_start.py`는 `digest_path IS NULL`인 종료 세션이 있으면 `additionalContext`에 다음 형식의 추가 지시를 포함시킨다:
+
+```
+[CM Backfill] digest 누락 세션 N건: {sid1, sid2, ...}. cm-injector 호출 *전*에
+cm-orchestrator를 통해 cm-digester를 각 세션에 순차 호출하고, 마지막에 cm-curator를
+1회 호출하여 daily_summaries를 갱신하라.
+```
+
+이 신호를 받으면 본 스킬은 다음 순서로 dispatch한다:
+
+```
+1) 각 backfill 세션 sid에 대해 (최신순, 토큰 예산 내):
+   Task(subagent_type="cm-digester",
+        description=f"cm-digester: backfill {sid}",
+        prompt=f"transcript_path=_workspace/_memory/sessions/{sid}/transcript.md, "
+               f"session_id={sid} — 평탄화된 transcript를 4섹션 digest로 변환하고 "
+               f"observations에 INSERT, sessions.digest_path를 UPDATE하라.")
+2) cm-curator 1회 호출 (digest backfill 후 클러스터·daily_summary 갱신):
+   Task(subagent_type="cm-curator",
+        description="cm-curator: backfill 후 클러스터·daily_summary 갱신",
+        prompt=f"trigger=digest_backfill, backfilled_session_ids=[{sids}] — "
+               f"신규 observations로 클러스터 갱신 + 최근 7일 daily_summary upsert.")
+3) 마지막에 cm-injector 호출 (이제 daily_summaries 1순위 입력이 풍부해진 상태):
+   Task(subagent_type="cm-injector", ...)
+```
+
+**토큰 예산 정책:** backfill 세션이 5건 이상이면 가장 최근 1~3건만 처리하여 SessionStart 비용을 제한한다. 미처리 세션은 다음 SessionStart에서 다시 후보로 잡힌다 (멱등).
+
+**실패 처리:** 특정 sid의 cm-digester가 실패하면 해당 sid는 건너뛰고 다음 sid로 진행한다. cm-curator는 성공한 sid 목록만으로 호출한다.
 
 ### PostToolUse → cm-compressor (>10KB)
 
