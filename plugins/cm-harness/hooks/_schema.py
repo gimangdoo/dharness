@@ -17,11 +17,23 @@ for _stream in (sys.stdin, sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
+def _walk_up_for_workspace() -> Path:
+    """Plugin install 시 CLAUDE_PROJECT_DIR이 항상 set되어 이 fallback은 미사용.
+    dharness self-use에서 manual `py plugins/cm-harness/hooks/cm_commands.py status`
+    같은 직접 호출 시에만 도달. _workspace/ 디렉토리를 가진 가장 가까운 조상으로 올라감.
+    """
+    here = Path(__file__).resolve()
+    for p in [here.parent, *here.parents]:
+        if (p / "_workspace").is_dir():
+            return p
+    return here.parents[3]  # last resort: dharness/ from plugins/cm-harness/hooks/
+
+
 _env_root = os.environ.get("CLAUDE_PROJECT_DIR")
 REPO_ROOT = (
     Path(_env_root).resolve()
     if _env_root and Path(_env_root).is_dir()
-    else Path(__file__).resolve().parents[2]
+    else _walk_up_for_workspace()
 )
 MEMORY_ROOT = REPO_ROOT / "_workspace" / "_memory"
 DB_PATH = MEMORY_ROOT / "observations" / "observations.db"

@@ -1,0 +1,19 @@
+{
+  "name": "cm-harness",
+  "version": "0.1.0",
+  "description": "Context Manager harness — cross-session memory, tool output compression (>10KB), session digest with what/when/do/warn structure, observation clustering with decay, multi-project FastAPI dashboard. 5 agents + 7 skills + 3 lifecycle hooks (SessionStart/PostToolUse/SessionEnd).",
+  "author": {
+    "name": "gimangdoo"
+  },
+  "homepage": "https://github.com/gimangdoo/dharness",
+  "repository": "https://github.com/gimangdoo/dharness",
+  "keywords": [
+    "context-management",
+    "session-memory",
+    "agent-team",
+    "compression",
+    "observability",
+    "claude-code"
+  ],
+  "hooks": "./hooks/hooks.json"
+}
