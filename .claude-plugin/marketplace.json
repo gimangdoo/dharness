@@ -1,0 +1,31 @@
+{
+  "name": "dharness",
+  "owner": {
+    "name": "gimangdoo"
+  },
+  "plugins": [
+    {
+      "name": "dharness",
+      "source": {
+        "source": "github",
+        "repo": "gimangdoo/dharness",
+        "ref": "main"
+      },
+      "description": "Agent team and skill factory (harness meta-skill) bundled with a Context Manager harness for cross-session memory, tool output compression, and a multi-project FastAPI dashboard.",
+      "version": "0.1.0",
+      "author": {
+        "name": "gimangdoo"
+      },
+      "homepage": "https://github.com/gimangdoo/dharness",
+      "repository": "https://github.com/gimangdoo/dharness",
+      "keywords": [
+        "agents",
+        "harness",
+        "context-management",
+        "multi-agent",
+        "claude-code",
+        "skill-factory"
+      ]
+    }
+  ]
+}
