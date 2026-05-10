@@ -9,6 +9,7 @@ hook이 같은 파일에서 읽는다. hook은 별도 프로세스이므로 환�
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -16,7 +17,12 @@ for _stream in (sys.stdin, sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+_env_root = os.environ.get("CLAUDE_PROJECT_DIR")
+REPO_ROOT = (
+    Path(_env_root).resolve()
+    if _env_root and Path(_env_root).is_dir()
+    else Path(__file__).resolve().parents[2]
+)
 MEMORY_ROOT = REPO_ROOT / "_workspace" / "_memory"
 DB_PATH = MEMORY_ROOT / "observations" / "observations.db"
 TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"
