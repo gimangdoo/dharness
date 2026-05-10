@@ -30,7 +30,11 @@ MEMORY_ROOT = REPO_ROOT / "_workspace" / "_memory"
 DB_PATH = MEMORY_ROOT / "observations" / "observations.db"
 TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"
 TOOL_OUTPUTS = REPO_ROOT / "_workspace" / "_tool_outputs"
+DRAFTS_DIR = REPO_ROOT / "_workspace" / "_drafts"
+DRAFTS_APPLIED = DRAFTS_DIR / "applied"
+DRAFTS_DISCARDED = DRAFTS_DIR / "discarded"
 SESSION_ID_FILE = MEMORY_ROOT / ".current_session"
+CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
 
 DDL = """
 CREATE TABLE IF NOT EXISTS observations (

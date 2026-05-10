@@ -5,6 +5,9 @@
     py .claude/hooks/cm_commands.py sessions [--limit N]
     py .claude/hooks/cm_commands.py dashboard
     py .claude/hooks/cm_commands.py reset --confirm
+    py .claude/hooks/cm_commands.py claudemd-list
+    py .claude/hooks/cm_commands.py claudemd-apply <session_id>
+    py .claude/hooks/cm_commands.py claudemd-discard [<session_id>]
 
 결정적 작업만 처리한다. Cluster/digest 생성은 워커 잡(worker/) 책임.
 DB·디렉토리 부트스트랩은 SessionStart 훅 또는 reset 시 자동 수행되므로 별도 init 명령 없음.
@@ -13,16 +16,33 @@ DB·디렉토리 부트스트랩은 SessionStart 훅 또는 reset 시 자동 수
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import sqlite3
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
-from _schema import DB_PATH, DDL, MEMORY_ROOT, REPO_ROOT, TOOL_OUTPUTS
+from _schema import (
+    CLAUDE_MD,
+    DB_PATH,
+    DDL,
+    DRAFTS_APPLIED,
+    DRAFTS_DIR,
+    DRAFTS_DISCARDED,
+    MEMORY_ROOT,
+    REPO_ROOT,
+    TOOL_OUTPUTS,
+)
 
 DASHBOARD_URL = "http://127.0.0.1:8765/"
 COUNT_TABLES = ("observations", "sessions", "clusters", "daily_summaries")
+
+DRAFT_ROW_RE = re.compile(r"^```\s*\n(\| .*?\|)\s*\n```", re.MULTILINE)
+ROW_LINE_RE = re.compile(r"^\s*\|.+\|\s*$")
+SEP_LINE_RE = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
+HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
 def _connect() -> sqlite3.Connection:
@@ -70,13 +90,16 @@ def cmd_status() -> int:
         ).fetchone()[0]
         promoted = conn.execute("SELECT COUNT(*) FROM clusters WHERE promoted_path IS NOT NULL").fetchone()[0]
         pending = conn.execute("SELECT COUNT(*) FROM observations WHERE section='do' AND completed=0").fetchone()[0]
+        dh_events = conn.execute("SELECT COUNT(*) FROM observations WHERE section='dharness_event'").fetchone()[0]
+    pending_drafts = list(DRAFTS_DIR.glob("*.md")) if DRAFTS_DIR.exists() else []
 
     print(f"📊 CM 상태 ({REPO_ROOT.name})")
-    print(f"  observations:     {counts['observations']}")
+    print(f"  observations:     {counts['observations']} (dharness_event {dh_events})")
     print(f"  sessions:         {counts['sessions']} (최근 7일: {recent}, digest: {digested})")
     print(f"  clusters:         {counts['clusters']} (승격 {promoted})")
     print(f"  daily_summaries:  {counts['daily_summaries']}")
     print(f"  pending Do:       {pending}")
+    print(f"  CLAUDE.md draft:  {len(pending_drafts)} pending")
     return 0
 
 
@@ -126,6 +149,144 @@ def cmd_reset(confirmed: bool) -> int:
     return 0
 
 
+# ---------------------------- CLAUDE.md draft ----------------------------
+
+def _find_pending_drafts() -> list[Path]:
+    if not DRAFTS_DIR.exists():
+        return []
+    return sorted(p for p in DRAFTS_DIR.glob("*.md") if p.is_file())
+
+
+def _draft_for_session(session_id: str) -> Path | None:
+    if not DRAFTS_DIR.exists():
+        return None
+    matches = sorted(DRAFTS_DIR.glob(f"*_{session_id}.md"))
+    return matches[-1] if matches else None
+
+
+def _extract_draft_row(text: str) -> str | None:
+    """draft .md의 ``` block 안에 있는 markdown table row를 추출."""
+    m = DRAFT_ROW_RE.search(text)
+    if not m:
+        return None
+    return m.group(1).strip()
+
+
+def _find_change_history_table(lines: list[str]) -> tuple[int, int] | None:
+    """CLAUDE.md의 "변경 이력:" 섹션 표 범위 (header_idx, last_row_idx) 반환.
+
+    "변경 이력" 키워드를 포함한 heading/strong 다음에 등장하는 첫 markdown 표를 찾는다.
+    """
+    anchor = -1
+    for i, line in enumerate(lines):
+        if "변경 이력" in line and (line.startswith("#") or line.startswith("**")):
+            anchor = i
+            break
+    if anchor < 0:
+        return None
+    # find first table after anchor
+    i = anchor + 1
+    while i < len(lines):
+        if (
+            ROW_LINE_RE.match(lines[i])
+            and i + 1 < len(lines)
+            and SEP_LINE_RE.match(lines[i + 1])
+        ):
+            header_idx = i
+            j = i + 2
+            last_row_idx = j - 1
+            while j < len(lines) and ROW_LINE_RE.match(lines[j]) and not SEP_LINE_RE.match(lines[j]):
+                last_row_idx = j
+                j += 1
+            return header_idx, last_row_idx
+        i += 1
+    return None
+
+
+def cmd_claudemd_list() -> int:
+    drafts = _find_pending_drafts()
+    if not drafts:
+        print("📝 미적용 CLAUDE.md draft 0건.")
+        return 0
+    print(f"📝 미적용 CLAUDE.md draft {len(drafts)}건:")
+    for p in drafts:
+        # filename: {date}_{sid}.md
+        stem = p.stem
+        date, _, sid = stem.partition("_")
+        size = p.stat().st_size
+        print(f"  · {date} {sid}  ({size}B)  apply: /cm-claudemd-apply {sid}")
+    print()
+    print("폐기: /cm-claudemd-discard [<sid>]   (인자 없으면 모두 폐기)")
+    return 0
+
+
+def cmd_claudemd_apply(session_id: str) -> int:
+    draft = _draft_for_session(session_id)
+    if not draft:
+        print(f"⚠️  draft 미발견: session_id={session_id}")
+        print(f"   확인: ls {DRAFTS_DIR.relative_to(REPO_ROOT)}")
+        return 1
+    text = draft.read_text(encoding="utf-8")
+    row = _extract_draft_row(text)
+    if not row:
+        print(f"⚠️  draft에서 표 행을 찾지 못함: {draft.relative_to(REPO_ROOT)}")
+        return 1
+    if not CLAUDE_MD.exists():
+        print(f"⚠️  CLAUDE.md 없음: {CLAUDE_MD.relative_to(REPO_ROOT)}")
+        return 1
+    cm_text = CLAUDE_MD.read_text(encoding="utf-8")
+    lines = cm_text.splitlines()
+    span = _find_change_history_table(lines)
+    if not span:
+        print("⚠️  CLAUDE.md에서 '변경 이력' 표를 찾지 못함.")
+        return 1
+    _, last_row_idx = span
+    new_lines = lines[: last_row_idx + 1] + [row] + lines[last_row_idx + 1 :]
+    new_text = "\n".join(new_lines)
+    if cm_text.endswith("\n"):
+        new_text += "\n"
+    CLAUDE_MD.write_text(new_text, encoding="utf-8")
+
+    DRAFTS_APPLIED.mkdir(parents=True, exist_ok=True)
+    dest = DRAFTS_APPLIED / draft.name
+    if dest.exists():
+        dest.unlink()
+    draft.rename(dest)
+
+    print(f"✅ CLAUDE.md '변경 이력' 표에 행 추가됨.")
+    print(f"   삽입 위치: line {last_row_idx + 2}")
+    print(f"   row: {row[:120]}{'…' if len(row) > 120 else ''}")
+    print(f"   draft 이동: {dest.relative_to(REPO_ROOT)}")
+    print()
+    print("⚠️  사유 컬럼이 placeholder인 채로 추가됐습니다 — CLAUDE.md를 직접 편집해 사유를 채우세요.")
+    return 0
+
+
+def cmd_claudemd_discard(session_id: str | None) -> int:
+    DRAFTS_DISCARDED.mkdir(parents=True, exist_ok=True)
+    targets: list[Path]
+    if session_id:
+        d = _draft_for_session(session_id)
+        if not d:
+            print(f"⚠️  draft 미발견: session_id={session_id}")
+            return 1
+        targets = [d]
+    else:
+        targets = _find_pending_drafts()
+    if not targets:
+        print("폐기할 draft 없음.")
+        return 0
+    for d in targets:
+        dest = DRAFTS_DISCARDED / d.name
+        if dest.exists():
+            dest.unlink()
+        d.rename(dest)
+        print(f"🗑️  {d.name} → {dest.relative_to(REPO_ROOT)}")
+    return 0
+
+
+# ---------------------------- main ----------------------------
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="cm")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -133,12 +294,18 @@ def main() -> int:
     p_sessions = sub.add_parser("sessions"); p_sessions.add_argument("--limit", type=int, default=30)
     sub.add_parser("dashboard")
     p_reset = sub.add_parser("reset"); p_reset.add_argument("--confirm", action="store_true")
+    sub.add_parser("claudemd-list")
+    p_apply = sub.add_parser("claudemd-apply"); p_apply.add_argument("session_id")
+    p_discard = sub.add_parser("claudemd-discard"); p_discard.add_argument("session_id", nargs="?", default=None)
 
     args = parser.parse_args()
-    if args.cmd == "status":    return cmd_status()
-    if args.cmd == "sessions":  return cmd_sessions(args.limit)
-    if args.cmd == "dashboard": return cmd_dashboard()
-    if args.cmd == "reset":     return cmd_reset(args.confirm)
+    if args.cmd == "status":              return cmd_status()
+    if args.cmd == "sessions":            return cmd_sessions(args.limit)
+    if args.cmd == "dashboard":           return cmd_dashboard()
+    if args.cmd == "reset":               return cmd_reset(args.confirm)
+    if args.cmd == "claudemd-list":       return cmd_claudemd_list()
+    if args.cmd == "claudemd-apply":      return cmd_claudemd_apply(args.session_id)
+    if args.cmd == "claudemd-discard":    return cmd_claudemd_discard(args.session_id)
     return 2
 
 

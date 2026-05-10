@@ -15,3 +15,6 @@ _workspace/_tool_outputs/*/
 _workspace/_memory/sessions/*/
 _workspace/_memory/clusters/*.md
 _workspace/_memory/daily_summaries/*.md
+_workspace/_drafts/*.md
+_workspace/_drafts/applied/*.md
+_workspace/_drafts/discarded/*.md

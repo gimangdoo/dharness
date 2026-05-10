@@ -32,6 +32,7 @@ import uuid
 from _schema import (
     DB_PATH,
     DDL,
+    DRAFTS_DIR,
     MEMORY_ROOT,
     REPO_ROOT,
     TELEMETRY_DIR,
@@ -44,6 +45,7 @@ INJECT_BUDGET = 2000
 DAILY_SUMMARY_MAX_CHARS = 600
 GIT_STATUS_MAX_LINES = 12
 PRIOR_SESSIONS = 3
+PENDING_DRAFTS_MAX = 5
 
 
 def backfill_dangling_sessions(conn: sqlite3.Connection, now_iso: str) -> list[str]:
@@ -122,6 +124,21 @@ def fetch_prior_sessions(conn: sqlite3.Connection, current_id: str, n: int) -> l
     return out
 
 
+def fetch_pending_drafts(limit: int) -> list[str]:
+    """_workspace/_drafts/ 안의 미적용 draft 파일들 (filename에서 sid 추출)."""
+    if not DRAFTS_DIR.exists():
+        return []
+    out: list[str] = []
+    for p in sorted(DRAFTS_DIR.glob("*.md"))[:limit]:
+        stem = p.stem  # {date}_{sid}
+        date, _, sid = stem.partition("_")
+        if sid:
+            out.append(f"{date} {sid}")
+        else:
+            out.append(stem)
+    return out
+
+
 def fetch_git_status_short(max_lines: int) -> list[str]:
     """git status --short 출력. git 호출 실패 / repo 아님이면 빈 리스트."""
     try:
@@ -148,9 +165,10 @@ def format_inject(
     prior: list[dict],
     git_lines: list[str],
     summary: tuple[str, str] | None,
+    pending_drafts: list[str],
     budget: int,
 ) -> str:
-    """직전 세션 사실 set + git status + daily_summary를 한 string으로 패킹."""
+    """직전 세션 사실 set + git status + daily_summary + 미적용 draft를 한 string으로 패킹."""
     parts: list[str] = [f"[CM] session_id={session_id} (project={project_name})."]
 
     if prior:
@@ -166,6 +184,13 @@ def format_inject(
             prior_chunks.append(f"  · {label} — {cats_str}")
         parts.append(
             f"[CM] 직전 {len(prior)} 세션 dharness_event:\n" + "\n".join(prior_chunks)
+        )
+
+    if pending_drafts:
+        chunks = "\n".join(f"  · {d}" for d in pending_drafts)
+        parts.append(
+            f"[CM] 미적용 CLAUDE.md draft {len(pending_drafts)}건 — apply: "
+            f"/cm-claudemd-apply <sid>, discard: /cm-claudemd-discard\n{chunks}"
         )
 
     if git_lines:
@@ -233,6 +258,7 @@ def main() -> int:
     write_session_id(session_id)
 
     git_lines = fetch_git_status_short(GIT_STATUS_MAX_LINES)
+    pending_drafts = fetch_pending_drafts(PENDING_DRAFTS_MAX)
 
     TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
     telemetry_path = TELEMETRY_DIR / f"{today}.jsonl"
@@ -258,6 +284,7 @@ def main() -> int:
         prior=prior_sessions,
         git_lines=git_lines,
         summary=latest_summary,
+        pending_drafts=pending_drafts,
         budget=INJECT_BUDGET,
     )
 
