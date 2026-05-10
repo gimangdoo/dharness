@@ -5,11 +5,13 @@ DDL은 본 모듈이 단일 진실 원천이다. observations/sessions/clusters/
 
 session_id는 SessionStart hook 시점에 파일에 기록되고, PostToolUse/SessionEnd
 hook이 같은 파일에서 읽는다. hook은 별도 프로세스이므로 환경 변수로는 전달되지 않는다.
+
+dharness self-host 한정 — REPO_ROOT는 본 모듈 위치(.claude/hooks/_schema.py)에서
+parents[2]로 결정적 계산. ${CLAUDE_PROJECT_DIR} 의존 없음, walk-up fallback 없음.
 """
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -17,24 +19,8 @@ for _stream in (sys.stdin, sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
-def _walk_up_for_workspace() -> Path:
-    """Plugin install 시 CLAUDE_PROJECT_DIR이 항상 set되어 이 fallback은 미사용.
-    dharness self-use에서 manual `py plugins/cm-harness/hooks/cm_commands.py status`
-    같은 직접 호출 시에만 도달. _workspace/ 디렉토리를 가진 가장 가까운 조상으로 올라감.
-    """
-    here = Path(__file__).resolve()
-    for p in [here.parent, *here.parents]:
-        if (p / "_workspace").is_dir():
-            return p
-    return here.parents[3]  # last resort: dharness/ from plugins/cm-harness/hooks/
 
-
-_env_root = os.environ.get("CLAUDE_PROJECT_DIR")
-REPO_ROOT = (
-    Path(_env_root).resolve()
-    if _env_root and Path(_env_root).is_dir()
-    else _walk_up_for_workspace()
-)
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MEMORY_ROOT = REPO_ROOT / "_workspace" / "_memory"
 DB_PATH = MEMORY_ROOT / "observations" / "observations.db"
 TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"

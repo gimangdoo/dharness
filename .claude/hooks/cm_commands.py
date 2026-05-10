@@ -1,10 +1,10 @@
-"""/cm-harness:cm-* 슬래시 커맨드 결정적 핸들러.
+"""/cm-* 슬래시 커맨드 결정적 핸들러 (dharness self-host).
 
-사용법 (dharness self-use, repo root에서):
-    python plugins/cm-harness/hooks/cm_commands.py status
-    python plugins/cm-harness/hooks/cm_commands.py sessions [--limit N]
-    python plugins/cm-harness/hooks/cm_commands.py dashboard
-    python plugins/cm-harness/hooks/cm_commands.py reset --confirm
+사용법 (repo root에서):
+    py .claude/hooks/cm_commands.py status
+    py .claude/hooks/cm_commands.py sessions [--limit N]
+    py .claude/hooks/cm_commands.py dashboard
+    py .claude/hooks/cm_commands.py reset --confirm
 
 결정적 작업만 처리한다. Cluster/digest 생성은 워커 잡(worker/) 책임.
 DB·디렉토리 부트스트랩은 SessionStart 훅 또는 reset 시 자동 수행되므로 별도 init 명령 없음.
@@ -106,14 +106,14 @@ def cmd_dashboard() -> int:
     except (urllib.error.URLError, TimeoutError):
         pass
     print("Worker 미실행. 다음 명령으로 시작:")
-    print("    python plugins/cm-harness/worker/dashboard_server.py")
+    print("    py worker/dashboard_server.py")
     print("기본 포트 8765, 127.0.0.1만 바인딩 (외부 노출 없음).")
     return 1
 
 
 def cmd_reset(confirmed: bool) -> int:
     if not confirmed:
-        print("⚠️  --confirm 플래그 없이는 실행 불가. /cm-harness:cm-reset 슬래시 커맨드 본문의 확인 절차를 따르세요.")
+        print("⚠️  --confirm 플래그 없이는 실행 불가. /cm-reset 슬래시 커맨드 본문의 확인 절차를 따르세요.")
         return 1
     if MEMORY_ROOT.exists():
         shutil.rmtree(MEMORY_ROOT)

@@ -13,7 +13,7 @@ description: |
 모두 덤프하지 않고 검색 → 타임라인 → 전체 읽기 3단계로 토큰을 절약한다.
 
 DB는 `_workspace/_memory/observations/observations.db` 단일 SQLite. 스키마는
-`plugins/cm-harness/hooks/_schema.py`의 `DDL` 상수가 단일 진실 원천이다.
+`.claude/hooks/_schema.py`의 `DDL` 상수가 단일 진실 원천이다.
 
 ## 3-Tool Progressive Disclosure
 
