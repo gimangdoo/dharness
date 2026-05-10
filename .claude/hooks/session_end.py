@@ -23,6 +23,7 @@ from pathlib import Path
 
 from _schema import (
     DB_PATH,
+    DRAFT_REASON_PLACEHOLDER,
     DRAFTS_DIR,
     MEMORY_ROOT,
     REPO_ROOT,
@@ -31,7 +32,6 @@ from _schema import (
 )
 
 DRAFT_TARGETS_MAX = 8
-DRAFT_REASON_PLACEHOLDER = "(apply 전 작성 — 사유/맥락)"
 
 
 def flatten_to_transcript(raw_path: Path) -> tuple[str, set[str], int]:
@@ -168,7 +168,8 @@ total_events: {summary['total']}
 
 ## 적용 / 폐기
 
-- `/cm-claudemd-apply {session_id}` — 위 행을 CLAUDE.md "변경 이력" 표에 추가
+- `/cm-claudemd-apply {session_id}` — 위 행을 CLAUDE.md "변경 이력" 표에 추가 (사유 placeholder 유지)
+- `/cm-claudemd-apply {session_id} 사유 한 줄` — 사유 인자를 즉시 치환 (markdown table 안전 처리 내장 — `\\|` escape, 줄바꿈 → 공백)
 - `/cm-claudemd-discard {session_id}` — 이 draft 폐기 (보관: `_workspace/_drafts/discarded/`)
 """
 

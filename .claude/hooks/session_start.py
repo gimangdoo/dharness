@@ -8,14 +8,15 @@
   5. sessions 테이블 INSERT
   6. session_id를 _memory/.current_session에 기록
   7. _workspace/_telemetry/{date}.jsonl에 라이프사이클 이벤트 append
-  8. 의미적 carry-over inject (단계 C):
-     a. 직전 1~3개 세션의 dharness_event category 카운트
-     b. 작업 중단점 (git status --short)
-     c. 최신 daily_summary (있으면)
-     모두 deterministic — LLM 호출 없음. 토큰 budget 2000자.
+  8. 의미적 carry-over inject (4 블록, 모두 deterministic):
+     a. 직전 N=3 세션의 dharness_event category 카운트
+     b. 미적용 CLAUDE.md draft 목록
+     c. 작업 중단점 (git status --short)
+     LLM 호출 없음. 토큰 budget 2000자.
   9. stdout으로 hookSpecificOutput.additionalContext JSON 송출
 
-Digest/cluster/daily_summary 자동 생성은 단계 D 이후 통합 (manual LLM trigger only).
+daily_summary 블록은 결정적 모델 일관성을 위해 제거됨 (Tier 3B 무산).
+`daily_summaries` 테이블은 historic data 보존용으로 schema만 유지.
 """
 
 from __future__ import annotations
@@ -42,7 +43,6 @@ from _schema import (
 from session_end import flatten_to_transcript
 
 INJECT_BUDGET = 2000
-DAILY_SUMMARY_MAX_CHARS = 600
 GIT_STATUS_MAX_LINES = 12
 PRIOR_SESSIONS = 3
 PENDING_DRAFTS_MAX = 5
@@ -81,15 +81,6 @@ def backfill_dangling_sessions(conn: sqlite3.Connection, now_iso: str) -> list[s
         )
         finalized.append(sid)
     return finalized
-
-
-def fetch_latest_daily_summary(conn: sqlite3.Connection) -> tuple[str, str] | None:
-    row = conn.execute(
-        "SELECT date, summary FROM daily_summaries ORDER BY date DESC LIMIT 1"
-    ).fetchone()
-    if not row:
-        return None
-    return row[0], row[1]
 
 
 def fetch_prior_sessions(conn: sqlite3.Connection, current_id: str, n: int) -> list[dict]:
@@ -164,11 +155,10 @@ def format_inject(
     project_name: str,
     prior: list[dict],
     git_lines: list[str],
-    summary: tuple[str, str] | None,
     pending_drafts: list[str],
     budget: int,
 ) -> str:
-    """직전 세션 사실 set + git status + daily_summary + 미적용 draft를 한 string으로 패킹."""
+    """직전 세션 사실 set + 미적용 draft + git status를 한 string으로 패킹 (4 블록)."""
     parts: list[str] = [f"[CM] session_id={session_id} (project={project_name})."]
 
     if prior:
@@ -197,12 +187,6 @@ def format_inject(
         git_block = "\n".join(f"  {ln}" for ln in git_lines)
         parts.append(f"[CM] 작업 중단점 (git status --short):\n{git_block}")
 
-    if summary:
-        date, summary_text = summary
-        if len(summary_text) > DAILY_SUMMARY_MAX_CHARS:
-            summary_text = summary_text[: DAILY_SUMMARY_MAX_CHARS - 1] + "…"
-        parts.append(f"[CM] 최근 요약 ({date}):\n{summary_text}")
-
     out = "\n".join(parts)
     if len(out) > budget:
         out = out[: budget - 1] + "…"
@@ -220,7 +204,6 @@ def main() -> int:
 
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     backfilled: list[str] = []
-    latest_summary: tuple[str, str] | None = None
     prior_sessions: list[dict] = []
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(DDL)
@@ -246,10 +229,6 @@ def main() -> int:
                 "INSERT INTO sessions (session_id, date, started_at, project) VALUES (?, ?, ?, ?)",
                 (session_id, today, now_iso, REPO_ROOT.name),
             )
-        try:
-            latest_summary = fetch_latest_daily_summary(conn)
-        except Exception as e:
-            print(f"[CM SessionStart] daily_summary lookup skipped: {e}", file=sys.stderr)
         try:
             prior_sessions = fetch_prior_sessions(conn, session_id, PRIOR_SESSIONS)
         except Exception as e:
@@ -283,7 +262,6 @@ def main() -> int:
         project_name=REPO_ROOT.name,
         prior=prior_sessions,
         git_lines=git_lines,
-        summary=latest_summary,
         pending_drafts=pending_drafts,
         budget=INJECT_BUDGET,
     )

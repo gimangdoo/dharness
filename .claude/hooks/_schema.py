@@ -36,6 +36,9 @@ DRAFTS_DISCARDED = DRAFTS_DIR / "discarded"
 SESSION_ID_FILE = MEMORY_ROOT / ".current_session"
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
 
+# CLAUDE.md draft 사유 컬럼 placeholder (session_end.py 생성, cm_commands.py 치환).
+DRAFT_REASON_PLACEHOLDER = "(apply 전 작성 — 사유/맥락)"
+
 DDL = """
 CREATE TABLE IF NOT EXISTS observations (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL, date TEXT NOT NULL,
@@ -117,10 +120,6 @@ _FILE_RULES: tuple[tuple[re.Pattern[str], str, str], ...] = (
     (re.compile(r"^\.claude/commands/.+\.md$"), "cm_command_edit", "command"),
     (re.compile(r"^\.claude/settings.*\.json$"), "cm_settings_edit", "settings"),
     (re.compile(r"^\.claude/agents/.+\.md$"), "cm_agent_edit", "agent"),
-    (re.compile(r"^worker/static/"), "cm_worker_static_edit", "worker_static"),
-    (re.compile(r"^worker/README\.md$"), "cm_doc_edit", "doc"),
-    (re.compile(r"^worker/requirements\.txt$"), "cm_deps_edit", "deps"),
-    (re.compile(r"^worker/.+\.py$"), "cm_worker_edit", "worker"),
     (re.compile(r"^CLAUDE\.md$"), "claudemd_edit", "claude_md"),
     (re.compile(r"^\.claude-plugin/marketplace\.json$"), "marketplace_edit", "plugin_manifest"),
     (re.compile(r"^README\.md$"), "readme_edit", "doc"),

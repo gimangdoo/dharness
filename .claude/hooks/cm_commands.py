@@ -3,14 +3,13 @@
 사용법 (repo root에서):
     py .claude/hooks/cm_commands.py status
     py .claude/hooks/cm_commands.py sessions [--limit N]
-    py .claude/hooks/cm_commands.py dashboard
     py .claude/hooks/cm_commands.py reset --confirm
     py .claude/hooks/cm_commands.py claudemd-list
     py .claude/hooks/cm_commands.py claudemd-apply <session_id>
     py .claude/hooks/cm_commands.py claudemd-discard [<session_id>]
 
-결정적 작업만 처리한다. Cluster/digest 생성은 워커 잡(worker/) 책임.
-DB·디렉토리 부트스트랩은 SessionStart 훅 또는 reset 시 자동 수행되므로 별도 init 명령 없음.
+결정적 작업만 처리한다. DB·디렉토리 부트스트랩은 SessionStart 훅 또는 reset 시
+자동 수행되므로 별도 init 명령 없음.
 """
 
 from __future__ import annotations
@@ -20,14 +19,13 @@ import re
 import shutil
 import sqlite3
 import sys
-import urllib.error
-import urllib.request
 from pathlib import Path
 
 from _schema import (
     CLAUDE_MD,
     DB_PATH,
     DDL,
+    DRAFT_REASON_PLACEHOLDER,
     DRAFTS_APPLIED,
     DRAFTS_DIR,
     DRAFTS_DISCARDED,
@@ -36,7 +34,6 @@ from _schema import (
     TOOL_OUTPUTS,
 )
 
-DASHBOARD_URL = "http://127.0.0.1:8765/"
 COUNT_TABLES = ("observations", "sessions", "clusters", "daily_summaries")
 
 DRAFT_ROW_RE = re.compile(r"^```\s*\n(\| .*?\|)\s*\n```", re.MULTILINE)
@@ -118,20 +115,6 @@ def cmd_sessions(limit: int) -> int:
         dur = f"{r['duration_min']}m" if r['duration_min'] else "—"
         print(f"  {r['date']} {r['session_id']} {dur:>5} {r['d']} tools={r['tools_used'] or '[]'}")
     return 0
-
-
-def cmd_dashboard() -> int:
-    try:
-        with urllib.request.urlopen(DASHBOARD_URL, timeout=1) as resp:
-            if resp.status == 200:
-                print(f"✅ Worker 실행 중: {DASHBOARD_URL}")
-                return 0
-    except (urllib.error.URLError, TimeoutError):
-        pass
-    print("Worker 미실행. 다음 명령으로 시작:")
-    print("    py worker/dashboard_server.py")
-    print("기본 포트 8765, 127.0.0.1만 바인딩 (외부 노출 없음).")
-    return 1
 
 
 def cmd_reset(confirmed: bool) -> int:
@@ -220,7 +203,21 @@ def cmd_claudemd_list() -> int:
     return 0
 
 
-def cmd_claudemd_apply(session_id: str) -> int:
+def _sanitize_reason(parts: list[str]) -> str:
+    """사용자 입력 사유를 markdown table 안전 형태로 정규화.
+
+    - 다중 인자 → 공백 join
+    - 줄바꿈 → 공백 (table row가 1줄을 넘지 않도록)
+    - `|` → `\\|` (table 컬럼 구분 깨짐 방지)
+    - strip 후 빈 문자열이면 "" 반환 (호출 측이 placeholder 유지로 분기)
+    """
+    raw = " ".join(parts).strip()
+    if not raw:
+        return ""
+    return raw.replace("\r", " ").replace("\n", " ").replace("|", "\\|")
+
+
+def cmd_claudemd_apply(session_id: str, reason_parts: list[str]) -> int:
     draft = _draft_for_session(session_id)
     if not draft:
         print(f"⚠️  draft 미발견: session_id={session_id}")
@@ -234,6 +231,16 @@ def cmd_claudemd_apply(session_id: str) -> int:
     if not CLAUDE_MD.exists():
         print(f"⚠️  CLAUDE.md 없음: {CLAUDE_MD.relative_to(REPO_ROOT)}")
         return 1
+
+    reason = _sanitize_reason(reason_parts)
+    reason_applied = False
+    if reason:
+        if DRAFT_REASON_PLACEHOLDER in row:
+            row = row.replace(DRAFT_REASON_PLACEHOLDER, reason)
+            reason_applied = True
+        else:
+            print(f"⚠️  draft row에 placeholder가 없어 사유 인자 무시 (사용자 직접 편집 필요)")
+
     cm_text = CLAUDE_MD.read_text(encoding="utf-8")
     lines = cm_text.splitlines()
     span = _find_change_history_table(lines)
@@ -258,7 +265,11 @@ def cmd_claudemd_apply(session_id: str) -> int:
     print(f"   row: {row[:120]}{'…' if len(row) > 120 else ''}")
     print(f"   draft 이동: {dest.relative_to(REPO_ROOT)}")
     print()
-    print("⚠️  사유 컬럼이 placeholder인 채로 추가됐습니다 — CLAUDE.md를 직접 편집해 사유를 채우세요.")
+    if reason_applied:
+        print(f"✅ 사유 컬럼이 인자로 치환됐습니다: {reason[:80]}{'…' if len(reason) > 80 else ''}")
+    else:
+        print("⚠️  사유 컬럼이 placeholder인 채로 추가됐습니다 — CLAUDE.md를 직접 편집해 사유를 채우거나,")
+        print("    다음 apply 때 '/cm-claudemd-apply <sid> <사유 텍스트>' 형식으로 인자를 넘기세요.")
     return 0
 
 
@@ -292,19 +303,19 @@ def main() -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
     p_sessions = sub.add_parser("sessions"); p_sessions.add_argument("--limit", type=int, default=30)
-    sub.add_parser("dashboard")
     p_reset = sub.add_parser("reset"); p_reset.add_argument("--confirm", action="store_true")
     sub.add_parser("claudemd-list")
-    p_apply = sub.add_parser("claudemd-apply"); p_apply.add_argument("session_id")
+    p_apply = sub.add_parser("claudemd-apply")
+    p_apply.add_argument("session_id")
+    p_apply.add_argument("reason", nargs="*", help="optional 사유 텍스트 (생략 시 placeholder 유지)")
     p_discard = sub.add_parser("claudemd-discard"); p_discard.add_argument("session_id", nargs="?", default=None)
 
     args = parser.parse_args()
     if args.cmd == "status":              return cmd_status()
     if args.cmd == "sessions":            return cmd_sessions(args.limit)
-    if args.cmd == "dashboard":           return cmd_dashboard()
     if args.cmd == "reset":               return cmd_reset(args.confirm)
     if args.cmd == "claudemd-list":       return cmd_claudemd_list()
-    if args.cmd == "claudemd-apply":      return cmd_claudemd_apply(args.session_id)
+    if args.cmd == "claudemd-apply":      return cmd_claudemd_apply(args.session_id, args.reason)
     if args.cmd == "claudemd-discard":    return cmd_claudemd_discard(args.session_id)
     return 2
 

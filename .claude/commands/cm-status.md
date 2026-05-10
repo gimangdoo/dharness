@@ -29,4 +29,4 @@ Context Manager 시스템의 현재 상태를 출력한다.
 ## 범위 외 / 후속 명령
 
 - 세션 상세 — `/cm-sessions`
-- 클러스터 상세 + 시각화 — `/cm-dashboard` (워커 띄운 후 브라우저)
+- 미적용 CLAUDE.md draft 처리 — `/cm-claudemd-apply <sid>` 또는 `/cm-claudemd-discard`
