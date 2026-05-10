@@ -3,7 +3,7 @@ description: "최근 세션 목록 출력 — session_id, 날짜, duration, dige
 argument-hint: "[--limit N] (기본 30)"
 ---
 
-# /cm-sessions
+# /cm-harness:cm-sessions
 
 `sessions` 테이블의 최근 N개를 날짜 역순으로 출력한다.
 
@@ -15,11 +15,11 @@ argument-hint: "[--limit N] (기본 30)"
 
 ## 선조건 검증
 
-DB 미존재 시 → "/cm-init 후 다시 호출하세요".
+DB 미존재 시 → "/cm-harness:cm-init 후 다시 호출하세요".
 
 ## 실행 절차
 
-`_workspace/_hooks/cm_commands.py sessions --limit N`이 다음 SQL 실행:
+`plugins/cm-harness/hooks/cm_commands.py sessions --limit N`이 다음 SQL 실행:
 
 ```sql
 SELECT session_id, date, duration_min,
@@ -33,4 +33,4 @@ LIMIT ?;
 ## 범위 외 / 후속 명령
 
 - 특정 세션 디지스트 전문 — 메모리 검색 ("세션 {id} 전체 보기")으로 cm-retriever 호출
-- 전체 통계 — `/cm-status`
+- 전체 통계 — `/cm-harness:cm-status`

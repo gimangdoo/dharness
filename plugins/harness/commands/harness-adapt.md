@@ -4,7 +4,7 @@ description: Phase 10 Runtime Adaptation 수동 트리거. telemetry ↔ baselin
 
 # Harness — Adapt
 
-`skills/harness/SKILL.md` Phase 10의 **Diagnostic + Adapt 레이어**를 수동으로 실행한다. 누적된 telemetry와 baseline을 비교하여 drift를 감지하고, 변경안을 제시한 뒤 사용자 승인을 받아 적용한다.
+`plugins/harness/skills/harness/SKILL.md` Phase 10의 **Diagnostic + Adapt 레이어**를 수동으로 실행한다. 누적된 telemetry와 baseline을 비교하여 drift를 감지하고, 변경안을 제시한 뒤 사용자 승인을 받아 적용한다.
 
 > **자동 적용은 없다.** 모든 변경은 명시적 사용자 승인이 필요하다.
 
@@ -21,12 +21,12 @@ description: Phase 10 Runtime Adaptation 수동 트리거. telemetry ↔ baselin
 
 | 미충족 항목 | 안내 메시지 |
 |-----------|----------|
-| (1) | "telemetry 데이터가 없습니다. 오케스트레이터에 capture 훅이 설치되어 있는지 확인하세요 — `skills/harness/references/runtime-adaptation.md` §4 (Capture 레이어) 참조. 신규 하네스라면 최소 몇 회 실행 후 다시 시도하세요." |
-| (2) | "baseline이 없습니다. `/harness-new` 또는 `/harness-baseline`을 먼저 실행하세요." |
+| (1) | "telemetry 데이터가 없습니다. 오케스트레이터에 capture 훅이 설치되어 있는지 확인하세요 — `plugins/harness/skills/harness/references/runtime-adaptation.md` §4 (Capture 레이어) 참조. 신규 하네스라면 최소 몇 회 실행 후 다시 시도하세요." |
+| (2) | "baseline이 없습니다. `/harness:harness-new` 또는 `/harness:harness-baseline`을 먼저 실행하세요." |
 
 ## 실행 절차
 
-`skills/harness/references/runtime-adaptation.md`를 참조하여 Phase 10 3 레이어 중 **Diagnostic + Adapt**를 실행한다 (Capture는 오케스트레이터가 매 실행마다 이미 수행 중).
+`plugins/harness/skills/harness/references/runtime-adaptation.md`를 참조하여 Phase 10 3 레이어 중 **Diagnostic + Adapt**를 실행한다 (Capture는 오케스트레이터가 매 실행마다 이미 수행 중).
 
 ### 1. Diagnostic — drift 감지
 

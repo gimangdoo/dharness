@@ -32,7 +32,7 @@ session_id = uuid.uuid4().hex[:6]   # 예: "a3f9b2"
 - 한 Claude Code 프로세스 라이프사이클 동안 동일 ID 유지
 - **ID 전달 메커니즘:** `_workspace/_memory/.current_session` 파일에 평문 기록. SessionStart hook이 쓰고, PostToolUse/SessionEnd hook이 읽는다. SessionEnd 종료 시 파일을 제거한다. (Claude Code hook은 별도 프로세스이므로 환경 변수로는 전달되지 않는다.)
 - **참조 방식:**
-  - **Python 스크립트** (`_workspace/_hooks/*.py`): `from _schema import read_session_id` 후 `read_session_id()` 호출.
+  - **Python 스크립트** (`plugins/cm-harness/hooks/*.py`): `from _schema import read_session_id` 후 `read_session_id()` 호출.
   - **cm-* 에이전트** (Markdown 정의이므로 모듈 import 불가): `Read` 도구로 `_workspace/_memory/.current_session` 파일을 직접 읽거나, `Bash`로 `python -c "from _schema import read_session_id; print(read_session_id())"` 호출. 통상 cm-orchestrator가 prompt 파라미터로 session_id를 직접 전달하므로 에이전트가 직접 읽을 일은 드물다.
 
 ## 디렉토리 부트스트랩 (SessionStart 시점)
@@ -115,7 +115,7 @@ WHERE session_id = ?;
 | 매 turn / tool 호출 | hook 스크립트 (PostToolUse) | raw.jsonl append |
 | SessionEnd | hook 스크립트 → cm-orchestrator | transcript.md 생성 + sessions UPDATE → cm-digester 호출 |
 
-본 스킬은 LLM 추론이 필요 없는 결정적 작업이므로 `_workspace/_hooks/` 하위 Python
+본 스킬은 LLM 추론이 필요 없는 결정적 작업이므로 `plugins/cm-harness/hooks/` 하위 Python
 스크립트로 구현되며, 에이전트는 별도로 두지 않는다.
 
 ## 에러 핸들링

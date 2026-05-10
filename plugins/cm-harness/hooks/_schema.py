@@ -1,6 +1,6 @@
 """CM hook 공용 인프라 — DDL 단일 정의 + session_id 파일 기반 전달.
 
-DDL은 `.claude/skills/session-digest/SKILL.md` §"CM 메모리 DB 스키마"의
+DDL은 `plugins/cm-harness/skills/session-digest/SKILL.md` §"CM 메모리 DB 스키마"의
 사양을 코드로 미러링한 것이다. 사양 변경 시 양쪽을 함께 수정한다.
 
 session_id는 SessionStart hook 시점에 파일에 기록되고, PostToolUse/SessionEnd

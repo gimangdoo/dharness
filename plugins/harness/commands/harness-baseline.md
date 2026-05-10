@@ -10,7 +10,7 @@ description: baseline 갱신 — Phase 1·2 재실행하여 project_profile·int
 
 Phase 0 매트릭스의 "baseline 갱신" 행 트리거:
 - 사용자가 "프로젝트 다시 분석", "baseline 갱신" 등 명시 요청
-- `/harness-adapt`이 stack/architecture의 큰 변화를 감지
+- `/harness:harness-adapt`이 stack/architecture의 큰 변화를 감지
 - 마지막 baseline 분석 후 일정 기간 경과 (권장 3개월)
 
 ## 컨텍스트
@@ -26,12 +26,12 @@ Phase 0 매트릭스의 "baseline 갱신" 행 트리거:
 
 | 항목 | 안내 |
 |---|---|
-| (1) | "기존 baseline이 없습니다. `/harness-new <도메인>`으로 처음부터 구축하세요." |
-| (2) | "에이전트가 없습니다 — baseline만 있고 하네스가 미완성. `/harness-new`로 전체 진행 권장." |
+| (1) | "기존 baseline이 없습니다. `/harness:harness-new <도메인>`으로 처음부터 구축하세요." |
+| (2) | "에이전트가 없습니다 — baseline만 있고 하네스가 미완성. `/harness:harness-new`로 전체 진행 권장." |
 
 ## 실행 절차
 
-`skills/harness/SKILL.md`의 Phase 1·2를 재실행 + 영향 분석 + 후속 Phase 권고.
+`plugins/harness/skills/harness/SKILL.md`의 Phase 1·2를 재실행 + 영향 분석 + 후속 Phase 권고.
 
 ### 1. 기존 baseline 백업
 - `_workspace/_baseline/` → `_workspace/_baseline_prev/` 이동
@@ -61,10 +61,10 @@ drift 리포트를 기반으로 사용자에게 권고:
 
 | 변화 유형 | 권고 명령 |
 |---|---|
-| 새 도메인/요구 추가 | `/harness-add-agent` |
-| 기존 에이전트 책임 변경 | `/harness-evolve` (사용자 피드백 형식으로 수동 진화) |
-| 사용 패턴까지 보려면 | `/harness-adapt` (telemetry 결합) |
-| 정합성만 확인 | `/harness-audit` |
+| 새 도메인/요구 추가 | `/harness:harness-add-agent` |
+| 기존 에이전트 책임 변경 | `/harness:harness-evolve` (사용자 피드백 형식으로 수동 진화) |
+| 사용 패턴까지 보려면 | `/harness:harness-adapt` (telemetry 결합) |
+| 정합성만 확인 | `/harness:harness-audit` |
 
 ### 6. CLAUDE.md 변경 이력 갱신
 ```

@@ -15,18 +15,18 @@ uvicorn >= 0.27
 
 설치 (Windows · 사용자가 사용 중인 Python으로):
 ```powershell
-& C:\Users\user01\AppData\Local\Programs\Python\Python312\python.exe -m pip install -r _workspace\_worker\requirements.txt
+& C:\Users\user01\AppData\Local\Programs\Python\Python312\python.exe -m pip install -r plugins\cm-harness\worker\requirements.txt
 ```
 
 또는:
 ```
-py -3 -m pip install -r _workspace/_worker/requirements.txt
+py -3 -m pip install -r plugins/cm-harness/worker/requirements.txt
 ```
 
 ## 실행
 
 ```
-py -3 _workspace/_worker/dashboard_server.py
+py -3 plugins/cm-harness/worker/dashboard_server.py
 ```
 
 기본 바인딩 `127.0.0.1:8765` — 외부 노출 없음. 종료는 Ctrl+C.
@@ -50,7 +50,7 @@ py -3 _workspace/_worker/dashboard_server.py
 | 경로 | 응답 | 데이터 소스 |
 |------|------|-----------|
 | `GET /` | landing (정적 UI 있으면 redirect, 없으면 API 인덱스) | — |
-| `GET /ui/*` | 정적 프론트엔드 (`_workspace/_worker/static/`에 mount; 디렉토리 없으면 라우트 비활성) | filesystem |
+| `GET /ui/*` | 정적 프론트엔드 (`plugins/cm-harness/worker/static/`에 mount; 디렉토리 없으면 라우트 비활성) | filesystem |
 | `GET /api/projects` | 레지스트리 + 프로젝트별 rollup 통계 | 모든 프로젝트 DB |
 | `GET /api/projects/{name}/sessions` | View 1 (최근 30개) | `sessions` + `observations` |
 | `GET /api/projects/{name}/clusters` | View 2 (confidence desc) | `clusters` |
@@ -82,7 +82,7 @@ Backward-compat (default project = 레지스트리 첫 항목):
 | 증상 | 원인 / 해결 |
 |------|-----------|
 | `ModuleNotFoundError: No module named 'fastapi'` | 의존성 미설치 — 위 "설치" 절 참조 |
-| `503 observations.db missing for project=<name>` | 그 프로젝트에서 `/cm-init` 미실행 또는 `projects.json` 경로 오타 |
+| `503 observations.db missing for project=<name>` | 그 프로젝트에서 `/cm-harness:cm-init` 미실행 또는 `projects.json` 경로 오타 |
 | `404 project not found: <name>` | `projects.json`에 해당 name이 없음 |
 | 압축 통계가 비어있음 | `<project>/_workspace/_telemetry/*.jsonl`에 `tool_output_captured` 이벤트 미발생 — cm-compressor 트리거 확인 |
 | Roadmap 빈 배열 | CLAUDE.md에 markdown 표가 없거나 헤더-구분선이 깨짐 (silent fail — 의도된 동작) |

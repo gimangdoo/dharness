@@ -2,7 +2,7 @@
 description: "Context Manager 상태 출력 — _memory/ 디렉토리 통계, observations.db 행 수, 최근 세션 수, 클러스터 수"
 ---
 
-# /cm-status
+# /cm-harness:cm-status
 
 Context Manager 시스템의 현재 상태를 출력한다.
 
@@ -14,11 +14,11 @@ Context Manager 시스템의 현재 상태를 출력한다.
 
 ## 선조건 검증
 
-`_workspace/_memory/` 미존재 시 → "/cm-init으로 초기화 후 다시 호출하세요" 안내.
+`_workspace/_memory/` 미존재 시 → "/cm-harness:cm-init으로 초기화 후 다시 호출하세요" 안내.
 
 ## 실행 절차
 
-`_workspace/_hooks/cm_commands.py status`를 호출하여 다음을 집계:
+`plugins/cm-harness/hooks/cm_commands.py status`를 호출하여 다음을 집계:
 
 1. `observations.db` 4개 테이블의 row 수
 2. 최근 7일 세션 수 + digest 보유 비율
@@ -28,6 +28,6 @@ Context Manager 시스템의 현재 상태를 출력한다.
 
 ## 범위 외 / 후속 명령
 
-- 세션 상세 — `/cm-sessions`
-- 클러스터 상세 — `/cm-clusters`
-- 시각화 — `/cm-dashboard`
+- 세션 상세 — `/cm-harness:cm-sessions`
+- 클러스터 상세 — `/cm-harness:cm-clusters`
+- 시각화 — `/cm-harness:cm-dashboard`

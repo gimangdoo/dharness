@@ -5,11 +5,11 @@
 독립적으로 조회한다 — cross-project SQL JOIN 없음. dharness 본체는 read-only.
 
 LLM 호출 없는 결정적 데이터 집계. dashboard-render 스킬의 SQL을 그대로 실행한다.
-정적 프론트엔드는 `_workspace/_worker/static/`에 mount되며 `/ui/`로 서빙된다
+정적 프론트엔드는 `plugins/cm-harness/worker/static/`에 mount되며 `/ui/`로 서빙된다
 (없으면 mount 생략). 외부 origin(예: Vite dev server)에서 API를 호출할 수 있도록
 localhost CORS를 허용한다.
 
-실행: python _workspace/_worker/dashboard_server.py
+실행: python plugins/cm-harness/worker/dashboard_server.py
 바인딩: 127.0.0.1:8765 (외부 노출 없음)
 """
 

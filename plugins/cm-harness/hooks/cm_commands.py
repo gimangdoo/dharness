@@ -1,15 +1,15 @@
-"""/cm-* 슬래시 커맨드 결정적 핸들러.
+"""/cm-harness:cm-* 슬래시 커맨드 결정적 핸들러.
 
-사용법:
-    python _workspace/_hooks/cm_commands.py status
-    python _workspace/_hooks/cm_commands.py sessions [--limit N]
-    python _workspace/_hooks/cm_commands.py clusters [--min-confidence X.XX]
-    python _workspace/_hooks/cm_commands.py dashboard
-    python _workspace/_hooks/cm_commands.py init
-    python _workspace/_hooks/cm_commands.py reset --confirm
+사용법 (dharness self-use, repo root에서):
+    python plugins/cm-harness/hooks/cm_commands.py status
+    python plugins/cm-harness/hooks/cm_commands.py sessions [--limit N]
+    python plugins/cm-harness/hooks/cm_commands.py clusters [--min-confidence X.XX]
+    python plugins/cm-harness/hooks/cm_commands.py dashboard
+    python plugins/cm-harness/hooks/cm_commands.py init
+    python plugins/cm-harness/hooks/cm_commands.py reset --confirm
 
-/cm-curate는 LLM 작업이므로 commands/cm-curate.md가 cm-curator 에이전트를 직접 호출한다.
-이 스크립트는 결정적 작업만 처리한다.
+/cm-harness:cm-curate는 LLM 작업이므로 plugins/cm-harness/commands/cm-curate.md가
+cm-curator 에이전트를 직접 호출한다. 이 스크립트는 결정적 작업만 처리한다.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ def _connect() -> sqlite3.Connection:
 def _ensure_db() -> bool:
     if DB_PATH.exists():
         return True
-    print("observations.db 미존재 — /cm-init 먼저 실행하세요.")
+    print("observations.db 미존재 — /cm-harness:cm-init 먼저 실행하세요.")
     return False
 
 
@@ -106,7 +106,7 @@ def cmd_dashboard() -> int:
     except (urllib.error.URLError, TimeoutError):
         pass
     print("Worker 미실행. 다음 명령으로 시작:")
-    print("    python _workspace/_worker/dashboard_server.py")
+    print("    python plugins/cm-harness/worker/dashboard_server.py")
     print("기본 포트 8765, 127.0.0.1만 바인딩 (외부 노출 없음).")
     return 1
 
@@ -137,7 +137,7 @@ def cmd_init() -> int:
 
 def cmd_reset(confirmed: bool) -> int:
     if not confirmed:
-        print("⚠️  --confirm 플래그 없이는 실행 불가. /cm-reset 슬래시 커맨드 본문의 확인 절차를 따르세요.")
+        print("⚠️  --confirm 플래그 없이는 실행 불가. /cm-harness:cm-reset 슬래시 커맨드 본문의 확인 절차를 따르세요.")
         return 1
     if MEMORY_ROOT.exists():
         shutil.rmtree(MEMORY_ROOT)

@@ -2,7 +2,7 @@
 name: dashboard-render
 description: |
   Context Manager 대시보드의 4개 뷰를 렌더링하는 스킬. background worker 프로세스가
-  직접 호출한다 (에이전트 없음 — LLM 호출 불필요). /cm-dashboard 커맨드로 진입하거나
+  직접 호출한다 (에이전트 없음 — LLM 호출 불필요). /cm-harness:cm-dashboard 커맨드로 진입하거나
   "cm 대시보드", "메모리 현황", "세션 통계" 요청 시 참조하라.
 ---
 
@@ -192,11 +192,11 @@ skills(7) agents(5) commands(11) hooks(4) mcp(0)
 
 ## FastAPI 서버 설정
 
-실행 가능한 골격 코드는 `_workspace/_worker/dashboard_server.py`에 있고
-실행 가이드는 `_workspace/_worker/README.md`에 있다.
+실행 가능한 골격 코드는 `plugins/cm-harness/worker/dashboard_server.py`에 있고
+실행 가이드는 `plugins/cm-harness/worker/README.md`에 있다.
 
-실행: `python _workspace/_worker/dashboard_server.py` (기본 포트 8765, 127.0.0.1 바인딩).
-정적 프론트엔드는 `_workspace/_worker/static/`에 mount되며 `/ui/`로 서빙된다 (없으면 fallback HTML).
+실행: `python plugins/cm-harness/worker/dashboard_server.py` (기본 포트 8765, 127.0.0.1 바인딩).
+정적 프론트엔드는 `plugins/cm-harness/worker/static/`에 mount되며 `/ui/`로 서빙된다 (없으면 fallback HTML).
 localhost 출처(예: Vite dev server)에서 API를 호출할 수 있도록 CORS 허용.
 
 엔드포인트 (project별 — 옵션 A 분산 DB):
@@ -219,11 +219,11 @@ Backward-compat (default project = 레지스트리 첫 항목):
 - 캐시 무효화: observations.db 수정 시간 변경 감지 시
 - 캐시 위치: 메모리 내 (프로세스 재시작 시 초기화)
 
-## /cm-dashboard 커맨드 응답
+## /cm-harness:cm-dashboard 커맨드 응답
 
 ```
 CM 대시보드: http://localhost:8765
 (worker 프로세스가 실행 중이어야 합니다)
 
-worker 시작: python _workspace/_worker/dashboard_server.py
+worker 시작: python plugins/cm-harness/worker/dashboard_server.py
 ```

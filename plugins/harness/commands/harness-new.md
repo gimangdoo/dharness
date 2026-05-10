@@ -18,12 +18,12 @@ argument-hint: <도메인 한 문장 설명>
 
 **미충족(이미 하네스 있음) 시:** 사용자에게 보고하고 다음 중 선택받는다:
 - 기존 위에 새로 덮어쓰기 → 진행 (단, 기존 산출물을 `_workspace_prev/`로 백업)
-- 에이전트 추가만 원함 → `/harness-add-agent` 안내 후 중단
-- baseline 갱신만 원함 → `/harness-baseline` 안내 후 중단
+- 에이전트 추가만 원함 → `/harness:harness-add-agent` 안내 후 중단
+- baseline 갱신만 원함 → `/harness:harness-baseline` 안내 후 중단
 
 ## 실행 절차
 
-`skills/harness/SKILL.md`의 워크플로우 **Phase 0-8 전체 + Phase 10 인프라**를 따른다 (Phase 9는 사후 진화 트리거이므로 초기 구축에서는 실행하지 않고, Phase 10은 capture 디렉토리·CLAUDE.md 자동 알림 블록·트리거 키워드 포함만 사전 배치).
+`plugins/harness/skills/harness/SKILL.md`의 워크플로우 **Phase 0-8 전체 + Phase 10 인프라**를 따른다 (Phase 9는 사후 진화 트리거이므로 초기 구축에서는 실행하지 않고, Phase 10은 capture 디렉토리·CLAUDE.md 자동 알림 블록·트리거 키워드 포함만 사전 배치).
 
 1. **Phase 0 (Pre-flight)**: 위 선조건이 통과했다면 신규 구축으로 분기.
 2. **Phase 1 (Code Research)**: greenfield/brownfield 자동 감지 + Quick/Deep 모드 선택. 결과 `_workspace/_baseline/project_profile.md`는 Phase 10의 t=0 anchor.
@@ -34,7 +34,7 @@ argument-hint: <도메인 한 문장 설명>
 
 ## 완료 후 체크
 
-`skills/harness/SKILL.md` §산출물 체크리스트의 24개 항목을 확인한다. 특히 다음 3개는 Phase 10 작동의 전제조건이므로 반드시 확인:
+`plugins/harness/skills/harness/SKILL.md` §산출물 체크리스트의 24개 항목을 확인한다. 특히 다음 3개는 Phase 10 작동의 전제조건이므로 반드시 확인:
 
 - [ ] `_workspace/_telemetry/` 디렉토리 사전 생성됨
 - [ ] 오케스트레이터에 telemetry capture 훅 삽입됨 (매 실행 시 `_telemetry/{date}.jsonl` append)
@@ -42,5 +42,5 @@ argument-hint: <도메인 한 문장 설명>
 
 ## 후속 명령어
 
-- 에이전트 추가: `/harness-add-agent <역할>`
-- drift 점검 (Phase 10 수동 트리거): `/harness-adapt`
+- 에이전트 추가: `/harness:harness-add-agent <역할>`
+- drift 점검 (Phase 10 수동 트리거): `/harness:harness-adapt`

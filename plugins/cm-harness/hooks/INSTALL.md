@@ -13,7 +13,7 @@ CM 시스템이 라이프사이클 이벤트를 자동으로 캡처하려면 사
 
 ## 등록할 JSON
 
-훅 등록 전 `_workspace/_hooks/*.py` 스크립트 내용을 직접 검토하라. 본 디렉토리의
+훅 등록 전 `plugins/cm-harness/hooks/*.py` 스크립트 내용을 직접 검토하라. 본 디렉토리의
 스크립트는 다음 작업만 수행한다 (외부 송신 없음):
 
 - `session_start.py` — session_id 발급, 디렉토리·DB 부트스트랩, telemetry 1줄 append
@@ -26,7 +26,7 @@ CM 시스템이 라이프사이클 이벤트를 자동으로 캡처하려면 사
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/session_start.py\"" }
+          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/plugins/cm-harness/hooks/session_start.py\"" }
         ]
       }
     ],
@@ -34,14 +34,14 @@ CM 시스템이 라이프사이클 이벤트를 자동으로 캡처하려면 사
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/post_tool_use.py\"" }
+          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/plugins/cm-harness/hooks/post_tool_use.py\"" }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/_workspace/_hooks/session_end.py\"" }
+          { "type": "command", "command": "python \"${CLAUDE_PROJECT_DIR}/plugins/cm-harness/hooks/session_end.py\"" }
         ]
       }
     ]
@@ -61,11 +61,11 @@ CM 시스템이 라이프사이클 이벤트를 자동으로 캡처하려면 사
 설치 후 새 Claude Code 세션을 열고:
 
 ```
-python _workspace/_hooks/cm_commands.py status
+python plugins/cm-harness/hooks/cm_commands.py status
 ```
 
 - `sessions` 카운트가 1 이상 → SessionStart 훅 정상 동작
-- 도구 사용 후 세션 종료 → 다음 세션에서 `python _workspace/_hooks/cm_commands.py sessions` 실행 시 직전 세션의 `tools_used` 컬럼이 채워짐 → PostToolUse + SessionEnd 훅 정상 동작 (`tools_used`는 SessionEnd 평탄화 단계에서 기록되므로 같은 세션 내에서는 비어있다)
+- 도구 사용 후 세션 종료 → 다음 세션에서 `python plugins/cm-harness/hooks/cm_commands.py sessions` 실행 시 직전 세션의 `tools_used` 컬럼이 채워짐 → PostToolUse + SessionEnd 훅 정상 동작 (`tools_used`는 SessionEnd 평탄화 단계에서 기록되므로 같은 세션 내에서는 비어있다)
 
 ## 비활성화
 
@@ -75,7 +75,7 @@ python _workspace/_hooks/cm_commands.py status
 ## 의존성
 
 훅 스크립트는 표준 라이브러리만 사용하므로 추가 설치 불필요. Python 3.11+ 가정.
-대시보드 워커는 별도 — `_workspace/_worker/README.md` 참조.
+대시보드 워커는 별도 — `plugins/cm-harness/worker/README.md` 참조.
 
 ## Python 런처 선택 — 플랫폼별 주의
 

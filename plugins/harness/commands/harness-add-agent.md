@@ -23,13 +23,13 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
 
 | 미충족 항목 | 안내 메시지 |
 |-----------|----------|
-| (1) | "기존 하네스가 없습니다. `/harness-new <도메인>`을 먼저 실행하세요." |
-| (2)·(3) | "baseline이 없거나 불완전합니다. `/harness-baseline`을 먼저 실행하세요." |
+| (1) | "기존 하네스가 없습니다. `/harness:harness-new <도메인>`을 먼저 실행하세요." |
+| (2)·(3) | "baseline이 없거나 불완전합니다. `/harness:harness-baseline`을 먼저 실행하세요." |
 | (4) | "오케스트레이터 식별 실패 — CLAUDE.md 포인터 또는 `.claude/skills/`를 수동 확인하세요." |
 
 ## 실행 절차
 
-`skills/harness/SKILL.md`의 워크플로우를 따르되 **Phase 1·2·3는 SKIP** — 기존 `_workspace/_baseline/*.md`를 그대로 입력으로 사용한다.
+`plugins/harness/skills/harness/SKILL.md`의 워크플로우를 따르되 **Phase 1·2·3는 SKIP** — 기존 `_workspace/_baseline/*.md`를 그대로 입력으로 사용한다.
 
 1. **Phase 4-1·4-3 (팀 배치 검토만)**: 새 에이전트가 기존 패턴/팀 구조에 어떻게 들어맞는지만 결정. **기존 다른 에이전트 정의는 건드리지 않음.** 분리 기준 4축(전문성·병렬성·컨텍스트·재사용성)으로 새 에이전트의 독립성 확인.
 2. **Phase 5 (에이전트 정의 생성)**: `.claude/agents/{새이름}.md` 작성.
@@ -50,6 +50,6 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
 
 ## 범위 외
 
-- **스킬은 새로 만들지 않는다** — 새 에이전트가 전용 스킬을 필요로 하면 별도로 `/harness-add-skill`(차후 추가) 호출, 또는 사용자에게 안내
-- **baseline 갱신하지 않는다** — 코드/의도가 크게 바뀌었다고 판단되면 `/harness-baseline`로 안내
-- **Phase 10 trigger 안 함** — drift 점검은 `/harness-adapt`
+- **스킬은 새로 만들지 않는다** — 새 에이전트가 전용 스킬을 필요로 하면 별도로 `/harness:harness-add-skill`(차후 추가) 호출, 또는 사용자에게 안내
+- **baseline 갱신하지 않는다** — 코드/의도가 크게 바뀌었다고 판단되면 `/harness:harness-baseline`로 안내
+- **Phase 10 trigger 안 함** — drift 점검은 `/harness:harness-adapt`

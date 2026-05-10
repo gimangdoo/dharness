@@ -102,7 +102,7 @@ if days_unused >= 30:
    d. CLAUDE.md 변경 이력 행 추가
    e. telemetry: memory_promoted 이벤트 append
    실패 시: manifest.json 역순 복구 (생성 파일 삭제 + .bak 복원).
-   상세 chain 매핑은 `_workspace/references/cm-diagnostic-rules.md` §4 "Skill memory 승격" 행 참조.
+   상세 chain 매핑은 `plugins/cm-harness/references/cm-diagnostic-rules.md` §4 "Skill memory 승격" 행 참조.
 
 3. 사용자 거부 시:
    - cluster confidence 재조정 (-0.10)
@@ -151,7 +151,7 @@ confidence < 0.05 또는 사용자 요청 시:
 
 ## Daily Summary 생성
 
-cm-curator는 SessionEnd 처리 직후 (또는 `/cm-curate` 호출 시), 그날의 모든 세션을
+cm-curator는 SessionEnd 처리 직후 (또는 `/cm-harness:cm-curate` 호출 시), 그날의 모든 세션을
 하나의 요약으로 집계하여 `daily_summaries` 테이블에 upsert한다. cm-injector가
 SessionStart 시점에 이를 읽어 컨텍스트 한 단락으로 주입하는 입력이 된다 (claude-remember
 계층 요약 패턴).
@@ -194,7 +194,7 @@ cm-curator는 SessionEnd 외에도 **주기적으로 단독 실행**되어 decay
 | 트리거 | 빈도 | 진입 경로 |
 |--------|-----|----------|
 | SessionEnd 순차 모드 | 매 세션 종료 | cm-orchestrator → cm-digester(Task 반환값) → cm-curator(반환값을 prompt payload로 포워딩) |
-| `/cm-curate` 명시 호출 | 사용자 호출 | cm-orchestrator → cm-curator 단독 |
+| `/cm-harness:cm-curate` 명시 호출 | 사용자 호출 | cm-orchestrator → cm-curator 단독 |
 | 누적 N=10 SessionEnd | 자동 | cm-orchestrator가 카운터 임계 도달 시 cm-curator 단독 호출 |
 
 자동 N=10 임계는 `_workspace/_telemetry/`에서 `session_digest_created` 이벤트를
