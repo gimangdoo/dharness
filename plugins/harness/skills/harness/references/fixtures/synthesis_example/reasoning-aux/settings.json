@@ -1,0 +1,17 @@
+{
+  "$comment_1": "Phase 5-2 합성 산출물 — reasoning-aux profile의 derived 프로젝트 .claude/settings.json. 기존 키가 있으면 deep merge.",
+  "$comment_2": "sequential-thinking 1 도구 (2차 PoC enum ✓) + time 2 도구 (14차 PoC enum ✓). 모두 read-only — destructive 0. permissions.deny는 의도적으로 비움 (advertise 도구에 destructive 없음).",
+  "$comment_3": "본 예시는 inline mcpServers: 패턴이라 enabledMcpjsonServers 미사용 (§5-1 권장). 13차 cycle empirical로 project-scope settings.json의 enabledMcpjsonServers는 deferred pool 적재에 영향 0.",
+  "$comment_4": "10차 cycle 새 발견: tools: allowlist는 inline 서버 도구를 줄이지 못함 — 본 profile은 advertise 도구 전체가 read-only라 그 함의가 적용되지 않음 (어차피 모두 allow). 다른 profile과의 대비 박제용 = 'destructive 차단 패턴이 불필요한 단순 케이스'.",
+  "$comment_5": "future drift 가드: time MCP가 향후 set_local_timezone 같은 write 도구를 advertise하기 시작하면 그 시점에 permissions.deny 추가. 지금 placeholder deny rule을 두면 'destructive 있는데 차단 중'으로 잘못 시그널.",
+
+  "permissions": {
+    "allow": [
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__time__get_current_time",
+      "mcp__time__convert_time"
+    ],
+    "ask": [],
+    "deny": []
+  }
+}

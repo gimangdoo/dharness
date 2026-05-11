@@ -25,12 +25,15 @@ function Show-Gate($label) {
     Write-Output ("[gate $label] $out")
 }
 
-function Set-Gate($enabled, $trust) {
+function Set-Gate($enabled, $trust, $disabled) {
+    # disabled: $true → disabledMcpjsonServers=["sqlite"] (명시 차단) / $false → []
+    if ($null -eq $disabled) { $disabled = $false }
     $env:DH_JSON = $json
     $env:DH_PROJ = $proj
-    $env:DH_EN = if ($enabled) { '1' } else { '0' }
-    $env:DH_TR = if ($trust)   { '1' } else { '0' }
-    node -e "const fs=require('fs'),p=process.env.DH_JSON,k=process.env.DH_PROJ,d=JSON.parse(fs.readFileSync(p,'utf8'));d.projects[k].enabledMcpjsonServers=process.env.DH_EN==='1'?['sqlite']:[];d.projects[k].hasTrustDialogAccepted=process.env.DH_TR==='1';fs.writeFileSync(p,JSON.stringify(d,null,2));" | Out-Null
+    $env:DH_EN  = if ($enabled)  { '1' } else { '0' }
+    $env:DH_TR  = if ($trust)    { '1' } else { '0' }
+    $env:DH_DIS = if ($disabled) { '1' } else { '0' }
+    node -e "const fs=require('fs'),p=process.env.DH_JSON,k=process.env.DH_PROJ,d=JSON.parse(fs.readFileSync(p,'utf8'));d.projects[k].enabledMcpjsonServers=process.env.DH_EN==='1'?['sqlite']:[];d.projects[k].hasTrustDialogAccepted=process.env.DH_TR==='1';d.projects[k].disabledMcpjsonServers=process.env.DH_DIS==='1'?['sqlite']:[];fs.writeFileSync(p,JSON.stringify(d,null,2));" | Out-Null
 }
 
 function Measure-One($label) {
@@ -45,23 +48,27 @@ function Measure-One($label) {
     Write-Output ""
 }
 
-Write-Output "===== verify_11_3_p3b v2 — P3-(b) user-scope gate isolation ====="
+Write-Output "===== verify_11_3_p3b v3 — P3-(b) 4-key gate full matrix ====="
 Write-Output ""
 
 # B5 — gate 4 ON (baseline, 13차 B1 재현)
-Set-Gate -enabled $true -trust $true
+Set-Gate -enabled $true -trust $true -disabled $false
 Measure-One "B5 (gate ALL ON - baseline)"
 
 # B6 — enabledMcpjsonServers=[] 단독 OFF
-Set-Gate -enabled $false -trust $true
+Set-Gate -enabled $false -trust $true -disabled $false
 Measure-One "B6 (enabledMcpjsonServers=[] ONLY)"
 
 # B7 — hasTrustDialogAccepted=false 단독 OFF (enabled 복원)
-Set-Gate -enabled $true -trust $false
+Set-Gate -enabled $true -trust $false -disabled $false
 Measure-One "B7 (hasTrustDialogAccepted=false ONLY)"
 
-# Final restore — gate 4 ON
-Set-Gate -enabled $true -trust $true
+# B8 (v3 신규) — disabledMcpjsonServers=["sqlite"] 명시 차단 단독 ON (trust 복원, 다른 키 ALL ON)
+Set-Gate -enabled $true -trust $true -disabled $true
+Measure-One "B8 (disabledMcpjsonServers=['sqlite'] ONLY — 명시 차단)"
+
+# Final restore — gate 4 ON (disabled=[] 포함)
+Set-Gate -enabled $true -trust $true -disabled $false
 Show-Gate "FINAL (restored)"
 
 Write-Output ""

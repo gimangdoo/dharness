@@ -1,0 +1,41 @@
+{
+  "$comment_1": "Phase 5-2 합성 산출물 — code-test profile의 derived 프로젝트 .claude/settings.json. 기존 키가 있으면 deep merge.",
+  "$comment_2": "filesystem 14 도구 (14차 PoC enum ✓) + git 12 도구 (3차 cycle PoC enum ✓). filesystem read 10종 allow / write 4종 ask. git read 7종 allow / write 4종 ask / git_reset 1종 deny (destructive).",
+  "$comment_3": "본 예시는 inline mcpServers: 패턴이라 enabledMcpjsonServers 미사용 (§5-1 권장). 13차 cycle empirical로 project-scope settings.json의 enabledMcpjsonServers는 deferred pool 적재에 영향 0 — 본 시나리오에서도 의도적으로 미설정.",
+  "$comment_4": "10차 cycle 새 발견: tools: allowlist는 inline 서버 도구를 줄이지 못함 — destructive 차단은 permissions.deny가 유일 강제 채널. git_reset은 ask가 아닌 deny (실수 confirm 통과 시 working tree 손실 surface).",
+
+  "permissions": {
+    "allow": [
+      "mcp__filesystem__read_file",
+      "mcp__filesystem__read_text_file",
+      "mcp__filesystem__read_multiple_files",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__list_directory_with_sizes",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__search_files",
+      "mcp__filesystem__get_file_info",
+      "mcp__filesystem__list_allowed_directories",
+      "mcp__filesystem__read_media_file",
+      "mcp__git__git_status",
+      "mcp__git__git_diff",
+      "mcp__git__git_diff_staged",
+      "mcp__git__git_diff_unstaged",
+      "mcp__git__git_log",
+      "mcp__git__git_show",
+      "mcp__git__git_branch"
+    ],
+    "ask": [
+      "mcp__filesystem__write_file",
+      "mcp__filesystem__edit_file",
+      "mcp__filesystem__create_directory",
+      "mcp__filesystem__move_file",
+      "mcp__git__git_add",
+      "mcp__git__git_commit",
+      "mcp__git__git_create_branch",
+      "mcp__git__git_checkout"
+    ],
+    "deny": [
+      "mcp__git__git_reset"
+    ]
+  }
+}
