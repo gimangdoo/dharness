@@ -49,24 +49,27 @@
 | 2026-05-11 | P2 memory MCP probe-only (§10 Step 2) | `node fixtures/probe_memory.js` (`@modelcontextprotocol/server-memory` Knowledge Graph, npm 경유 spawn) | **COUNT=9 ✓** — **read 3종**: `read_graph`/`search_nodes`/`open_nodes` + **create/add write 3종**: `create_entities`/`create_relations`/`add_observations` + **delete write 3종**: `delete_entities`/`delete_observations`/`delete_relations`. default 권고: read 3 `allow` / create+add 3 `ask` / delete 3 `deny` (destructive). dharness CM은 자체 sqlite 사용 — memory MCP는 외부 derived 프로젝트의 persistent knowledge graph 용도. | `probe_memory.js` fixture 신설 + `permission-profiles.md` §3 memory 행 enumeration·install 명령·CRUD 분류 박제 (PoC 미완 → ✓ 9종). 본 README 결과 로그 1행 추가. **다음 액션**: T0 batch 3종 closure — P2 1차 종합 보고. |
 | 2026-05-11 | **P2 1차 종합 보고 (14차 사이클 — T0 batch closure)** | dharness 본 세션 — 누적 검증 자료 합성 (외부 실행 0회, 코드 실행 0회 — pure 박제) | **T0 MCP 7종 / 48 도구 / 4 capability profile 매트릭스 박제 완료.** §3-1 신설: code-test(git+filesystem 26) / web-research(fetch+memory 13) / external-integration(sqlite 6 + T1+ github 별건) / reasoning-aux(sequential-thinking+time 3). 각 행에 *Layer 결합 권고 + default permissions bucket + mid-session 미전파 운영 함의* 동시 박제. 멀티 inline `mcpServers:` 패턴(여러 MCP 동시 등재) 예시 YAML도 §3-1에 박제. 미완 잔존(P3/P4)은 T1·T1+·T2~ MCP 7종 — 매트릭스 *외부* 영역으로 명시 분리. | (1) `permission-profiles.md` §3-1 매트릭스 신설(§3 뒤·§4 앞) + §8-2 closure 항목 추가 + §1 [^B] 셀 inline-멀티 패턴 cross-link / (2) `synthesis_example/` 서브디렉토리화 — 기존 `data-analyst/` 4 파일 + 신규 `web-research/` 4 파일(`web-research.agent.md` inline fetch+memory 멀티 + `settings.json` 7 allow / 3 ask / 3 deny + `CLAUDE_md_row.md` 멀티 inline 표기 + `README.md`) + top-level `README.md` 인덱스 재작성 / (3) `SKILL.md` Phase 5-2 단락에 14차 §3-1 매트릭스 한 줄 + web-research 2번째 synthesis_example 한 줄 / (4) 본 README 결과 로그 1행 추가. **다음 액션 (선택적, P3 수준)**: T1 MCP enumeration (playwright/chrome-devtools — CLI flag 형태 toolset 검증) / 인터랙티브 `claude` 측정으로 13차 `-p` auto-trust 분리 / `~/.claude.json` user-scope 토글 측정. |
 | 2026-05-11 | **14차 self-verify — `harness-mcp-status` self-test (15차 사이클 — empirical 작동 확인)** | dharness 본 세션 Bash → `dharness-probe-test` (fixture 환경, read-only 진단) | **🎯 14차 cycle 산출물 4종 모두 의도대로 작동 empirical 확정.** 섹션 2 `inline advertise 도구 (실노출)` 컬럼 = mcp-isolation-probe의 `tools:` 1종 vs advertise 4종 mismatch 정확 감지 (10차 P0 발견 검증). 섹션 3 §3-1 정합 점검 = web-research profile 추정 + `memory` 누락 ⓘ로 보고(fixture 의도 = OK). 섹션 4 `permissions` 키 부재 시 fallthrough `ask` 룰 작동 + 부수 효과 도구 0종 → deny ⚠️ 발화 안 함 = 정상. 섹션 6 토큰 추정 = parent 적재 sqlite 6도구(300 tokens 고) — 임계 600 미달이라 ⚠️ 발화 안 함 = 정상. **본 fixture 환경 ⚠️ 0건이 *정상*임을 확인** — production derived 환경에서 의미 있는 ⚠️ 발화. | `permission-profiles.md` §8-2 14차 closure paragraph 끝에 self-verify ✓ 1줄 + `SKILL.md` Phase 5-2 진척 라인에 self-verify ✓ 추가 + 본 README 결과 로그 1행 추가. **다음 액션 (선택적, P3 수준)**: T1 MCP enum / 인터랙티브 `claude` / user-scope 토글 — 14차 cycle 외부 의제 그대로 이월. |
+| 2026-05-11 | **P3-(b) user-scope gate 격리 측정 closure (15차 사이클)** | 사용자 외부 PowerShell에서 `verify_11_3_p3b.ps1` v2 실행 — gate 4 키 단독 토글 3회 측정 (B5/B6/B7) + FINAL restore | 🚨🚨🚨 **3차 결정적 empirical — `claude -p` 모드에서 `~/.claude.json` user-scope gate 키 *전부 falsified*.** B5(gate 4 ALL ON) / B6(user-scope `enabledMcpjsonServers=[]` 단독 OFF) / B7(`hasTrustDialogAccepted=false` 단독 OFF) 3 조건 모두 M2=6 (변화 0). 13차 closure가 *후보*로 지목한 user-scope `enabledMcpjsonServers`와 `hasTrustDialogAccepted` 모두 deferred pool 적재를 제어하지 못함. 강력 가설로 격상: **`claude -p` 모드는 모든 `~/.claude.json` 측 gate 키를 우회 — `.mcp.json` 존재만으로 적재**. 인터랙티브 `claude` 비교 측정만이 마지막 분기 (gate 효과는 인터랙티브 trust dialog 통해서만 발현 가설). **부산물 empirical:** dharness 본 세션 auto-mode classifier가 `~/.claude.json` user-scope 쓰기 *첫* 호출은 통과시키지만 *후속* 쓰기는 일관 차단 — §10-7 4번 룰 강 empirical 확정 (외부 PowerShell 매뉴얼 측정으로 회피). | (1) `verify_11_3.md` 측정 로그에 B5/B6/B7/FINAL 4행 추가 / (2) `verify_11_3_p3b.ps1` v2 fixture 신설 (v1은 PowerShell→Node `"` escape 버그로 1차 측정 시 Set-Gate 3회 fail, 부수 효과로 동일 gate 상태 3회 측정되어 *user-scope `enabledMcpjsonServers=[]`* 단독 조건 1회 empirical 회수 — v2로 trust=false 분리 측정 추가) / (3) `permission-profiles.md` §8-2 P3-(b) closure 항목 + §1 [^A] 셀 표기 갱신 (project + user-scope *양쪽* falsified) + §10-7 4번 룰 empirical 강 박제 / (4) 본 README 결과 로그 1행 추가. **다음 액션 (선택적, P3 수준)**: (a) **인터랙티브 `claude` 비교 측정** — `-p` auto-trust 가설 확정/부정 (사용자 직접 1탭, ~5분) (b) `disabledMcpjsonServers=["sqlite"]` 명시 차단 측정 (마지막 미측정 gate) (c) T1 MCP probe (playwright/chrome-devtools — 브라우저 다운로드 부수 효과 사용자 확인 필요). |
 
 ## 미실행 — 외부 환경 의존 unblock 절차
 
-> **🚨 dharness Phase 5-2 회로의 *critical empirical hole* — 0건 잔존 (13차 부분 closure)**
+> **🚨 dharness Phase 5-2 회로의 *critical empirical hole* — `claude -p` 모드 한정 closure 누적 (13·15차)**
 >
-> 10차 사이클에 식별된 외부 액션 2건 모두 closure 단계 진입:
+> 10차 사이클에 식별된 외부 액션 2건 + 13차 후속 분기 2건 = 누적 3건이 closure 단계 진입:
 >
 > | 우선순위 | 액션 | 결과 | 상태 |
 > |---|---|---|---|
 > | ~~🔴 P0~~ | ~~§11-2 spawn 재현 검증~~ | inline `mcpServers:` parent isolation 양면 ✓ | ✅ 10차 사이클 완료 |
 > | ~~🟠 P1~~ | §11-3 토글 측정 (B1·B2 M2) | **B1=6, B2=6 — project-scope settings.json 토글은 deferred pool 영향 0** | ✅ 13차 사이클 부분 closure (`claude -p` 모드 한정 — caveat 잔존) |
+> | ~~🟡 P3-(b)~~ | ~~§11-3 user-scope gate 격리 측정 (B5·B6·B7)~~ | **B5=B6=B7=6 — user-scope `enabledMcpjsonServers` + `hasTrustDialogAccepted` 양쪽 모두 영향 0** | ✅ 15차 사이클 closure (`claude -p` 모드 한정 — `-p` auto-trust 가설 격상) |
 >
-> **13차 closure 함의:**
-> 1. `<derived>/.claude/settings.json` `enabledMcpjsonServers`는 토큰 절감 채널이 *아니다* (적어도 `-p` 모드에서). 합성 가이드의 "settings.json 토글로 적재 제어" 권고 ✗ 박제됨.
-> 2. 진짜 gate 채널 후보 = `~/.claude.json` user-scope per-project entry의 `enabledMcpjsonServers` (or `hasTrustDialogAccepted`) — 별도 측정 미완.
-> 3. `-p` 모드 auto-trust 부수 효과 가설은 미해소 — 인터랙티브 비교 측정으로 확정 가능.
+> **15차 closure 함의 (13차 함의 위에 누적):**
+> 1. `~/.claude.json` user-scope gate 키 *전부* falsified — 13차의 "진짜 gate 채널 후보" 모두 부정. `claude -p` 모드에서는 `.mcp.json` 존재만으로 충분.
+> 2. 강력 가설로 격상: **`claude -p` 모드는 모든 `~/.claude.json` 측 gate 키를 우회**. 인터랙티브 `claude` 비교 측정만이 마지막 분기 — gate 효과가 인터랙티브 trust dialog 통해서만 발현되는지 확정 가능.
+> 3. `-p` 모드 auto-trust 부수 효과 가설은 *유일한 미해소 분기*로 좁혀짐 — 인터랙티브 1회 측정 (~5분)으로 closure.
+> 4. **부산물 empirical (§10-7 4번 룰 강 확정):** dharness 본 세션 auto-mode classifier가 `~/.claude.json` user-scope 쓰기의 *첫* 호출은 통과시키지만 *후속* 쓰기는 일관 차단 — `verify_11_3_p3b.ps1` v2 외부 PowerShell 매뉴얼 회피 검증 필수.
 >
-> 후속 의제 (선택적, P3 수준): 인터랙티브 `claude` 측정 / user-scope toggle 측정 / `--strict-mcp-config` 분리 측정.
+> 후속 의제 (선택적, P3 수준): 인터랙티브 `claude` 비교 측정 / `disabledMcpjsonServers=["sqlite"]` 명시 차단 (마지막 미측정 gate) / T1 MCP probe (playwright/chrome-devtools).
 
 요약 표 (각 항목의 상세 playbook은 아래 §A·B·C 참조):
 
