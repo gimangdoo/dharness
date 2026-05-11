@@ -117,6 +117,67 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 
 ---
 
+## 3-1. 검증 완료 T0 MCP × capability profile 매트릭스 (14차 사이클 P2 1차 종합 보고)
+
+§3 인벤토리에서 PoC 완료된 **T0 MCP 7종 (총 49 도구)** 을 capability profile별로 매트릭스화한 *런타임 가용 default 카탈로그*. Phase 5-2 합성 시 §4 결정 트리가 capability profile을 확정하면 본 표에서 해당 행을 1차 후보로 발췌한다.
+
+**검증 완료 카운트:**
+- `fetch` 4 + `sequential-thinking` 1 + `git` 12 + `sqlite` 6 + `filesystem` 14 + `time` 2 + `memory` 9 = **48 도구** (+ github toolset 카탈로그 19 enum)
+- 모두 [§8-3 stdio JSON-RPC `tools/list` 핑](#8-3-재사용-가능한-검증-기법)으로 source-grep 100% 일치 검증 (`fixtures/probe_*.js`)
+
+### 매트릭스
+
+| capability profile | 권고 MCP (T0) | 도구 카운트 | Layer 결합 | default 권한 bucket | mid-session add 후 미전파? |
+|---|---|---|---|---|---|
+| **code-test** | `git` + `filesystem` | 12 + 14 | §5-1-a Layer B 단독 (둘 다 toolset 필터 미지원) | `git` 12종 ask (commit/checkout/reset이 부수 효과) / `filesystem` read 10종 `allow` + write 4종 `deny` (빌트인 Read/Write/Edit과 중복 — `filesystem`의 가치는 *path-roots 격리*) | ✅ 다음 세션부터 |
+| **web-research** | `fetch` + `memory` | 4 + 9 | §5-1-a Layer B 단독 (fetch/memory 모두 toolset 필터 미지원) | `fetch` 4종 `allow` (모두 read-only) / `memory` read 3종 `allow` + create/add 3종 `ask` + delete 3종 `deny` | ✅ 다음 세션부터 |
+| **external-integration** | `sqlite` (+ T1+ `github` 별도) | 6 | §5-1-a Layer B 단독 (sqlite는 toolset 미지원) / `github`는 §5-1-b Layer A+B 결합 (env `GITHUB_TOOLSETS`) | `sqlite` read 3종 `allow` + write 3종 `deny` (read-only 강제) | ✅ 다음 세션부터 |
+| **reasoning-aux** | `sequential-thinking` + `time` | 1 + 2 | §5-1-a Layer B 단독 (toolset 미지원, 둘 다 부수 효과 0) | 3종 모두 `allow` (read-only) | ✅ 다음 세션부터 |
+
+> **매트릭스의 권고는 *제안*이지 default 강제가 아님** — §4 결정 트리의 사용자 confirm 게이트가 항상 우선. 사용자 도메인이 매트릭스 외 조합을 요구하면 (예: web-research에 `git` 필요) §10 dynamic adoption 절차로 후보 확장.
+
+### 채택 패턴 권고 — 7 MCPs 통합 inline `mcpServers:` (참고 예시)
+
+capability profile이 2종 이상이 겹치는 *멀티 도메인 에이전트*는 inline `mcpServers:`에 여러 MCP를 동시 정의 가능. 단 **inline 서버는 advertise 도구 *전부* 노출**(10차 cycle P0 새 발견)되므로 부수 효과 도구는 `permissions.deny`에 박제 필수.
+
+```yaml
+mcpServers:
+  - filesystem:
+      type: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "<allowed-path>"]
+  - git:
+      type: stdio
+      command: <uvx-abs-path>
+      args: ["mcp-server-git", "--repository", "<repo-abs>"]
+  - sqlite:
+      type: stdio
+      command: <uvx-abs-path>
+      args: ["mcp-server-sqlite", "--db-path", "<db-abs>"]
+```
+
+> 위 YAML은 **list-of-dicts + `type: stdio`** 필수 (9차 cycle docs RESOLUTION). 합성 직후 *현재 세션* 미전파, 다음 세션부터 사용 가능 (4차 cycle empirical).
+
+### 카탈로그 사용 흐름
+
+1. Phase 5-2 합성 시 §4 결정 트리가 에이전트 description → capability profile N개 *제안*
+2. 본 §3-1 매트릭스에서 profile별 권고 MCP 행 매핑
+3. 매핑 후보를 사용자에게 AskUserQuestion으로 confirm (Tier·도구 카운트·default permissions 동봉)
+4. 사용자 confirm 후 §5-1 inline `mcpServers:` 패턴으로 합성 — 동시에 §3-1의 default 권한 bucket을 `permissions` 산출물로 박제
+
+### 미완 잔존 (P3/P4 수준 — 본 §3-1 매트릭스 *외부* 영역)
+
+| Tier | MCP | 막힘 사유 | 해소 후 매트릭스 행 |
+|---|---|---|---|
+| T1 | `playwright` / `chrome-devtools` | toolset 필터 형태가 CLI flag — env 키 없음 (PoC enum 미완) | code-test 행에 추가 |
+| T1+ | `github` | toolsets enum은 ✓ 확정(19종) — 실 install·도구 풀 측정만 PoC 미완 (PAT 필요) | external-integration 행에 *결합형* 별도 박제 |
+| T1+ | `brave-search` / `tavily` / `exa` | API 키 발급 필요 | web-research 행 확장 |
+| T2~ | `firecrawl` / `slack` / `postgres` | 유료 또는 민감 외부 시스템 | research / external-integration 행에 ask-only 부기 |
+
+> **본 매트릭스의 closure 기준:** "PoC enumeration ✓"가 되는 시점에 본 §3-1에 행 추가 — `tier·profile·도구 카운트·default permissions·Layer 결합` 5컬럼 동시 박제. 추가 절차는 §10 5-step + §10 Step 5 (a) 인벤토리 갱신 = §3 행 갱신 + 본 §3-1 매트릭스 동시 갱신.
+
+---
+
 ## 4. 매핑 결정 트리
 
 Phase 5에서 에이전트 명세를 받았을 때:
@@ -627,6 +688,42 @@ Step 5. Reflect — 갱신 사실 박제
 | 산출물 4종 *제안* | 산출물 4종 *적용* |
 
 **권장 진입점:** Phase 5-2 합성 시 자연 발화 (T2 트리거) → 사용자 confirm → 채택. 별도 슬래시 커맨드(`/harness:harness-add-mcp`)는 *후속 도입 고려 대상*이며 본 문서 작성 시점엔 미구현.
+
+### 10-7. 병렬 세션 운용 패턴 (Pattern A — 단일 writer + 외부 측정)
+
+§10·§11의 측정·채택 작업을 *복수 세션 병렬*로 진행하려는 경우의 운영 doctrine. 13차 사이클 closure 직후 dharness 운영 결정으로 채택.
+
+**공유 자원 충돌 분석:**
+
+| 자원 | 동시 쓰기 위험 |
+|------|---------------|
+| `~/.claude.json` (사용자 단일 파일) | 🔴 `claude mcp add` 동시 호출 시 last-writer-wins (데이터 손실) |
+| `<derived>/.claude/settings.json` | 🔴 토글 측정 두 세션이 동시 편집 |
+| dharness `observations.db` (CM hook) | 🟡 default 모드 lock contention (WAL 미설정) |
+| dharness git index | 🔴 동시 commit 충돌 |
+| Claude Code session context | 🟢 각 세션 격리 |
+
+**Pattern A 운영 룰:**
+
+1. **Single-writer 보장**: 단 한 세션만 `claude mcp add`·settings.json 편집·dharness commit 책임. 다른 세션은 *읽기 전용*.
+2. **외부 측정 분리**: P3-(c) 인터랙티브 측정 등 dharness 외부 환경 의존 작업은 사용자가 별도 vscode.dev 터미널 탭에서 read-only 실행 → 결과 텍스트만 본 세션에 붙여넣기.
+3. **`claude -p` one-shot 활용**: dharness 본 세션의 Bash 도구로 `claude -p` 다중 호출 가능 (cycle 13 B1·B2 패턴) — 단, 같은 시점 동시 호출은 `~/.claude.json` 캐시 race 위험이라 순차 호출 권장.
+4. **사용자 매뉴얼 게이트**: `~/.claude.json` 또는 `<derived>/.claude/settings.json` 쓰기는 auto-mode classifier가 자주 차단 — 사용자 PowerShell 1줄로 명시 게이트 (cycle 13 B2 토글 패턴).
+
+**기각된 대안:**
+
+- **Pattern B (branch 분리)**: dharness `observations.db`는 branch 격리 안 됨 — CM 데이터 의도적 단일성 보존. 측정용 일시 branch는 가능하나 merge 시점에 `verify_*.md`·`README.md` 충돌 해결 필요.
+- **Pattern C (git worktree)**: worktree별로 `_workspace/_memory/observations.db`가 분리되어 CM 누적 가시성 깨짐 (dharness 설계 의도 위반). 측정 외 작업에서는 권장 안 함.
+
+**병렬화 ROI 권장 영역:**
+
+| 영역 | 병렬화 가치 | 권장 패턴 |
+|------|-----------|-----------|
+| P2 T1+/T2+ probe (API 키별) | 🟢 높음 — 키별 독립 spawn | 키 도착 즉시 단발 probe 1 세션/키, 결과만 본 세션 박제 |
+| P3-(c) interactive vs `-p` 비교 | 🟡 중간 — 측정 자체는 1회성 | 사용자 측 별도 터미널 1탭 (~5분), 결과 텍스트 회수 |
+| P3-(a) server-side `--toolsets` | 🔴 낮음 — `~/.claude.json` 쓰기 직렬 | 본 세션 직렬 (mcp remove → 다른 env로 mcp add → 측정 → revert) |
+| P3-(b) user-scope toggle | 🔴 낮음 — 동일 | 본 세션 직렬 |
+| dharness commit | 🔴 항상 직렬 | 단일 세션 |
 
 ---
 
