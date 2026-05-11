@@ -57,26 +57,30 @@ def _persist_dharness_event(
         return
     obs_id = f"{session_id}-{uuid.uuid4().hex[:8]}"
     try:
-        with sqlite3.connect(DB_PATH) as conn:
-            ensure_migrations(conn)
-            conn.execute(
-                """
-                INSERT INTO observations
-                  (id, session_id, date, section, content, tags, completed, created_at,
-                   category, artifact_kind, phase)
-                VALUES (?, ?, ?, 'dharness_event', ?, ?, 0, ?, ?, ?, NULL)
-                """,
-                (
-                    obs_id,
-                    session_id,
-                    today,
-                    event["content"],
-                    json.dumps(event["tags"]),
-                    now_iso,
-                    event["category"],
-                    event["artifact_kind"],
-                ),
-            )
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            with conn:
+                ensure_migrations(conn)
+                conn.execute(
+                    """
+                    INSERT INTO observations
+                      (id, session_id, date, section, content, tags, completed, created_at,
+                       category, artifact_kind, phase)
+                    VALUES (?, ?, ?, 'dharness_event', ?, ?, 0, ?, ?, ?, NULL)
+                    """,
+                    (
+                        obs_id,
+                        session_id,
+                        today,
+                        event["content"],
+                        json.dumps(event["tags"]),
+                        now_iso,
+                        event["category"],
+                        event["artifact_kind"],
+                    ),
+                )
+        finally:
+            conn.close()
     except sqlite3.Error as e:
         print(f"[CM PostToolUse] dharness_event INSERT 실패: {e}", file=sys.stderr)
 

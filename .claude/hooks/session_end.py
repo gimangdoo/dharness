@@ -30,38 +30,9 @@ from _schema import (
     TELEMETRY_DIR,
     read_session_id,
 )
+from _transcript_utils import flatten_to_transcript
 
 DRAFT_TARGETS_MAX = 8
-
-
-def flatten_to_transcript(raw_path: Path) -> tuple[str, set[str], int]:
-    """raw.jsonl을 사람이 읽을 수 있는 markdown으로 평탄화."""
-    if not raw_path.exists():
-        return "", set(), 0
-    lines = ["# Session Transcript\n"]
-    tools_used: set[str] = set()
-    raw_count = 0
-    for line in raw_path.read_text(encoding="utf-8").splitlines():
-        raw_count += 1
-        try:
-            evt = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        kind = evt.get("kind")
-        ts = evt.get("ts", "")
-        if kind == "user_message":
-            lines.append(f"\n## {ts} — User\n{evt.get('content', '')}\n")
-        elif kind == "assistant_message":
-            lines.append(f"\n## {ts} — Assistant\n{evt.get('content', '')}\n")
-        elif kind == "tool_call":
-            tool = evt.get("tool", "?")
-            tools_used.add(tool)
-            lines.append(f"\n- {ts} tool_call: {tool}\n")
-        elif kind == "tool_result":
-            tool = evt.get("tool", "?")
-            tools_used.add(tool)
-            lines.append(f"- {ts} tool_result: {tool} ({evt.get('output_size', 0)}b)\n")
-    return "".join(lines), tools_used, raw_count
 
 
 def _collect_session_events(conn: sqlite3.Connection, session_id: str) -> dict:
@@ -198,24 +169,28 @@ def main() -> int:
     duration_min: int | None = None
     draft_path: Path | None = None
     if DB_PATH.exists():
-        with sqlite3.connect(DB_PATH) as conn:
-            row = conn.execute(
-                "SELECT started_at FROM sessions WHERE session_id=?", (session_id,)
-            ).fetchone()
-            if row and row[0]:
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            with conn:
+                row = conn.execute(
+                    "SELECT started_at FROM sessions WHERE session_id=?", (session_id,)
+                ).fetchone()
+                if row and row[0]:
+                    try:
+                        started = calendar.timegm(time.strptime(row[0], "%Y-%m-%dT%H:%M:%SZ"))
+                        duration_min = max(0, int((time.time() - started) / 60))
+                    except ValueError:
+                        duration_min = None
+                conn.execute(
+                    "UPDATE sessions SET ended_at=?, duration_min=?, tools_used=? WHERE session_id=?",
+                    (now_iso, duration_min, json.dumps(sorted(tools_used)), session_id),
+                )
                 try:
-                    started = calendar.timegm(time.strptime(row[0], "%Y-%m-%dT%H:%M:%SZ"))
-                    duration_min = max(0, int((time.time() - started) / 60))
-                except ValueError:
-                    duration_min = None
-            conn.execute(
-                "UPDATE sessions SET ended_at=?, duration_min=?, tools_used=? WHERE session_id=?",
-                (now_iso, duration_min, json.dumps(sorted(tools_used)), session_id),
-            )
-            try:
-                draft_path = generate_draft(conn, session_id, today, duration_min)
-            except sqlite3.Error as e:
-                print(f"[CM SessionEnd] draft 생성 실패: {e}", file=sys.stderr)
+                    draft_path = generate_draft(conn, session_id, today, duration_min)
+                except sqlite3.Error as e:
+                    print(f"[CM SessionEnd] draft 생성 실패: {e}", file=sys.stderr)
+        finally:
+            conn.close()
 
     TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
     with open(TELEMETRY_DIR / f"{today}.jsonl", "a", encoding="utf-8") as fh:

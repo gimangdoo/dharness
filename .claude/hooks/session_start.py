@@ -40,7 +40,7 @@ from _schema import (
     ensure_migrations,
     write_session_id,
 )
-from session_end import flatten_to_transcript
+from _transcript_utils import flatten_to_transcript
 
 INJECT_BUDGET = 2000
 GIT_STATUS_MAX_LINES = 12
@@ -205,34 +205,48 @@ def main() -> int:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     backfilled: list[str] = []
     prior_sessions: list[dict] = []
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.executescript(DDL)
-        try:
-            ensure_migrations(conn)
-        except Exception as e:
-            print(f"[CM SessionStart] migration skipped: {e}", file=sys.stderr)
-        try:
-            backfilled = backfill_dangling_sessions(conn, now_iso)
-        except Exception as e:
-            print(f"[CM SessionStart] dangling backfill skipped: {e}", file=sys.stderr)
-        result = conn.execute(
-            "INSERT OR IGNORE INTO sessions (session_id, date, started_at, project) VALUES (?, ?, ?, ?)",
-            (session_id, today, now_iso, REPO_ROOT.name),
-        )
-        if result.rowcount == 0:
-            shutil.rmtree(sess_dir, ignore_errors=True)
-            session_id = uuid.uuid4().hex[:8]
-            sess_dir = MEMORY_ROOT / "sessions" / session_id
-            sess_dir.mkdir(parents=True, exist_ok=True)
-            (sess_dir / "raw.jsonl").touch()
-            conn.execute(
-                "INSERT INTO sessions (session_id, date, started_at, project) VALUES (?, ?, ?, ?)",
-                (session_id, today, now_iso, REPO_ROOT.name),
-            )
-        try:
-            prior_sessions = fetch_prior_sessions(conn, session_id, PRIOR_SESSIONS)
-        except Exception as e:
-            print(f"[CM SessionStart] prior sessions lookup skipped: {e}", file=sys.stderr)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        with conn:
+            conn.executescript(DDL)
+            try:
+                ensure_migrations(conn)
+            except Exception as e:
+                print(f"[CM SessionStart] migration skipped: {e}", file=sys.stderr)
+            try:
+                backfilled = backfill_dangling_sessions(conn, now_iso)
+            except Exception as e:
+                print(f"[CM SessionStart] dangling backfill skipped: {e}", file=sys.stderr)
+            # session_id 충돌 시 더 긴 hex로 재발급. 충돌 확률은 6자 hex 기준 ~1e-6 이하.
+            for next_hex_len in (8, 10, 14):
+                result = conn.execute(
+                    "INSERT OR IGNORE INTO sessions (session_id, date, started_at, project) VALUES (?, ?, ?, ?)",
+                    (session_id, today, now_iso, REPO_ROOT.name),
+                )
+                if result.rowcount > 0:
+                    break
+                shutil.rmtree(sess_dir, ignore_errors=True)
+                session_id = uuid.uuid4().hex[:next_hex_len]
+                sess_dir = MEMORY_ROOT / "sessions" / session_id
+                sess_dir.mkdir(parents=True, exist_ok=True)
+                (sess_dir / "raw.jsonl").touch()
+            else:
+                # 3회 연속 충돌 — 거의 불가능. 마지막으로 32자 full UUID 사용.
+                shutil.rmtree(sess_dir, ignore_errors=True)
+                session_id = uuid.uuid4().hex
+                sess_dir = MEMORY_ROOT / "sessions" / session_id
+                sess_dir.mkdir(parents=True, exist_ok=True)
+                (sess_dir / "raw.jsonl").touch()
+                conn.execute(
+                    "INSERT OR IGNORE INTO sessions (session_id, date, started_at, project) VALUES (?, ?, ?, ?)",
+                    (session_id, today, now_iso, REPO_ROOT.name),
+                )
+            try:
+                prior_sessions = fetch_prior_sessions(conn, session_id, PRIOR_SESSIONS)
+            except Exception as e:
+                print(f"[CM SessionStart] prior sessions lookup skipped: {e}", file=sys.stderr)
+    finally:
+        conn.close()
 
     write_session_id(session_id)
 

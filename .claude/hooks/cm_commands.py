@@ -15,10 +15,12 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import re
 import shutil
 import sqlite3
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 from _schema import (
@@ -35,6 +37,7 @@ from _schema import (
 )
 
 COUNT_TABLES = ("observations", "sessions", "clusters", "daily_summaries")
+CLAUDE_MD_ROW_WARN_THRESHOLD = 40
 
 DRAFT_ROW_RE = re.compile(r"^```\s*\n(\| .*?\|)\s*\n```", re.MULTILINE)
 ROW_LINE_RE = re.compile(r"^\s*\|.+\|\s*$")
@@ -42,10 +45,15 @@ SEP_LINE_RE = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
-def _connect() -> sqlite3.Connection:
+@contextlib.contextmanager
+def _connect() -> Iterator[sqlite3.Connection]:
+    """close 보장 context manager. `with _connect() as conn:` 형태로 사용."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def _ensure_db() -> bool:
@@ -82,22 +90,37 @@ def cmd_status() -> int:
         recent = conn.execute(
             "SELECT COUNT(*) FROM sessions WHERE date(started_at) >= date('now', '-7 days')"
         ).fetchone()[0]
-        digested = conn.execute(
-            "SELECT COUNT(*) FROM sessions WHERE date(started_at) >= date('now', '-7 days') AND digest_path IS NOT NULL"
-        ).fetchone()[0]
         promoted = conn.execute("SELECT COUNT(*) FROM clusters WHERE promoted_path IS NOT NULL").fetchone()[0]
-        pending = conn.execute("SELECT COUNT(*) FROM observations WHERE section='do' AND completed=0").fetchone()[0]
         dh_events = conn.execute("SELECT COUNT(*) FROM observations WHERE section='dharness_event'").fetchone()[0]
     pending_drafts = list(DRAFTS_DIR.glob("*.md")) if DRAFTS_DIR.exists() else []
+    history_rows = _count_claudemd_history_rows()
 
     print(f"📊 CM 상태 ({REPO_ROOT.name})")
-    print(f"  observations:     {counts['observations']} (dharness_event {dh_events})")
-    print(f"  sessions:         {counts['sessions']} (최근 7일: {recent}, digest: {digested})")
-    print(f"  clusters:         {counts['clusters']} (승격 {promoted})")
-    print(f"  daily_summaries:  {counts['daily_summaries']}")
-    print(f"  pending Do:       {pending}")
-    print(f"  CLAUDE.md draft:  {len(pending_drafts)} pending")
+    print(f"  observations:        {counts['observations']} (dharness_event {dh_events})")
+    print(f"  sessions:            {counts['sessions']} (최근 7일: {recent})")
+    print(f"  clusters:            {counts['clusters']} (승격 {promoted})")
+    print(f"  daily_summaries:     {counts['daily_summaries']} (historic — 자동 생성 폐기됨)")
+    print(f"  CLAUDE.md draft:     {len(pending_drafts)} pending")
+    if history_rows is not None:
+        warn = "  ⚠ 표가 길어졌습니다 — archive 검토 권장" if history_rows >= CLAUDE_MD_ROW_WARN_THRESHOLD else ""
+        print(f"  CLAUDE.md 변경 이력: {history_rows} rows{warn}")
     return 0
+
+
+def _count_claudemd_history_rows() -> int | None:
+    """CLAUDE.md '변경 이력' 표의 데이터 row 수. 표 미발견 시 None."""
+    if not CLAUDE_MD.exists():
+        return None
+    try:
+        lines = CLAUDE_MD.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    span = _find_change_history_table(lines)
+    if not span:
+        return None
+    header_idx, last_row_idx = span
+    # header + separator + data rows. data rows = last_row_idx - (header_idx + 1)
+    return max(0, last_row_idx - header_idx - 1)
 
 
 def cmd_sessions(limit: int) -> int:

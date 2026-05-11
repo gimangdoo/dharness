@@ -79,12 +79,25 @@ _MIGRATIONS: tuple[tuple[str, str], ...] = (
     ("phase", "TEXT"),
 )
 
+# user_version=0: 컬럼 추가 전. user_version=1: category/artifact_kind/phase + 인덱스 적용 후.
+SCHEMA_VERSION = 1
+
 
 def ensure_migrations(conn: sqlite3.Connection) -> list[str]:
-    """기존 observations 테이블에 누락된 컬럼을 ALTER TABLE로 추가. 추가된 컬럼명 반환."""
+    """누락된 컬럼을 ALTER TABLE로 추가. PRAGMA user_version으로 빠른 short-circuit.
+
+    매 hook 프로세스마다 호출되지만, 첫 번째 PRAGMA user_version 조회로 대부분 즉시 반환.
+    SCHEMA_VERSION 미만일 때만 PRAGMA table_info → ALTER 흐름 진입.
+    """
+    current_version = conn.execute("PRAGMA user_version").fetchone()[0]
+    if current_version >= SCHEMA_VERSION:
+        return []
+
     cur = conn.execute("PRAGMA table_info(observations)")
     existing = {row[1] for row in cur.fetchall()}
     if not existing:
+        # 빈 DB — DDL이 이미 최신 컬럼을 만들었음. version만 갱신.
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         return []
     added: list[str] = []
     for col, typ in _MIGRATIONS:
@@ -98,6 +111,7 @@ def ensure_migrations(conn: sqlite3.Connection) -> list[str]:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS observations_artifact_kind_idx ON observations(artifact_kind)"
         )
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     return added
 
 
