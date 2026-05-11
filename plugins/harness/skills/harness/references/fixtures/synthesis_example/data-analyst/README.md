@@ -38,7 +38,7 @@
 
 ## 사용 흐름
 
-1. `synthesis_example/` 디렉토리 전체를 *derived 프로젝트*로 복사 후 다음 매핑:
+1. `synthesis_example/data-analyst/` 디렉토리 전체를 *derived 프로젝트*로 복사 후 다음 매핑:
    - `data-analyst.agent.md` → `<derived>/.claude/agents/data-analyst.md`
    - `settings.json` → `<derived>/.claude/settings.json` (기존 키와 deep merge — 덮어쓰지 말 것)
    - `CLAUDE_md_row.md`의 한 행 → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가

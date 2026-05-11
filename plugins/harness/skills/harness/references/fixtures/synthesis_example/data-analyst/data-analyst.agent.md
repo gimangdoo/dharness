@@ -90,4 +90,4 @@ python -m site --user-base   # → 결과/Scripts/uvx.exe (Win) 또는 /bin/uvx 
 
 > **절대경로 강제 caveat (8차 사이클 sqlite empirical):** `--db-path`는 *반드시 절대경로* — 상대경로(`./...`)면 health check 실행 시 cwd 차이로 `✗ Failed to connect`. `command:` 자체도 PATH 미통과면 spawn 실패하므로 절대경로 권장.
 
-> 본 파일은 `plugins/harness/skills/harness/references/fixtures/synthesis_example/`의 박제 예시. 복사 시 위 표를 참고해 placeholder 2개를 OS별 실제 값으로 치환.
+> 본 파일은 `plugins/harness/skills/harness/references/fixtures/synthesis_example/data-analyst/`의 박제 예시 (14차 사이클 — 시나리오 서브디렉토리화). 복사 시 위 표를 참고해 placeholder 2개를 OS별 실제 값으로 치환. 평행 시나리오는 `synthesis_example/web-research/` 참고.

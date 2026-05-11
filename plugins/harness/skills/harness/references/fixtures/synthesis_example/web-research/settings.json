@@ -1,0 +1,28 @@
+{
+  "$comment_1": "Phase 5-2 합성 산출물 — derived 프로젝트의 .claude/settings.json. 기존 키가 있으면 deep merge.",
+  "$comment_2": "fetch 4 도구 (14차 PoC enum ✓) + memory 9 도구 (14차 PoC enum ✓). fetch는 모두 read-only라 4종 allow. memory는 CRUD 구조라 read 3종 allow / create+add 3종 ask / delete 3종 deny (KG 영구성 보장).",
+  "$comment_3": "본 예시는 inline mcpServers: 패턴이라 enabledMcpjsonServers 미사용 (§5-1 권장). 만약 .mcp.json 패턴으로 전환 시 enabledMcpjsonServers는 effect 0임이 13차 cycle empirical (project-scope settings.json 채널 ✗).",
+  "$comment_4": "10차 cycle 새 발견: tools: allowlist는 inline 서버 도구를 줄이지 못함 — 부수 효과 차단은 본 permissions.deny가 *유일* 강제 채널. ask는 사용자가 prompt에서 실수 confirm 시 통과되므로 KG destructive 도구에는 부적합 = deny.",
+
+  "permissions": {
+    "allow": [
+      "mcp__fetch__get_raw_text",
+      "mcp__fetch__get_rendered_html",
+      "mcp__fetch__get_markdown",
+      "mcp__fetch__get_markdown_summary",
+      "mcp__memory__read_graph",
+      "mcp__memory__search_nodes",
+      "mcp__memory__open_nodes"
+    ],
+    "ask": [
+      "mcp__memory__create_entities",
+      "mcp__memory__create_relations",
+      "mcp__memory__add_observations"
+    ],
+    "deny": [
+      "mcp__memory__delete_entities",
+      "mcp__memory__delete_observations",
+      "mcp__memory__delete_relations"
+    ]
+  }
+}
