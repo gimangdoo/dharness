@@ -12,11 +12,11 @@ tools:
 mcpServers:
   - sqlite:
       type: stdio
-      command: C:\Users\<user>\AppData\Roaming\Python\Python312\Scripts\uvx.exe
+      command: ${UVX_PATH}
       args:
         - mcp-server-sqlite
         - --db-path
-        - C:\Users\<user>\<derived-project>\data\sales.db
+        - ${DB_ABS_PATH}
 ---
 
 # data-analyst — SQLite 분석 에이전트
@@ -67,4 +67,27 @@ derived 프로젝트의 로컬 SQLite DB에서 read-only 쿼리로 정량 분석
 
 ---
 
-> 본 파일은 `plugins/harness/skills/harness/references/fixtures/synthesis_example/`의 박제 예시. derived 프로젝트로 복사 시 `<user>` 같은 placeholder를 실제 환경 값으로 치환. `mcpServers.sqlite.command`의 절대경로는 환경별로 다름 (예: `~/.local/bin/uvx` 또는 `/usr/local/bin/uvx` 등).
+## OS별 placeholder 치환 표
+
+`${UVX_PATH}` / `${DB_ABS_PATH}` 두 placeholder는 derived 프로젝트로 복사 시 환경에 맞게 치환. **YAML frontmatter는 환경 변수 자동 expand 미지원**이므로 *직접 치환* 필수 (sed/replace).
+
+| OS | `${UVX_PATH}` (default) | `${DB_ABS_PATH}` 예시 |
+|----|------------------------|---------------------|
+| **Windows** | `C:\Users\<user>\AppData\Roaming\Python\Python312\Scripts\uvx.exe` | `C:\Users\<user>\<derived-project>\data\sales.db` |
+| **macOS** | `/Users/<user>/.local/bin/uvx` (또는 Homebrew: `/opt/homebrew/bin/uvx`) | `/Users/<user>/<derived-project>/data/sales.db` |
+| **Linux** | `/home/<user>/.local/bin/uvx` (또는 `/usr/local/bin/uvx`) | `/home/<user>/<derived-project>/data/sales.db` |
+
+**uvx 경로 확인 명령** (OS 무관):
+
+```bash
+# uvx 실제 위치 (PATH 통과 시)
+which uvx       # macOS / Linux
+where uvx       # Windows PowerShell
+
+# 절대경로가 안 보이면 (uv가 user-install되어 있다면)
+python -m site --user-base   # → 결과/Scripts/uvx.exe (Win) 또는 /bin/uvx (Unix)
+```
+
+> **절대경로 강제 caveat (8차 사이클 sqlite empirical):** `--db-path`는 *반드시 절대경로* — 상대경로(`./...`)면 health check 실행 시 cwd 차이로 `✗ Failed to connect`. `command:` 자체도 PATH 미통과면 spawn 실패하므로 절대경로 권장.
+
+> 본 파일은 `plugins/harness/skills/harness/references/fixtures/synthesis_example/`의 박제 예시. 복사 시 위 표를 참고해 placeholder 2개를 OS별 실제 값으로 치환.

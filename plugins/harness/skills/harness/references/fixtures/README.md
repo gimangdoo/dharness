@@ -37,15 +37,39 @@
 | 2026-05-10 | §11-2 후보 (b) | derived 프로젝트 새 세션 — `tools:` 표기 형식 변형 3종 spawn (bare / quoted / wildcard) | **3 형태 모두 `mcp__fetch__get_markdown` 노출 0건** — `tools:` allowlist 표기 형식은 contradiction의 원인이 *아님*. 후보 (b) 제외 확정. 진짜 원인은 (a) 필드명 / (c) subagent 인식 / (d) 빌드 차이 중 잔존. | permission-profiles.md §8-2 후보 (b) ✗ 박제 / 9차 의제 후보를 (a)·(c)·(d) 3종으로 축소 |
 | 2026-05-10 | §11-3 (B2 부분 측정) | derived 프로젝트 — `enabledMcpjsonServers: []` 토글 OFF 후 측정 | **B2.M2 ≈ 6000~7000** (사용자 보고). 단위 모호 — 메트릭 정의상 M2는 deferred pool 도구 카운트이나 6-7천 도구는 비현실적, 실측값일 가능성: (i) M1(system prompt 토큰)을 잘못 보고 (ii) 시스템 프롬프트 *전체 길이* 또는 빌트인 포함 전체 도구 카운트 (iii) LLM 추정 응답(자가 시스템 프롬프트 정확 측정 불가). **B1 베이스라인 미측정** → 분기 판정 보류. | §11-3 측정 logs를 verify_11_3.md "측정 로그" 표에 1행 (단위 caveat 포함). B1 추가 측정 후 비교 가능 |
 | 2026-05-10 | §A-(a) RESOLUTION | dharness 본 세션 + WebFetch 공식 docs `https://code.claude.com/docs/en/sub-agents` | **§11-2 contradiction 진짜 원인 확정** = `mcpServers:` schema mismatch. 공식 docs verbatim 발췌: schema는 **list-of-dicts** (`-` prefix) + 각 항목에 `type: stdio` (또는 `http`/`sse`/`ws`) 필수. 우리 fixture는 plain dict + type 누락 → silent skip. 후보 (a)의 *상위 필드명*(`mcpServers`)은 OK, *하위 schema format*이 원인. 후보 (c)·(d) 별도 검증 불요 (schema 정정으로 충분). | permission-profiles.md §5-1 + §5-1-a + §5-1-b + §8-2 ✓ 갱신 / SKILL.md callout ✓ 갱신 / synthesis_example/README.md EMPIRICAL CAVEAT → RESOLUTION 변경 / dharness fixture mcp-isolation-probe.agent.md + synthesis_example/data-analyst.agent.md 일괄 정정 |
+| 2026-05-10 | §11-2 P0 재현 검증 ✅ | derived 프로젝트(`C:\Users\user01\dharness-probe-test`) 새 Claude Code 세션 + 정정 schema fixture(`_probe-mcp-isolation.md`, list-of-dicts + `type: stdio`) | **양면 검증 통과** — [1] subagent 도구 노출 4종 (`mcp__fetch__get_raw_text`/`get_rendered_html`/`get_markdown`/`get_markdown_summary` 모두) ✓, [2] parent ToolSearch query `mcp__fetch__` → 0 hit (deferred pool 적재 0) ✓. 9차 schema RESOLUTION이 *empirical 확정*으로 승급. **🆕 새 발견 (10차 사이클):** frontmatter `tools:`에 `mcp__fetch__get_markdown` 1종만 allowlist했는데도 inline 서버의 **4종 전부 노출** — 즉 `tools:` allowlist는 inline 서버 도구를 줄이지 못함 (Layer C 통제 채널이 inline에 무력). Layer C 게이트는 `settings.json permissions.deny`로 강제해야 한다는 운영 함의. | §1 [^B] 셀 ⚠️→✅ 승급 / §1 [^A]는 §11-3 측정 별도 / §8-1 inline parent isolation 사실 ✓ empirical / §8-2 §11-2 미완 → 완료 / §5-1 새 caveat (inline + tools allowlist 무력) 박제 / §5-3 deny 권고 강화 |
+| 2026-05-10 | 11차 사이클 closure 박제 | dharness 본 세션 — 진단 명령 갱신 | 10차 P0 새 발견(`tools:` allowlist 무력 + `permissions.deny` default)을 진단 채널 `commands/harness-mcp-status.md`에 반영. **§2** 매트릭스에 `inline mcpServers: advertise 도구 (실노출)` 컬럼 추가 — `tools:` allowlist만 보고 정합 판정하던 이전 룰을 *advertise 도구 전체 vs deny* 비교로 격상. **§4** 정합 점검 2종 신규: (i) inline advertise 도구 vs `permissions.deny` 정합 (strict read-only 의도일 때 default 점검, 휴리스틱: `write_/insert_/update_/delete_/remove_/append_/create_/set_/commit_/push_/exec*/run_` prefix), (ii) allowlist vs advertise 도구 수 mismatch insight (Layer B 격리 가정 무력 가시화). **§7** 후속 명령어에 deny 누락 정정 안내 추가 — `harness-mcp-adopt`의 §10-5 inline 정의 갱신 절차 5-step 경유. | `commands/harness-mcp-status.md` §2/§4/후속 명령어 갱신 / `permission-profiles.md` §8-2 11차 사이클 진척 라인 1줄 추가 |
+| 2026-05-10 | §11-3 P1 부분 진척 (12차 사이클) | derived 프로젝트 `dharness-probe-test` — `.mcp.json` (project-scope) 등록 sqlite + 다중 enable 키 동기화 시도 | **B1 베이스라인 미달** — `~/.claude.json` user-scope per-project entry `enabledMcpjsonServers=["sqlite"]` + `<derived>/.claude/settings.json={}` 동기화에도 deferred pool에 `mcp__sqlite__*` 0종(B1.M2=0/M1=?/M3=yes). 사용자 보고 `claude mcp get sqlite ✓ Connected` (Project config)인데도 적재 안 됨. **새 발견:** ① `enabledMcpjsonServers` 키는 *2 위치*에 동시 존재(user-scope per-project entry + project-scope settings.json) — 측정 단독 변수 아님, ② user-scope 단독 채움으로는 활성화 불충분 (또 다른 차단 mechanism 미확정). | verify_11_3.md "측정 환경 함정" 섹션 신설 (2 위치 동기화 권고 + 추가 차단 후보 4종 = CLI 인터랙티브 approval / `disabledMcpjsonServers` / `enableAllProjectMcpServers` 유사 키 / 빌드별 정책 / 즉시 우회 `-s local` 재등록) / verify_11_3.md "측정 로그" 1행 추가 / permission-profiles.md §1 [^A] footnote 12차 진척 1줄 / §8-2 P1 진척 라인 1개 추가. **다음 액션 (외부 1회 1분)**: `<derived>` 새 세션에서 `claude --debug` 출력 + `~/.claude.json` 추가 키 grep으로 차단 mechanism 확정. |
+| 2026-05-11 | §11-3 P1 pre-flight (13차 사이클) | dharness 본 세션 read-only `~/.claude.json` 전수 grep | **차단 mechanism 4번째 키 식별 — `hasTrustDialogAccepted`** (per-project entry, `false`면 `.mcp.json` 신뢰 미승인 → 모든 project-scope MCP 적재 차단). `dharness-probe-test` entry 현재 값: enabledMcpjsonServers(user-scope)=["sqlite"] ✓ / disabledMcpjsonServers=[] ✓ / hasTrustDialogAccepted=true ✓ / `<derived>/.claude/settings.json` enabledMcpjsonServers=["sqlite"] ✓ — **gate 4종 모두 충족, B1 측정 ready**. 12차 측정 시 `.claude/settings.json={}` 였던 사실이 그 이후 `["sqlite"]`로 갱신됨. 본 세션은 derived 새 세션 spawn 불가 — 사용자 외부 1회(~5분)로 closure. | verify_11_3.md "측정 환경 함정" 섹션 4 gate 표 + "외부 액션 카드" Step 1-4 신설 / verify_11_3.md "측정 로그" 13차 pre-flight 행 추가 / permission-profiles.md §1 [^A] footnote 13차 pre-flight 박제 / §8-2 12차 다음 13차 진척 라인 추가. **다음 액션**: 외부 실행자가 `cd C:\Users\user01\dharness-probe-test && claude` → 첫 메시지 `system-reminder의 mcp__* deferred tool 명단을 원문 그대로 보고` → B1.M2 즉시 캡처 → verify_11_3.md "측정 로그"에 1행 추가. |
+| 2026-05-11 | §11-3 P1 closure (13차 사이클 B1+B2 `claude -p`) | dharness 본 세션 Bash → `claude -p` derived 프로젝트 + 사용자 manual settings.json 토글 OFF | **🚨 결정적 empirical:** B1.M2=6 (gate ON, sqlite 6종 전부 적재 — `mcp__sqlite__{append_insight, create_table, describe_table, list_tables, read_query, write_query}` §3 인벤토리 100% 일치). **B2.M2=6 (gate `enabledMcpjsonServers=[]` 토글 OFF에도 6종 그대로 적재)** — *project-scope `.claude/settings.json` 토글은 deferred pool에 영향 0*. 토글-효과 가설 ✗ 부정. **caveat**: `-p` 모드 auto-trust 부수 효과로 settings.json 토글이 무시됨 가능성 잔존 (인터랙티브 비교 미완). | verify_11_3.md "측정 로그" 2행 (B1+B2) 추가 + permission-profiles.md §1 [^A] footnote ✗ 결과 + §8-2 §11-3 ✓ empirical 이동 (단, *project-scope settings.json 채널 한정* 부정 사실 명시) + 본 README 결과 로그 1행 추가. **다음 액션 (선택적)**: (i) 인터랙티브 `claude` 비교 측정으로 `-p` auto-trust 부수 효과 분리 (ii) `~/.claude.json` user-scope per-project entry 토글 측정으로 진짜 gate 채널 식별 (iii) 또는 P1 부분 closure로 마감하고 P2로 이동 |
+| 2026-05-11 | P2 filesystem MCP probe-only (§10 Step 2, dharness 본 세션 Bash) | `node fixtures/probe_filesystem.js` (`@modelcontextprotocol/server-filesystem` 일회성 npx spawn, ALLOWED_DIR=`C:\Users\user01\dharness-probe-test\data`) | **COUNT=14 도구 ✓** — **read 10종**: `read_file`/`read_text_file`/`read_media_file`/`read_multiple_files`/`list_directory`/`list_directory_with_sizes`/`directory_tree`/`search_files`/`get_file_info`/`list_allowed_directories` + **write 4종**: `write_file`/`edit_file`/`create_directory`/`move_file`. dharness root에 영구 install 안 함 (§10 적용 경계 — self-host CM 격리). 빌트인 Read/Write/Edit과 도구 중복, 가치는 *path-roots 격리* (capability profile = code-test). | `probe_filesystem.js` fixture 신설 + `permission-profiles.md` §3 filesystem 행 enumeration·install 명령 박제 (PoC 미완 → ✓ 14종). 본 README 결과 로그 1행 추가. **다음 액션**: time MCP probe (T0 batch 2/3). |
+| 2026-05-11 | P2 time MCP probe-only (§10 Step 2) | `node fixtures/probe_time.js` (`mcp-server-time` Python, uvx 경유 spawn) | **COUNT=2 ✓** — **read-only 2종**: `get_current_time` (required=[timezone]) / `convert_time` (required=[source_timezone, time, target_timezone]). §3 인벤토리의 "단일 도구 추정"이 *2종*으로 확정. 부수 효과 0 — default 권고: 2종 모두 `allow`. | `probe_time.js` fixture 신설 + `permission-profiles.md` §3 time 행 enumeration·install 명령 박제 (PoC 미완 → ✓ 2종). 본 README 결과 로그 1행 추가. **다음 액션**: memory MCP probe (T0 batch 3/3). |
+| 2026-05-11 | P2 memory MCP probe-only (§10 Step 2) | `node fixtures/probe_memory.js` (`@modelcontextprotocol/server-memory` Knowledge Graph, npm 경유 spawn) | **COUNT=9 ✓** — **read 3종**: `read_graph`/`search_nodes`/`open_nodes` + **create/add write 3종**: `create_entities`/`create_relations`/`add_observations` + **delete write 3종**: `delete_entities`/`delete_observations`/`delete_relations`. default 권고: read 3 `allow` / create+add 3 `ask` / delete 3 `deny` (destructive). dharness CM은 자체 sqlite 사용 — memory MCP는 외부 derived 프로젝트의 persistent knowledge graph 용도. | `probe_memory.js` fixture 신설 + `permission-profiles.md` §3 memory 행 enumeration·install 명령·CRUD 분류 박제 (PoC 미완 → ✓ 9종). 본 README 결과 로그 1행 추가. **다음 액션**: T0 batch 3종 closure — P2 1차 종합 보고. |
 
 ## 미실행 — 외부 환경 의존 unblock 절차
+
+> **🚨 dharness Phase 5-2 회로의 *critical empirical hole* — 0건 잔존 (13차 부분 closure)**
+>
+> 10차 사이클에 식별된 외부 액션 2건 모두 closure 단계 진입:
+>
+> | 우선순위 | 액션 | 결과 | 상태 |
+> |---|---|---|---|
+> | ~~🔴 P0~~ | ~~§11-2 spawn 재현 검증~~ | inline `mcpServers:` parent isolation 양면 ✓ | ✅ 10차 사이클 완료 |
+> | ~~🟠 P1~~ | §11-3 토글 측정 (B1·B2 M2) | **B1=6, B2=6 — project-scope settings.json 토글은 deferred pool 영향 0** | ✅ 13차 사이클 부분 closure (`claude -p` 모드 한정 — caveat 잔존) |
+>
+> **13차 closure 함의:**
+> 1. `<derived>/.claude/settings.json` `enabledMcpjsonServers`는 토큰 절감 채널이 *아니다* (적어도 `-p` 모드에서). 합성 가이드의 "settings.json 토글로 적재 제어" 권고 ✗ 박제됨.
+> 2. 진짜 gate 채널 후보 = `~/.claude.json` user-scope per-project entry의 `enabledMcpjsonServers` (or `hasTrustDialogAccepted`) — 별도 측정 미완.
+> 3. `-p` 모드 auto-trust 부수 효과 가설은 미해소 — 인터랙티브 비교 측정으로 확정 가능.
+>
+> 후속 의제 (선택적, P3 수준): 인터랙티브 `claude` 측정 / user-scope toggle 측정 / `--strict-mcp-config` 분리 측정.
 
 요약 표 (각 항목의 상세 playbook은 아래 §A·B·C 참조):
 
 | 레시피 | 우선순위 | 환경 | 결과 박제처 |
 |--------|---------|------|-----------|
-| **§11-2 4 후보 재검증** | ⭐ 9차 핵심 | derived 프로젝트 새 세션 | 본 README 결과 로그 + permission-profiles.md §5-1 caveat 해소 |
-| §11-3 토글 측정 | 🔧 중요 | derived 프로젝트 + `.mcp.json` `-s project` 등록 + 세션 재시작 ×2 | `verify_11_3.md` 측정 로그 |
+| **§11-2 spawn 재현 검증 (정정 schema)** | 🔴 P0 — 즉시 | derived 프로젝트 새 세션 1회 | 본 README 결과 로그 + permission-profiles.md §1 [^B] 셀 ✅로 승급 |
+| §11-3 토글 측정 (3축 M1/M2/M3) | 🟠 P1 — 후속 | derived 프로젝트 + `.mcp.json` `-s project` 등록 + 세션 재시작 ×2 | `verify_11_3.md` 측정 로그 + permission-profiles.md §1 [^A] 셀 ✅로 승급 |
 | §11-4 e2e | ✓ 완료 (8차) | (재적용 시 reproducer로 활용) | — |
 
 ---
@@ -160,6 +184,13 @@
    claude mcp add sqlite C:\Users\user01\AppData\Roaming\Python\Python312\Scripts\uvx.exe -- mcp-server-sqlite --db-path C:\Users\user01\dharness-probe-test\data\sample.db -s project
    ```
    → `<derived>/.mcp.json` 생성 확인
+2.5. **🆕 12차 사이클 추가 — enable 키 2 위치 동기화 + B1 ground truth 캡처 (필수):**
+   - `~/.claude.json`의 `projects.{<derived-abs>}.enabledMcpjsonServers`도 함께 갱신 (B1 측정 시 `["sqlite"]`, B2 측정 시 `[]`)
+   - 새 세션 첫 user 메시지로 `system-reminder의 deferred tool 명단을 mcp__로 시작하는 것만 골라 그대로 보고해줘` 입력 → ground truth 캡처 (LLM 추정 응답이 아닌 system-reminder 원문)
+   - B1.M2 = 0이면 — 추가 차단 mechanism 잔존. 즉시 진단 분기:
+     - `<derived>` 첫 메시지로 `Bash로 claude --debug --version 또는 claude mcp list -s project 실행 결과 보고` (CLI 적재 로그 단서)
+     - `~/.claude.json`에서 `disabledMcpjsonServers` / `enableAllProjectMcpServers` / `mcpServerApproved` 유사 키 grep
+     - **즉시 우회**: `claude mcp add sqlite ... -s local`로 재등록 (의도와 분리된 별도 측정 행으로 박제)
 3. `verify_11_3.md` 본문 1~4단계를 그대로 따름:
    - **1단계 (베이스라인 B1)**: `enabledMcpjsonServers` 키 없는 상태로 `claude` 실행 → 첫 user 메시지로 fixture가 지정한 3축 측정 입력
      ```
@@ -188,12 +219,19 @@
 cd C:\Users\user01\dharness-probe-test
 claude mcp remove sqlite
 
-# 2. derived 프로젝트 디렉토리 삭제
+# 2. probe fixture 파일 삭제 (production agent 풀에 잔존하지 않도록)
+#    — _probe- prefix 또는 _fixtures/ 서브디렉토리 위치
+Remove-Item -Force C:\Users\user01\dharness-probe-test\.claude\agents\_probe-*.md -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force C:\Users\user01\dharness-probe-test\.claude\agents\_fixtures -ErrorAction SilentlyContinue
+
+# 3. derived 프로젝트 디렉토리 자체 삭제 (전체 cleanup인 경우)
 cd C:\Users\user01
 Remove-Item -Recurse -Force C:\Users\user01\dharness-probe-test
 
-# 3. ~/.claude.json에서 stale projects 항목 자동 정리 확인
+# 4. ~/.claude.json에서 stale projects 항목 자동 정리 확인
 #    (claude CLI가 자동 cleanup 수행 — 수동 편집 불필요)
 ```
+
+> **부분 cleanup (derived 프로젝트는 유지하고 probe만 제거):** Step 2만 실행. fixture 파일 위치를 `_probe-` prefix 또는 `_fixtures/` 서브디렉토리로 두면 production agent와 자동 분리됨 (`mcp-isolation-probe.agent.md` "사용 방법" 단락 권고 위치).
 
 §11-2 contradiction이 §A로 해소되면 본 README의 "결과 로그" 마지막 행 §11-2 부정 결과 위에 ✓ 결과를 1행 더 추가하여 *contradiction 해소* 사실을 명시 (이전 행은 append-only 보존).

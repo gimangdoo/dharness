@@ -1,6 +1,6 @@
 ---
 name: mcp-isolation-probe
-description: MCP isolation empirical probe — inline mcpServers를 갖고 도구 노출 보고. §11-2 reproducer 전용 에이전트.
+description: MCP isolation empirical probe — inline mcpServers 합성이 (a) subagent에 도구 노출 (b) parent 미적재 양면 검증. §11-2 reproducer 전용 에이전트로, derived 프로젝트에서 *fixture 검증 작업* 시에만 spawn (production 트리거 절대 금지). 파일 위치 prefix `_probe-` 또는 `_fixtures/`로 production agent 풀과 분리.
 model: opus
 tools:
   - Bash
@@ -71,7 +71,16 @@ mcpServers:
 
 ## 사용 방법
 
-이 파일을 dharness *밖*의 derived 프로젝트(예: `~/myproject/`) `.claude/agents/mcp-isolation-probe.md` 위치에 복사한 후, 해당 프로젝트의 Claude Code 세션에서:
+이 파일을 dharness *밖*의 derived 프로젝트(예: `~/myproject/`)에 복사하되, **production agent 풀과 섞이지 않도록 다음 위치 중 하나로 격리**:
+
+| 위치 | 격리 강도 | 권고 |
+|------|---------|------|
+| `<derived>/.claude/agents/_probe-mcp-isolation.md` | 약함 — 같은 디렉토리지만 prefix로 시각 분리 | ⭐ 단일 fixture만 두는 경우 |
+| `<derived>/.claude/agents/_fixtures/mcp-isolation-probe.md` | 강함 — 별도 서브디렉토리 | fixture 2종 이상 같이 둘 때 |
+
+> **왜 격리하는가:** Phase 5-2 합성 결과물(예: `data-analyst.md`)과 같은 `.claude/agents/` 디렉토리에 이 fixture가 그대로 남으면 production agent 목록에 `mcp-isolation-probe`가 노출되어 *실제 운영*에서 spawn될 위험. fixture는 §11-2 reproducer 전용이므로 검증 후 즉시 삭제 권장.
+
+복사 후 해당 프로젝트의 Claude Code 세션에서:
 
 ```
 Agent tool 호출:
@@ -80,3 +89,5 @@ Agent tool 호출:
 ```
 
 dharness root는 self-host CM 격리 영역이라 derived 프로젝트가 필요. 사전에 derived 프로젝트 parent에서 `claude mcp list`로 fetch가 등록되어 있지 않은 상태를 확인 (등록되어 있다면 `claude mcp remove fetch` 선행).
+
+**검증 완료 후 cleanup:** `<derived>/.claude/agents/_probe-mcp-isolation.md` 또는 `<derived>/.claude/agents/_fixtures/` 삭제. fixture README §C cleanup 단계에 통합되어 있음.

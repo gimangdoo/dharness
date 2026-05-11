@@ -31,6 +31,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 
 ### Step 2 — Pre-install probe
 
+- **패키지 출처 검증 (필수, §8-3 안전 룰):** 패키지가 trusted source(github.com/modelcontextprotocol/servers / 본 §3 인벤토리 ✓ 항목 / 사용자 명시 trust) 중 하나가 아니면 **probe도 실행 금지** — 사용자에게 출처 확인 요청 후 명시 동의 받음. probe도 코드 실행이라 install과 동일 위협 모델.
 - `references/fixtures/probe_sqlite.js`를 템플릿으로 복사 → target MCP에 맞게 UVX_PATH/명령·인자 수정 → `node probe_<server>.js` 실행.
 - 출력: `COUNT=N` + per-tool name·required·all-params.
 - **install 없이** 도구 카탈로그 확정 — Step 3 user confirm 입력의 1차 자료.
@@ -53,7 +54,15 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 - `claude mcp list` 재실행 → 새 서버가 `✓ Connected`인지 확인.
 - 실패 시 stderr 첨부 후 사용자에게 보고 — install 실패는 silent fallback 금지.
 - **경로 인자는 절대경로 필수** (8차 사이클 sqlite empirical) — `--db-path`, `--repository` 등 디렉토리/파일을 가리키는 인자에 상대경로(`./...`)를 사용하면 health check 실행 시 cwd 차이로 `✗ Failed to connect` 발생. uvx 실행자(`%APPDATA%\Python\Python312\Scripts\uvx.exe`) 자체도 PATH 미통과 시 spawn 실패하므로 절대경로 사용.
-- **첫 install이 ✗ Failed로 떴다면 잘못된 등록이 `~/.claude.json` 또는 `.mcp.json`에 남으므로 `claude mcp remove <name>` 후 절대경로로 재install** — silent fix 금지, 사용자에게 1차 실패 사실과 정정 명령을 보고.
+- **첫 install이 ✗ Failed로 떴다면** 정정 흐름 (silent fix 금지):
+  1. 사용자에게 1차 실패 사실 + stderr 그대로 보고
+  2. 정정 명령 *2 단계*를 사용자에게 함께 제시:
+     ```
+     claude mcp remove <name>
+     claude mcp add <name> <abs-uvx-path> -- <pkg> <abs-path-args>
+     ```
+  3. **사용자 명시 confirm 후에만 재실행** — 자동 재시도 금지 (§6 정책의 "MCP install은 항상 사용자 명시 동의"는 *재시도*에도 동일 적용)
+  4. 잘못된 등록이 `~/.claude.json`(local 스코프) 또는 `.mcp.json`(project 스코프)에 stale로 남지 않도록 remove를 *반드시 먼저* 실행 — 절대경로만 갈아끼우는 add는 중복 등록 위험
 
 ### Step 5 — Reflect (4 산출물)
 
@@ -68,11 +77,21 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 
 ## 검증 게이트
 
-Step 4 완료 직후 다음 사실을 사용자에게 명시:
+Step 4 완료 직후 다음 사실을 사용자에게 *반드시* 명시 (LLM이 빠뜨리지 않도록 출력 템플릿 강제):
 
-> **다음 세션부터 사용 가능** — mid-session `claude mcp add`는 본 세션 도구 풀에 미적재 (empirical 4차 사이클 — 양면 검증). 새 도구가 LLM에 노출되려면 세션 재시작 필수. 합성 시점에 install된 신규 MCP도 동일.
+```
+✅ §10 채택 완료
+  - claude mcp add <server> ... ✓ Connected
+  - 영향 받는 agent N개 frontmatter `tools:` 갱신
+  - .claude/settings.json permissions 갱신 (allow / ask / deny 카운트)
+  - CLAUDE.md 변경 이력 1행 추가
 
-다음 세션 시작 후 `references/fixtures/verify_11_1.md` fixture로 노출 패턴 검증 권장 (도구명에 하이픈 보존 vs 변환 등).
+⚠️ 다음 세션부터 사용 가능 — mid-session `claude mcp add`는 본 세션 도구 풀에 미적재 (empirical 4차 사이클 — 양면 검증). 새 도구가 LLM에 노출되려면 세션 재시작 필수. 합성 시점에 install된 신규 MCP도 동일.
+
+후속 권고:
+  - 다음 세션 시작 후 `references/fixtures/verify_11_1.md` fixture로 노출 패턴 검증 (도구명 하이픈 보존 vs 변환 등)
+  - `/harness:harness-mcp-status`로 정합 점검 (parent 적재 비용·격리 무결성)
+```
 
 ## Rollback
 

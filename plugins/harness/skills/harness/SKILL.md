@@ -130,13 +130,14 @@ description: "하네스를 구성합니다. 전문 에이전트를 정의하며,
 > **합성 시점 vs 런타임 시점 분리**
 > - *합성 시점*(Phase 5-2): `references/permission-profiles.md` §3-§7 — 에이전트 생성 시 1회.
 > - *런타임 시점*(프로젝트 진행 중 신규 MCP 채택 필요): `references/permission-profiles.md` §10 dynamic adoption — 트리거 신호 3종 + 5-step 절차 + 프로젝트 유형별 매트릭스(web/data/mobile/research/devops) + rollback. 진입 명령은 `/harness:harness-mcp-adopt <사유>`. 채택 *전후* 진단(인벤토리·매트릭스·정합·trigger 자동 감지)은 `/harness:harness-mcp-status` (read-only).
-> - *PoC 진척*: `references/permission-profiles.md` §11 + `references/fixtures/` 4종 reproducer. **§11-1 ✓** (6차) / **§11-3 fixture 본문 갱신** (7차, 3축 메트릭) / **§11-4 e2e ✓** (8차, sqlite 시연으로 §10 5-step 검증) / §11-2 setup ready (8차, derived 프로젝트 외부 spawn만 잔존). 결과는 `fixtures/README.md` 결과 로그에 누적.
+> - *PoC 진척*: `references/permission-profiles.md` §11 + `references/fixtures/` 4종 reproducer. **§11-1 ✓** (6차) / **§11-3 fixture 본문 갱신** (7차, 3축 메트릭) / **§11-4 e2e ✓** (8차, sqlite 시연으로 §10 5-step 검증) / **§11-2 P0 ✅** (10차, 정정 schema로 양면 empirical 확정 + 🆕 `tools:` allowlist는 inline 서버 도구 통제에 무력 발견) / §11-3 토글 측정만 P1 잔존. 결과는 `fixtures/README.md` 결과 로그에 누적.
 >
-> **운영 함의 (cycle 8 누적):**
+> **운영 함의 (cycle 11 누적):**
 > - mid-session `claude mcp add`는 본 세션·기 spawn된 서브에이전트에 *미전파* (4차 — 양면 검증). Phase 5-2 합성 직후 새 MCP 의존 에이전트 사용 시 **"다음 세션부터 사용 가능"** 명시 필수.
 > - **uvx-기반 MCP의 경로 인자(`--db-path`, `--repository` 등)는 절대경로 필수** (8차 sqlite empirical) — 상대경로면 health check `✗ Failed to connect`.
 > - **§6 자동 install 금지 정책은 dharness root 외부에서도 동일 enforcement** — derived 프로젝트의 inline `mcpServers:` 작성도 untrusted external code execution으로 차단됨 (8차 self-test 재확인). 사용자 명시 동의 후 통과.
 > - plugin-bundled subagent는 `mcpServers`/`permissionMode`/`hooks` 무시(§9) — derived 하네스를 plugin 패키징 시 inline `mcpServers:`는 무력화됨에 주의.
+> - **🆕 `tools:` allowlist는 inline 서버 도구를 줄이지 못한다** (10차 P0 새 발견) — Layer B 격리는 *parent isolation*에만 ✅ 작동, 도구 카운트 통제는 ❌. inline 서버의 부수 효과 도구 차단은 (a) Layer A 서버 측 advertise 필터(toolset 지원 MCP) 또는 (b) `permissions.deny` 박제(미지원 MCP) — `ask` 강등은 부족(사용자 confirm으로 통과). 정합 점검은 `/harness:harness-mcp-status` §4 신규 항목 참조.
 
 ### Phase 6: 스킬 생성
 
