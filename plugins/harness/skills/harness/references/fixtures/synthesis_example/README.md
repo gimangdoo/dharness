@@ -18,7 +18,7 @@
 1. **에이전트 정의 파일** → `<derived>/.claude/agents/<agent-name>.md`
 2. **`settings.json`** → `<derived>/.claude/settings.json` (기존 키와 *deep merge* — 덮어쓰지 말 것)
 3. **`CLAUDE_md_row.md`의 행** → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가
-4. (a) §3 인벤토리 footnote는 dharness 본 저장소 PR 영역 (§10 Step 5 atomic 분계 — 도입자는 권고만 보고)
+4. (a) §3 인벤토리 footnote + §3-1 매트릭스 행은 dharness 본 저장소 PR 영역 (§10 Step 5 atomic 분계 — 도입자는 권고만 보고). 새 MCP가 PoC enumeration 통과 후 §3-1 매트릭스 closure 기준(`tier·profile·도구 카운트·default permissions·Layer 결합` 5컬럼)을 충족하면 *§3과 §3-1 동시* 갱신.
 
 복사 후 §10 Step 4의 `claude mcp add ...` 실행은 *생략* — inline `mcpServers:` 패턴은 parent 컨텍스트에 적재하지 않으므로 등록 자체가 불요 (§5-1 권고). 단 inline 정의의 `command:` / `args:`는 OS·환경별 placeholder 치환 필수 (각 시나리오 README의 "placeholder 치환 표" 참조).
 

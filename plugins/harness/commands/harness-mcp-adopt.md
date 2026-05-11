@@ -27,6 +27,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 - `references/permission-profiles.md` §3 인벤토리에서 `$ARGUMENTS` 매칭 후보 검색.
   - 매칭이면: Tier·capability profile·install 명령·도구 enumeration 즉시 사용.
   - 미매칭이면: github.com/modelcontextprotocol/servers 또는 외부 카탈로그 검색 후 후보 1~3개 사용자에게 제시.
+- **§3-1 매트릭스 우선 발췌 (14차 사이클):** `$ARGUMENTS`로부터 capability profile 추정 가능하면 §3-1의 4 profile 행 중 매핑 후보를 *§3 grep보다 먼저* 발췌 — 검증 완료 T0 MCP 7종(48 도구)이 default 권한 bucket까지 박제되어 Step 3 confirm 입력으로 그대로 이전 가능. 멀티 inline 패턴(N개 MCP 동시 등재) 후보 또한 §3-1 "채택 패턴 권고" YAML 참조.
 - **§10-1 트리거 신호 분류:** `$ARGUMENTS`가 (a) baseline-diff (b) profile-mismatch (c) 사용자-요청 중 어느 것인지 판정 → §10 Step 5 사유 컬럼 input.
 
 ### Step 2 — Pre-install probe

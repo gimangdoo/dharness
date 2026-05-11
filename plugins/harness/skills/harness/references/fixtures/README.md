@@ -10,7 +10,9 @@
 | `mcp-isolation-probe.agent.md` | §11-2 subagent inline isolation | dharness *밖* 별도 derived 프로젝트 | derived 프로젝트의 `.claude/agents/`에 복사 후 spawn |
 | `verify_11_3.md` | §11-3 `enabledMcpjsonServers` 토글 | 세션 재시작 (베이스라인 → 토글 → 재시작) | 비교 측정 2회 |
 | `probe_sqlite.js` | §11-4 §10 5-step Step 2 (pre-install probe) | uvx 가용 + 사용자 sqlite install 승인 (§6) | Step 3 user confirm 통과 후 Step 4 install 직전 |
-| `synthesis_example/` | (별건) §5 + §10 Step 5 합성 산출물 1세트 (data-analyst 시나리오) | derived 프로젝트 1개 | 외부 도입자가 자신의 도메인으로 매핑 시 *형태 참고* |
+| `probe_filesystem.js` / `probe_time.js` / `probe_memory.js` | §10 Step 2 (P2 T0 batch — 14차 사이클) | node + npx/uvx (probe-only, install 불요) | dharness 본 세션 Bash에서 직접 실행 — enumeration만 |
+| `synthesis_example/data-analyst/` | (별건) §5 + §10 Step 5 합성 산출물 1세트 — 단일 inline `mcpServers:` sqlite 시나리오 | derived 프로젝트 1개 | 외부 도입자가 자신의 도메인으로 매핑 시 *형태 참고* (단일 MCP 패턴) |
+| `synthesis_example/web-research/` | (별건) §5 + §10 Step 5 합성 산출물 1세트 — 멀티 inline `mcpServers:` fetch + memory 시나리오 (14차 사이클) | derived 프로젝트 1개 | 외부 도입자가 자신의 도메인으로 매핑 시 *형태 참고* (멀티 MCP 동시 등재 패턴) |
 
 ## 결과 기록 규약
 

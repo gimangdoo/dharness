@@ -38,6 +38,7 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
    - `model: "opus"` 명시
    - 필수 섹션: 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업, 팀 통신 프로토콜
    - **Phase 5-2 (도구·MCP 자동 할당)**: capability profile 매칭 → `claude mcp list`로 인벤토리 확인 → 사용자 confirm → frontmatter `tools:` allowlist 합성. 카탈로그·결정 트리·안전 정책은 `plugins/harness/skills/harness/references/permission-profiles.md` 단일 출처(§3-§7). 외부 MCP는 자동 install·자동 `allow` 금지(T0 한정).
+     - **§3-1 매트릭스 1차 후보 발췌 (14차 사이클 — `런타임 가용 default 카탈로그`):** profile 확정 후 §3-1에서 행 매핑 — code-test(`git`+`filesystem`) / web-research(`fetch`+`memory`) / external-integration(`sqlite`) / reasoning-aux(`sequential-thinking`+`time`). 각 행에 `default permissions bucket`이 박제되어 있어 `permissions.allow/ask/deny` 합성에 1:1 활용. 멀티 inline `mcpServers:` 패턴(N개 MCP 동시 등재) 예시는 `fixtures/synthesis_example/web-research/`(fetch+memory) + §3-1 "채택 패턴 권고" YAML 참조.
      - 신규 MCP를 *합성 시점*에 install했다면 사용자에게 **"다음 세션부터 사용 가능"** 명시 (mid-session 미전파 — empirical 확정).
      - 프로젝트 진행 중 신규 MCP 채택은 **§10 dynamic adoption** — 별도 진입점 `/harness:harness-mcp-adopt <사유>` (본 명령 범위 외).
      - **🆕 inline `mcpServers:` 합성 시 deny 박제 default (10차 P0 새 발견 함의):** inline 서버의 도구는 frontmatter `tools:` allowlist로 *줄지 않으므로*, 부수 효과 도구(`write_*`/`insert_*`/`update_*`/`delete_*`/`exec_*` 등)는 *반드시* `settings.json permissions.deny`에 박제. `ask`로 강등하면 사용자 confirm 1회로 통과 — strict read-only 의도라면 `deny`가 default (§5-3 참조). 합성 후 정합 점검은 `/harness:harness-mcp-status` §4 (deny vs inline advertise 도구 매트릭스).
