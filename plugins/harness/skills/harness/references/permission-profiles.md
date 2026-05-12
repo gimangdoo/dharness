@@ -188,6 +188,13 @@ Phase 5에서 에이전트 명세를 받았을 때:
    → LLM이 후보 profile 1~N개 *제안*만 (다중 선택 가능)
    → 사용자 confirm 전엔 합성 금지
 
+1-R. (옵션·default ON) MCP Recommendation 엔진 호출
+   → mcp-recommendation.md §1 신호 추출 (6 신호)
+   → §2 후보 풀 cascade (R0 §3·§3-1 → R1 modelcontextprotocol/servers → R2 외부 큐레이션)
+   → §3 3축 점수 (효율성/확장성/정확도) — top-K 표 + 권고 조합
+   → R-7 confirm gate → 채택은 §10 5-step로 인계
+   ※ 후보 매핑(§4 본 트리)은 *어떤 profile에 어떤 MCP*, 추천(mcp-recommendation.md)은 *후보 간 점수*
+
 2. 사용자 confirm된 profile들에 대해 후보 MCP 열거
    → `claude mcp list`로 install 여부 체크
 
