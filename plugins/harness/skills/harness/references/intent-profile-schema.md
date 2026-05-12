@@ -27,7 +27,7 @@ Phase 3 이후의 모든 단계(Domain Analysis, Team Architecture, Skill 생성
 
 1. **greenfield/brownfield schema 공유** — `project_type` 필드만 다르다. 채우는 전략은 다르지만 출력 contract는 동일.
 2. **enum 우선** — 자유 텍스트는 최소화. 가능한 한 선택지 기반으로 사용자 입력을 받는다. 모바일에서 타이핑 부담 감소 + 다운스트림 분기 결정성 향상.
-3. **추론과 명시 구분** — brownfield에서 자동 추론된 필드와 사용자가 직접 확인한 필드를 `meta`에서 구분 추적. baseline 재실행 시 신뢰도 차등 검토 기준.
+3. **추론과 명시 구분** — brownfield에서 자동 추론된 필드와 사용자가 직접 확인한 필드를 `meta`에서 구분 추적. Phase 10 Runtime Adaptation의 가중치 결정에 사용.
 4. **누락 명시** — 스킵된 필드는 침묵하지 않고 `meta.open_questions`에 등록. 미래의 보완 시점을 위한 신호.
 
 ---
@@ -125,7 +125,7 @@ meta:
     - "scope.out_of_scope (사용자 응답: '나중에 결정')"
 ```
 
-이렇게 등록된 open_questions는 baseline 재실행 또는 `/harness:harness-evolve` 시 보충 질문 후보가 된다.
+이렇게 등록된 open_questions는 Phase 10 Runtime Adaptation이 적절한 시점에 보충 질문을 트리거할 후보가 된다.
 
 ---
 
@@ -187,7 +187,7 @@ constraints:
 
 | 필드 | 채우는 시점 | 다운스트림 활용 |
 |------|-----------|--------------|
-| `open_questions` | 사용자가 스킵하거나 "모르겠음" 응답 시 | baseline 재실행·evolve 시 보충 후보 |
+| `open_questions` | 사용자가 스킵하거나 "모르겠음" 응답 시 | Phase 10이 보충 질문 시점 결정 |
 | `explicit_assumptions` | 사용자가 자유 입력으로 추가 | Phase 3 도메인 분석 시 가정 명시 |
 | `inferred_fields` | brownfield 자동 추론 직후 | "신뢰도 낮음" 표시 |
 | `user_confirmed_fields` | 사용자가 추론 결과를 확인/수정 시 | "신뢰도 높음" 표시 |
@@ -196,7 +196,7 @@ constraints:
 
 > **`inferred_fields − user_confirmed_fields` = 자동 추론만 된 미확인 필드**
 
-이 차집합이 클수록 baseline 신뢰도가 낮음. `harness-evolve` 또는 baseline 재실행 시 이 필드들의 변경 전 사용자 확인을 우선 트리거한다.
+이 차집합이 클수록 baseline 신뢰도가 낮음. Phase 10 Runtime Adaptation이 이 필드들을 변경할 때는 가중치를 낮추거나 우선 사용자 확인을 트리거한다.
 
 ---
 
@@ -288,7 +288,7 @@ meta:
 **주의 깊게 볼 점:**
 - `inferred_fields`, `user_confirmed_fields`가 빈 배열 — greenfield는 추론 대상이 없음
 - `out_of_scope` 명시로 향후 scope creep 방지 신호
-- `open_questions`에 미결정 항목을 솔직히 등록 → baseline 재실행·evolve 시 보충 가능
+- `open_questions`에 미결정 항목을 솔직히 등록 → Phase 10이 추후 트리거 가능
 
 ---
 
@@ -418,7 +418,7 @@ meta:
 
 ### Inferred but NOT Confirmed (2개 — 신뢰도 낮음)
 - `workflow.collaboration_mode`, `constraints.team.size`
-  → baseline 재실행·evolve 시 변경 전 사용자 확인 우선 트리거
+  → Phase 10이 변경 시도할 때 우선 사용자 확인 트리거
 ```
 
 **주의 깊게 볼 점:**

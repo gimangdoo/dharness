@@ -34,14 +34,14 @@ description: "하네스를 구성합니다. 전문 에이전트를 정의하며,
 | 아키텍처 변경 | – | – | – | 필수 | 영향 받는 에이전트만 | 영향 받는 스킬만 | 필수 | 필수 |
 | **baseline 갱신** (코드/의도 재분석) | **필수** | **필수** | 영향 시 | 영향 시 | 영향 시 | 영향 시 | 영향 시 | 필수 |
 
-> baseline 갱신 트리거: (1) 사용자가 "프로젝트 다시 분석", "baseline 갱신" 등 명시 요청, (2) 마지막 분석 후 일정 기간 경과(권장 3개월).
+> baseline 갱신 트리거: (1) 사용자가 "프로젝트 다시 분석", "baseline 갱신" 등 명시 요청, (2) Phase 10이 stack/architecture의 큰 변화를 감지, (3) 마지막 분석 후 일정 기간 경과(권장 3개월).
 
 3. 기존 에이전트/스킬 목록과 CLAUDE.md 기록을 대조하여 불일치(drift)를 감지
 4. 감사 결과를 사용자에게 요약 보고하고, 실행 계획 확인
 
 ### Phase 1: Code Research
 
-프로젝트의 객관적 baseline을 추출. 결과 `_workspace/_baseline/project_profile.md`는 Phase 3의 입력 + 후속 baseline 재실행 시 비교 기준점.
+프로젝트의 객관적 baseline을 추출. 결과 `_workspace/_baseline/project_profile.md`는 (a) Phase 3의 입력, (b) Phase 10의 t=0 anchor.
 
 **모드 선택:**
 
@@ -202,7 +202,9 @@ skill-name/
 
 **목표:** {핵심 목표 한 줄}
 
-**트리거:** {도메인} 관련 작업 요청 시 `{orchestrator-skill-name}` 스킬을 사용하라. 또는 `/harness:harness-*` slash command로 명시적 호출 (`/harness:harness-add-agent` 등 — 카탈로그는 dharness `README.md`의 "Slash command 카탈로그" 섹션). 단순 질문은 직접 응답 가능.
+**트리거:** {도메인} 관련 작업 요청 시 `{orchestrator-skill-name}` 스킬을 사용하라. 또는 `/harness:harness-*` slash command로 명시적 호출 (`/harness:harness-add-agent`, `/harness:harness-adapt` 등 — 카탈로그는 dharness `README.md`의 "Slash command 카탈로그" 섹션). 단순 질문은 직접 응답 가능.
+
+**Phase 10 자동 알림:** 세션 시작 시 `_workspace/_telemetry/`의 최신 `.jsonl` 파일을 확인하라. 마지막 Adapt 시각(= `_workspace/_telemetry/_delta_*.md` 또는 `_workspace/_telemetry/_rollback/{ts}/` 중 가장 최근 mtime, 둘 다 없으면 telemetry 첫 이벤트의 ts) 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면, 사용자에게 알린다: "하네스가 {N}회 실행되었습니다. `/harness:harness-adapt`로 drift 점검을 권장합니다." — telemetry 파일이 없거나 읽기 비용이 클 경우 건너뛴다.
 
 **변경 이력:**
 | 날짜 | 변경 내용 | 대상 | 사유 |
@@ -224,7 +226,7 @@ skill-name/
 
 생성된 하네스를 검증한다.
 
-**검증 7단계 (Phase 9-5 회귀 검증이 8-N으로 참조하는 번호와 일치):**
+**검증 7단계 (Phase 9-5 / runtime-adaptation §6 회귀 검증이 8-N으로 참조하는 번호와 일치):**
 1. **8-1 구조 검증** — 파일 위치, frontmatter(name/description), 참조 일관성, **사용자 프로젝트의** `.claude/commands/` 미생성 확인 (harness 플러그인 본체의 `commands/`는 L1 진입점으로 별개)
 2. **8-2 실행 모드별 검증** — 팀: 통신 경로·작업 의존성·팀 크기 / 서브: 입출력 연결·`run_in_background`·반환값 수집 / 하이브리드: Phase별 모드 명시 + 경계 데이터 전달 끊김 없음
 3. **8-3 스킬 실행 테스트** — 각 스킬에 2~3개 현실적 테스트 프롬프트, 가능하면 with-skill vs without-skill(baseline) 병렬 비교, 객관 검증 가능 시 assertion + 주관은 사용자 피드백
@@ -255,13 +257,13 @@ skill-name/
 
 #### 9-3. 변경 이력
 
-모든 변경은 CLAUDE.md 변경 이력 테이블(Phase 7-4 템플릿)에 기록. 출처를 명시 — `Phase 9: 사용자 피드백 — {요약}` 등.
+모든 변경은 CLAUDE.md 변경 이력 테이블(Phase 7-4 템플릿)에 기록. 출처를 명시하여 Phase 9 변경과 Phase 10 자동 감지를 구분 — `Phase 9: 사용자 피드백 — {요약}` vs `Phase 10: drift 감지 ({drift 이름})`.
 
 #### 9-4. 진화 트리거
 
 명시 요청("하네스 수정해줘", `/harness:harness-evolve <피드백>`)뿐만 아니라:
 - 같은 유형의 피드백이 2회 이상 반복 → `/harness:harness-audit`로 구조적 점검 권고
-- 에이전트가 반복 실패하는 패턴 → `/harness:harness-audit`로 정합성 점검 후 `/harness:harness-evolve`로 보강
+- 에이전트가 반복 실패하는 패턴 → `/harness:harness-adapt`로 telemetry 기반 사용 drift 분석 권고
 - 사용자가 오케스트레이터 우회하여 수동 작업 → `/harness:harness-audit`의 변경 이력 누락 검사 권고
 
 #### 9-5. 운영/유지보수 워크플로우
@@ -272,6 +274,61 @@ Phase 0에서 "운영/유지보수"로 분기 시 진입. 명시적 진입점은
 2. **점진적 추가/수정** — 한 번에 하나씩, 각 변경 후 즉시 동기화(Step 3)
 3. **CLAUDE.md 변경 이력 갱신** — 날짜·내용·대상·사유
 4. **변경 검증** — 구조(8-1), 트리거 영향 시 트리거(8-4), 대규모 변경(아키텍처 변경, 에이전트 3+ 추가/삭제) 시 실행 테스트(8-3) + 드라이런(8-5)
+
+### Phase 10: Runtime Adaptation
+
+Phase 9가 사용자 피드백을 **수동**으로 수집한다면, Phase 10은 프로젝트 변화와 하네스 사용 패턴을 **자동 관측**하고 baseline에서 벗어난 부분을 사용자에게 제안한다. 모든 변경은 **제안 + 승인** 모델 — Phase 10이 자동 적용하는 변경은 없다.
+
+#### 10-1. 3 레이어 구조
+
+| 레이어 | 역할 | 출력 위치 |
+|------|------|----------|
+| **Capture** | 매 실행마다 프로젝트 + 사용 신호 캡처 | `_workspace/_telemetry/{date}.jsonl` |
+| **Diagnostic** | 누적 telemetry ↔ baseline 비교, drift 감지 | `_workspace/_telemetry/_delta_{ts}.md` |
+| **Adapt** | drift 변경안 제시, 승인 시 적용 | `.claude/agents/`, `.claude/skills/`, `CLAUDE.md`, `_baseline/*.md` |
+
+#### 10-2. 트리거 조건
+
+| 트리거 | 조건 |
+|------|------|
+| **수동** | "하네스 점검", "drift 확인", "적응", "baseline 갱신" 등 키워드 / `/harness:harness-adapt` 명시 호출 |
+| **주기적** | 마지막 Adapt 이후 N회(기본 10) 하네스 실행 누적 |
+| **임계** | 단일 큰 drift (새 프레임워크, 보안 취약점 검출 등) |
+
+#### 10-3. drift 두 종류 구분
+
+- **baseline drift**: 프로젝트 자체가 변함 (새 의존성, 새 디렉토리, 커버리지 변화) → `project_profile.md` 갱신 + 영향 받는 에이전트/스킬 점검
+- **사용 drift**: 프로젝트는 같지만 하네스 사용 패턴이 변함 (특정 에이전트 미사용, 반복 실패, 사용자 우회) → 에이전트/스킬 자체 재구성
+
+두 종류는 같은 delta 리포트에 분리된 섹션으로 보고된다.
+
+#### 10-4. 신뢰도 가중치 — Phase 2 메타 활용
+
+Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신뢰도 낮음" 필드)을 가중. 신뢰도 낮은 필드의 baseline drift는 변경안 제시 전 "원래 추론이 맞았는지" 사용자 확인을 먼저 트리거. 신뢰도 높은 필드의 drift는 변경안 직접 제시.
+
+#### 10-5. Phase 9와의 관계
+
+| | Phase 9 (수동 진화) | Phase 10 (Runtime Adaptation) |
+|--|---|---|
+| 트리거 | 사용자 명시 피드백 | 자동 감지 + 사용자 명시 점검 |
+| 입력 | 사용자 발화 | telemetry + baseline |
+| 변경 범위 | 사용자가 지목한 부분 | 시스템이 감지한 모든 drift |
+
+두 Phase는 동일한 변경 이력 테이블(Phase 7-4 템플릿)을 공유한다.
+
+#### 10-6. 안전 메커니즘 (적용·검증·복원)
+
+모든 Adapt 적용은 **chain 단위 + 사전 스냅샷 + 사후 검증 + (실패 시) 자동 rollback**으로 처리. 단일 drift라도 부수 갱신이 필요한 산출물이 있으면 atomic하게 묶여 적용된다.
+
+| 메커니즘 | 역할 |
+|------|------|
+| **Cross-artifact chain** | 1차 변경의 부수 갱신 산출물을 묶어 atomic 적용 (dangling 참조 방지) |
+| **패치 미리보기** | 한 줄 요약이 아닌 실제 diff 표시, chain 항목 모든 파일 포함, 민감 정보 마스킹 |
+| **사전 스냅샷** | 적용 직전 영향 파일을 `_workspace/_telemetry/_rollback/{ts}/`에 복사 + manifest 기록 |
+| **Post-Adapt 회귀 검증** | 변경 종류별 Phase 8의 영향 단계만 자동 재실행 (예: description 변경 → 8-4 트리거 검증) |
+| **자동 rollback** | 검증 실패 또는 사용자 명시 요청 시 스냅샷으로 복원, 거부 학습 룰 적용 |
+
+> 상세 telemetry schema, capture 신호 목록(7종 이벤트), diagnostic 룰, adapt 룰, 승인 UX, 안전 메커니즘(chain·diff·rollback·회귀 검증)은 `references/runtime-adaptation.md`.
 
 ## 산출물 체크리스트
 
@@ -297,6 +354,11 @@ Phase 0에서 "운영/유지보수"로 분기 시 진입. 명시적 진입점은
 - [ ] **CLAUDE.md에 하네스 포인터 등록** (트리거 규칙 + 변경 이력)
 - [ ] **CLAUDE.md 변경 이력에 에이전트/스킬 추가/삭제/수정 기록**
 - [ ] **오케스트레이터 Phase 1에 컨텍스트 확인 단계** (초기/후속/부분 재실행 판별)
+- [ ] **`_workspace/_telemetry/` 디렉토리 생성** (Phase 10 capture 출력 위치 사전 확보)
+- [ ] **`_workspace/_telemetry/_rollback/` 디렉토리 사전 생성** (Adapt 적용 시 스냅샷 저장 위치)
+- [ ] **오케스트레이터에 telemetry capture 훅 삽입** (매 실행 시 `_telemetry/{date}.jsonl`에 이벤트 append)
+- [ ] **Phase 10 트리거 키워드를 오케스트레이터 description에 포함** ("점검", "drift", "적응", "baseline 갱신")
+- [ ] **CLAUDE.md에 Phase 10 자동 알림 지침 포함** (세션 시작 시 telemetry 카운터 확인, 10회 누적 시 `/harness:harness-adapt` 알림 — Phase 7-4 템플릿 준수)
 
 ## 참고
 
@@ -310,3 +372,4 @@ Phase 0에서 "운영/유지보수"로 분기 시 진입. 명시적 진입점은
 - **Project Profile 스키마**: `references/project-profile-schema.md` — Phase 1 출력 표준 형식
 - **Project Inquiry 가이드**: `references/project-inquiry.md` — 두 브랜치별 채우기 전략, profile-finding → question 매핑 룰
 - **Intent Profile 스키마**: `references/intent-profile-schema.md` — Phase 2 출력 표준 형식 + greenfield/brownfield 인스턴스 예시
+- **Runtime Adaptation 가이드**: `references/runtime-adaptation.md` — Phase 10 telemetry schema, capture 신호, diagnostic 룰, adapt 룰, 승인 UX

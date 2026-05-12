@@ -82,4 +82,5 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
 
 - **스킬은 새로 만들지 않는다** — 새 에이전트가 전용 스킬을 필요로 하면 별도로 `/harness:harness-add-skill`(차후 추가) 호출, 또는 사용자에게 안내
 - **baseline 갱신하지 않는다** — 코드/의도가 크게 바뀌었다고 판단되면 `/harness:harness-baseline`로 안내
+- **Phase 10 trigger 안 함** — drift 점검은 `/harness:harness-adapt`
 - **MCP 상태 진단 안 함** — 합성 *전후* 인벤토리/정합 진단이 필요하면 `/harness:harness-mcp-status` (read-only). 런타임 채택은 `/harness:harness-mcp-adopt <사유>`.

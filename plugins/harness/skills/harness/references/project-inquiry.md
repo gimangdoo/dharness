@@ -37,7 +37,7 @@ Phase 2의 두 가지 표준 산출물 — **(a) 채우기 전략**과 **(b) 매
 1. **schema 공유, 전략 분기** — 출력 contract는 동일. 다운스트림은 `project_type` 필드만 보고 분기한다 (SKILL.md 2-1).
 2. **enum 우선, 자유 텍스트 최소화** — 모바일 타이핑 부담 + 다운스트림 분기 결정성.
 3. **추론은 근거와 함께** — 자동 추론된 필드는 항상 source(파일 경로·신호)를 제시한다. 근거 없는 추론은 사용자 신뢰를 잃는다.
-4. **스킵은 침묵하지 않는다** — 비워둔 필드는 `meta.open_questions`에 등록하여 baseline 재실행·evolve 시 추후 보충할 수 있게 한다.
+4. **스킵은 침묵하지 않는다** — 비워둔 필드는 `meta.open_questions`에 등록하여 Phase 10이 추후 보충할 수 있게 한다.
 
 ---
 
@@ -88,7 +88,7 @@ open_questions:
 
 "수정"을 선택하면 사용자 입력으로 덮어쓰고, "모르겠음"은 `inferred_fields`에는 남기되 `user_confirmed_fields`에는 추가하지 않는다.
 
-> **불변식:** `inferred_fields − user_confirmed_fields = 자동 추론만 된 미확인 필드`. baseline 재실행 또는 `/harness:harness-evolve` 시 이 차집합을 "신뢰도 낮음"으로 가중하여 변경 전 사용자 확인을 우선 트리거한다.
+> **불변식:** `inferred_fields − user_confirmed_fields = 자동 추론만 된 미확인 필드`. Phase 10 Runtime Adaptation은 이 차집합을 "신뢰도 낮음"으로 가중하여 적응 결정 시 우선 사용자 확인을 트리거한다.
 
 ### 2-3. 분기 결정 룰
 

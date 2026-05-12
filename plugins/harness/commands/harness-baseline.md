@@ -1,15 +1,16 @@
 ---
-description: baseline 갱신 — Phase 1·2 재실행하여 project_profile·intent_profile을 새 비교 기준점으로 갱신. 영향 받는 에이전트/스킬 점검 포함.
+description: baseline 갱신 — Phase 1·2 재실행하여 project_profile·intent_profile을 새 t=0 anchor로 갱신. 영향 받는 에이전트/스킬 점검 포함.
 ---
 
 # Harness — Baseline Refresh
 
-`_workspace/_baseline/project_profile.md`(코드 baseline)와 `intent_profile.md`(의도 baseline)을 다시 생성하여 비교 기준점을 갱신한다. 프로젝트가 크게 진화하여 기존 baseline이 stale해졌을 때 사용한다.
+`_workspace/_baseline/project_profile.md`(코드 baseline)와 `intent_profile.md`(의도 baseline)을 다시 생성하여 Phase 10의 t=0 anchor를 갱신한다. 프로젝트가 크게 진화하여 기존 baseline이 stale해졌을 때 사용한다.
 
 ## 언제 사용하는가
 
 Phase 0 매트릭스의 "baseline 갱신" 행 트리거:
 - 사용자가 "프로젝트 다시 분석", "baseline 갱신" 등 명시 요청
+- `/harness:harness-adapt`이 stack/architecture의 큰 변화를 감지
 - 마지막 baseline 분석 후 일정 기간 경과 (권장 3개월)
 
 ## 컨텍스트
@@ -62,6 +63,7 @@ drift 리포트를 기반으로 사용자에게 권고:
 |---|---|
 | 새 도메인/요구 추가 | `/harness:harness-add-agent` |
 | 기존 에이전트 책임 변경 | `/harness:harness-evolve` (사용자 피드백 형식으로 수동 진화) |
+| 사용 패턴까지 보려면 | `/harness:harness-adapt` (telemetry 결합) |
 | 정합성만 확인 | `/harness:harness-audit` |
 
 ### 6. CLAUDE.md 변경 이력 갱신

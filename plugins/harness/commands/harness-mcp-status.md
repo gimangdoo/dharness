@@ -53,7 +53,7 @@ claude mcp list
 
 - **§3 박제 + 미설치**: 의도적일 수 있음 (보고만, 권고 없음).
 - **설치 + §3 미박제**: §3 추가 권고 (dharness root 도입자가 추후 채택 시 참조 자료로). dharness root 측 편집 권한이 있으면 사용자에게 1행 추가 제안.
-- **§3 정의된 도구 enumeration vs 실제 노출 도구**: mismatch면 사용자에게 검증 권고 (도구명 하이픈/언더스코어 변환 등).
+- **§3 정의된 도구 enumeration vs 실제 노출 도구**: mismatch면 §11-1 fixture로 검증 권고 (도구명 변환 패턴 등).
 - **🆕 §3-1 매트릭스 default 권고 vs 실제 frontmatter+settings 정합 (14차 사이클)**: 섹션 2에서 추정된 capability profile이 §3-1 매트릭스의 행과 매핑되면, 해당 행의 *권고 MCP 조합* (예: `web-research` → `fetch + memory`)·*도구 카운트*·*default 권한 bucket* vs 실제 agent의 inline `mcpServers:` + `tools:` + `settings.json` 비교. 누락 MCP(예: `web-research` profile인데 `memory` 미합성)는 ⓘ 권고 — 누락이 의도적이면 사용자 명시 확인 후 통과. default permissions bucket과 어긋난 buckets(예: §3-1은 `memory.delete_*` → `deny` 권고인데 실제는 `ask`)은 ⚠️ 권고 (자동 강등 금지 — 사용자 도메인 지식 기반 최종 판정).
 
 ### 섹션 4 — settings.json permissions 정합
@@ -134,8 +134,8 @@ Claude Code 현 빌드는 MCP 도구를 *deferred tool pool*로 관리한다. Se
 
 **한계:**
 
-- baseline 30~50 / per-call 200~500 추정은 §1 deferred-pool 박스 근사. 실측은 Claude Code 빌드별로 다름.
-- K(turn당 호출 빈도) 추정은 user workload 의존 — 실측이 가능하면 사용자 측 호출 카운트로 보정.
+- baseline 30~50 / per-call 200~500 추정은 §1 deferred-pool 박스 + 6차 사이클 근사. 실측은 Claude Code 빌드별로 다름. **§11-3 fixture(3축 메트릭 M1/M2/M3) 결과 누적 후 보정 권고.**
+- K(turn당 호출 빈도) 추정은 user workload 의존 — 실제 telemetry가 있으면 `_workspace/_telemetry/*.jsonl`의 도구별 호출 카운트로 보정 가능.
 - inline `mcpServers:`는 spawn 시에만 baseline 비용 → *agent 호출 빈도 × baseline + 호출당 schema fetch*의 누적. parent 적재는 매 turn baseline 고정 → 격차 누적.
 
 ## 출력 형식

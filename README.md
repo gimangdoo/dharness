@@ -67,7 +67,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 | **자연어 트리거** | "하네스 구성해줘" 등 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화, 일반 사용 |
 | **Slash command** | `/harness:harness-new`, `/cm-status` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-### Slash command 카탈로그 (`harness` 8개 + CM 5개 = 13개)
+### Slash command 카탈로그 (`harness` 9개 + CM 5개 = 14개)
 
 ```
 # harness plugin (메타 스킬 팩토리, 외부 install 가능)
@@ -77,6 +77,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 /harness:harness-baseline              # Phase 1·2 재실행 + drift 분석
 /harness:harness-audit                 # 정합성 감사 (read-only)
 /harness:harness-evolve <피드백>       # Phase 9 수동 진화
+/harness:harness-adapt                 # Phase 10 telemetry drift 점검
 /harness:harness-mcp-adopt <사유>      # 런타임 시점 신규 MCP 채택 (§10 dynamic adoption)
 /harness:harness-mcp-status            # MCP 상태 진단 — 인벤토리·매트릭스·정합·trigger 자동 감지 (read-only)
 
@@ -112,7 +113,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 │   ├── _telemetry/            # 라이프사이클 이벤트 append-only JSONL
 │   ├── _memory/               # 세션·클러스터·observations.db (dharness_event 포함)
 │   ├── _tool_outputs/         # PostToolUse 10KB 초과 원본 보존
-│   └── _drafts/                # SessionEnd가 적재한 CLAUDE.md 표 행 draft (apply/discard 게이트)
+│   └── _drafts/               # SessionEnd가 적재한 CLAUDE.md 표 행 draft (apply/discard 게이트)
 ├── CLAUDE.md
 └── README.md
 ```
@@ -121,9 +122,9 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 
 ---
 
-## Skill 워크플로우 10단계
+## Skill 워크플로우 11단계
 
-`harness` 메타 스킬은 다음 10단계로 동작합니다:
+`harness` 메타 스킬은 다음 11단계로 동작합니다:
 
 | Phase | 이름 | 출력 |
 |-------|------|------|
@@ -137,6 +138,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 | 7 | 오케스트레이션 | 통합 스킬 + CLAUDE.md 포인터 |
 | 8 | 검증 (7단계) | 구조·실행·트리거·드라이런·반복 개선 |
 | 9 | 진화 (수동) | 사용자 피드백 → 에이전트/스킬 갱신 |
+| 10 | Runtime Adaptation | telemetry → drift 감지 → 제안+승인 |
 
 상세는 [`plugins/harness/skills/harness/SKILL.md`](./plugins/harness/skills/harness/SKILL.md).
 

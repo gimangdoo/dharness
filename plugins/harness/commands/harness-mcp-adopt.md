@@ -33,10 +33,10 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 ### Step 2 — Pre-install probe
 
 - **패키지 출처 검증 (필수, §8-3 안전 룰):** 패키지가 trusted source(github.com/modelcontextprotocol/servers / 본 §3 인벤토리 ✓ 항목 / 사용자 명시 trust) 중 하나가 아니면 **probe도 실행 금지** — 사용자에게 출처 확인 요청 후 명시 동의 받음. probe도 코드 실행이라 install과 동일 위협 모델.
-- stdio JSON-RPC `initialize` → `notifications/initialized` → `tools/list` 3 메시지를 임시 Node 스크립트로 spawn (`references/permission-profiles.md` §8-3 패턴).
+- `references/fixtures/probe_sqlite.js`를 템플릿으로 복사 → target MCP에 맞게 UVX_PATH/명령·인자 수정 → `node probe_<server>.js` 실행.
 - 출력: `COUNT=N` + per-tool name·required·all-params.
 - **install 없이** 도구 카탈로그 확정 — Step 3 user confirm 입력의 1차 자료.
-- `uvx` 기반 MCP는 `command:` 필드에 *uvx의 절대경로* 필수.
+- `uvx` 기반 MCP는 `command:` 필드에 *uvx의 절대경로* 필수 (PATH 미통과 시 spawn 실패 — empirical 3차 사이클).
 
 ### Step 3 — User confirm gate
 
@@ -90,6 +90,7 @@ Step 4 완료 직후 다음 사실을 사용자에게 *반드시* 명시 (LLM이
 ⚠️ 다음 세션부터 사용 가능 — mid-session `claude mcp add`는 본 세션 도구 풀에 미적재 (empirical 4차 사이클 — 양면 검증). 새 도구가 LLM에 노출되려면 세션 재시작 필수. 합성 시점에 install된 신규 MCP도 동일.
 
 후속 권고:
+  - 다음 세션 시작 후 `references/fixtures/verify_11_1.md` fixture로 노출 패턴 검증 (도구명 하이픈 보존 vs 변환 등)
   - `/harness:harness-mcp-status`로 정합 점검 (parent 적재 비용·격리 무결성)
 ```
 
@@ -113,4 +114,5 @@ Step 4 완료 직후 다음 사실을 사용자에게 *반드시* 명시 (LLM이
 
 - 합성 시점 신규 에이전트 추가: `/harness:harness-add-agent <역할>`
 - 채택 전후 상태 진단(read-only): `/harness:harness-mcp-status`
+- drift 점검: `/harness:harness-adapt`
 - baseline 갱신: `/harness:harness-baseline`
