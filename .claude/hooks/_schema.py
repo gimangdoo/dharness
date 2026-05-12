@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import calendar
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -42,8 +43,21 @@ LAST_ADAPT_FILE = TELEMETRY_DIR / "_last_adapt"
 
 # Phase 10 자동 adapt 알림 임계값. invocation/failure 누적이 이 값 도달 시
 # SessionStart inject에 `/harness:harness-adapt` 권장 블록 추가.
-HARNESS_ADAPT_THRESHOLD_INVOCATIONS = 10
-HARNESS_ADAPT_THRESHOLD_FAILURES = 2
+# env var(`CM_ADAPT_THRESHOLD_INVOCATIONS` / `CM_ADAPT_THRESHOLD_FAILURES`)로 오버라이드 가능.
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        return max(1, int(raw))
+    except (TypeError, ValueError):
+        return default
+
+
+HARNESS_ADAPT_THRESHOLD_INVOCATIONS = _env_int("CM_ADAPT_THRESHOLD_INVOCATIONS", 10)
+HARNESS_ADAPT_THRESHOLD_FAILURES = _env_int("CM_ADAPT_THRESHOLD_FAILURES", 2)
 
 # CLAUDE.md draft 사유 컬럼 placeholder (session_end.py 생성, cm_commands.py 치환).
 DRAFT_REASON_PLACEHOLDER = "(apply 전 작성 — 사유/맥락)"
