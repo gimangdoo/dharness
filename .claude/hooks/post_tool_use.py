@@ -85,6 +85,61 @@ def _persist_dharness_event(
         print(f"[CM PostToolUse] dharness_event INSERT 실패: {e}", file=sys.stderr)
 
 
+def _detect_agent_failure(tool_response: object, serialized: str) -> bool:
+    """Task tool 응답에서 실패 신호 탐지.
+
+    failure 시그니처: is_error=True / type=='error' / 'Error:' prefix /
+    error 필드 비어있지 않음. Task 응답이 dict일 때는 metadata 우선,
+    string fallback (마지막 보루)."""
+    if isinstance(tool_response, dict):
+        if tool_response.get("is_error") is True:
+            return True
+        if tool_response.get("type") == "error":
+            return True
+        if tool_response.get("error"):
+            return True
+        # Task 응답의 일반적인 구조 — content 또는 result 안에 error indicator
+        for key in ("content", "result"):
+            inner = tool_response.get(key)
+            if isinstance(inner, str) and inner.lstrip().lower().startswith("error:"):
+                return True
+    if isinstance(serialized, str):
+        head = serialized.lstrip()[:64].lower()
+        if head.startswith("error:") or '"is_error":true' in serialized:
+            return True
+    return False
+
+
+def _emit_agent_telemetry(
+    tool_name: str,
+    tool_input: dict,
+    tool_response: object,
+    serialized: str,
+    session_id: str,
+    now_iso: str,
+    today: str,
+) -> None:
+    """Task tool 결과 시 agent_invocation 1건 + 실패면 agent_failure 1건 emit."""
+    if tool_name != "Task":
+        return
+    subagent_type = tool_input.get("subagent_type") or "general-purpose"
+    description = tool_input.get("description") or ""
+    TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
+    path = TELEMETRY_DIR / f"{today}.jsonl"
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps({
+            "ts": now_iso, "type": "agent_invocation",
+            "session_id": session_id, "subagent_type": subagent_type,
+            "description": description[:120],
+        }) + "\n")
+        if _detect_agent_failure(tool_response, serialized):
+            fh.write(json.dumps({
+                "ts": now_iso, "type": "agent_failure",
+                "session_id": session_id, "subagent_type": subagent_type,
+                "description": description[:120],
+            }) + "\n")
+
+
 def main() -> int:
     try:
         payload = json.loads(sys.stdin.read() or "{}")
@@ -99,6 +154,15 @@ def main() -> int:
     output_size = len(serialized.encode("utf-8"))
     now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     today = time.strftime("%Y-%m-%d", time.gmtime())
+
+    if session_id != "unknown":
+        try:
+            _emit_agent_telemetry(
+                tool_name, tool_input, tool_response, serialized,
+                session_id, now_iso, today,
+            )
+        except Exception as e:
+            print(f"[CM PostToolUse] agent telemetry skipped: {e}", file=sys.stderr)
 
     sess_dir = MEMORY_ROOT / "sessions" / session_id
     if sess_dir.exists():

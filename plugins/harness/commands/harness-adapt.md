@@ -82,6 +82,27 @@ CLAUDE.md 변경 이력 테이블(Phase 7-4 템플릿)에 출처 명시:
 
 Phase 9(사용자 수동 피드백)와 출처를 분리 기록하여 추적 가능성 보장.
 
+### 8. Adapt counter reset (필수, 마지막 단계)
+
+dharness self-host CM의 SessionStart hook이 누적 invocation/failure 카운트로 alert를 띄운다 (`.claude/hooks/session_start.py` + `_schema.py`의 `count_events_since_last_adapt`). 본 명령 완료 시 카운터 reset 표지 파일을 갱신해야 다음 alert가 새 사이클부터 카운팅된다.
+
+**실행 (사용자 승인 변경 적용 후, 거부만 있어도 카운터 reset — drift 점검 자체는 수행됐으므로):**
+
+```powershell
+# Windows PowerShell
+$ts = (Get-Date -AsUTC).ToString("yyyy-MM-ddTHH:mm:ssZ")
+Set-Content -Path "_workspace\_telemetry\_last_adapt" -Value $ts -Encoding utf8
+```
+
+```bash
+# bash / POSIX
+date -u +"%Y-%m-%dT%H:%M:%SZ" > _workspace/_telemetry/_last_adapt
+```
+
+derived 프로젝트에서 호출됐다면 derived의 `_workspace/_telemetry/_last_adapt`를 갱신. dharness root에서 호출됐다면 dharness root의 같은 경로. LLM은 `pwd` 기준으로 판단하고 둘 다 갱신 금지 — 카운터는 *호출 context*당 1개.
+
+> **alert 무시하고 본 명령 미실행 시:** 카운터는 계속 증가하고 매 SessionStart마다 alert 노출 지속. 이 의도 (drift는 무시하되 alert는 매번 보고 싶음)면 reset 생략. 임계값 변경 의도면 `.claude/hooks/_schema.py`의 `HARNESS_ADAPT_THRESHOLD_INVOCATIONS` / `HARNESS_ADAPT_THRESHOLD_FAILURES` 상수 수정.
+
 ## 트리거 빈도 권고
 
 - **수동**: 큰 변경 직후, 또는 매주~격주

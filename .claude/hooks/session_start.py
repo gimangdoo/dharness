@@ -34,10 +34,15 @@ from _schema import (
     DB_PATH,
     DDL,
     DRAFTS_DIR,
+    HARNESS_ADAPT_THRESHOLD_FAILURES,
+    HARNESS_ADAPT_THRESHOLD_INVOCATIONS,
     MEMORY_ROOT,
     REPO_ROOT,
     TELEMETRY_DIR,
+    adapt_alert_due,
+    count_events_since_last_adapt,
     ensure_migrations,
+    read_last_adapt_ts,
     write_session_id,
 )
 from _transcript_utils import flatten_to_transcript
@@ -150,16 +155,46 @@ def fetch_git_status_short(max_lines: int) -> list[str]:
     return lines[:max_lines]
 
 
+def format_adapt_alert(counts: dict[str, int], last_adapt_ts: float) -> str | None:
+    """Phase 10 adapt 권장 alert 블록. 임계값 미도달이면 None."""
+    if not adapt_alert_due(counts):
+        return None
+    harness_n = counts.get("harness_invocation", 0)
+    agent_n = counts.get("agent_invocation", 0)
+    fail_n = counts.get("agent_failure", 0)
+    if last_adapt_ts > 0.0:
+        last_label = time.strftime("%Y-%m-%d", time.gmtime(last_adapt_ts))
+    else:
+        last_label = "최초 이후"
+    triggers = []
+    if harness_n + agent_n >= HARNESS_ADAPT_THRESHOLD_INVOCATIONS:
+        triggers.append(
+            f"invocations={harness_n + agent_n} (≥{HARNESS_ADAPT_THRESHOLD_INVOCATIONS})"
+        )
+    if fail_n >= HARNESS_ADAPT_THRESHOLD_FAILURES:
+        triggers.append(f"failures={fail_n} (≥{HARNESS_ADAPT_THRESHOLD_FAILURES})")
+    trigger_str = " · ".join(triggers)
+    return (
+        f"[CM] ⚠️ Phase 10 ADAPT 권장 — last adapt: {last_label} / 누적 {trigger_str}.\n"
+        f"  · 실행: `/harness:harness-adapt` (변경안 제시→사용자 승인→적용)\n"
+        f"  · skip: 다음 alert까지 누적 계속, 임계값 갱신 의도면 plugins/harness/skills/harness/references/runtime-adaptation.md 참조"
+    )
+
+
 def format_inject(
     session_id: str,
     project_name: str,
     prior: list[dict],
     git_lines: list[str],
     pending_drafts: list[str],
+    adapt_alert: str | None,
     budget: int,
 ) -> str:
     """직전 세션 사실 set + 미적용 draft + git status를 한 string으로 패킹 (4 블록)."""
     parts: list[str] = [f"[CM] session_id={session_id} (project={project_name})."]
+
+    if adapt_alert:
+        parts.append(adapt_alert)
 
     if prior:
         prior_chunks: list[str] = []
@@ -271,12 +306,21 @@ def main() -> int:
                 "session_id": session_id, "backfilled": backfilled,
             }) + "\n")
 
+    try:
+        adapt_counts = count_events_since_last_adapt()
+        last_adapt_ts = read_last_adapt_ts()
+        adapt_alert = format_adapt_alert(adapt_counts, last_adapt_ts)
+    except Exception as e:
+        print(f"[CM SessionStart] adapt alert skipped: {e}", file=sys.stderr)
+        adapt_alert = None
+
     additional_context = format_inject(
         session_id=session_id,
         project_name=REPO_ROOT.name,
         prior=prior_sessions,
         git_lines=git_lines,
         pending_drafts=pending_drafts,
+        adapt_alert=adapt_alert,
         budget=INJECT_BUDGET,
     )
 
