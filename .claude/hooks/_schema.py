@@ -289,12 +289,16 @@ def _iso_to_epoch(iso: str) -> float | None:
 
 def count_events_since_last_adapt() -> dict[str, int]:
     """`_last_adapt` 이후 telemetry 이벤트 카운트. 키: harness_invocation /
-    agent_invocation / agent_failure. 신뢰 못하는 라인은 silent skip."""
+    agent_invocation / agent_failure. 신뢰 못하는 라인은 silent skip.
+
+    encoding은 `utf-8-sig`로 BOM tolerantly strip — PowerShell 5.1의
+    `Add-Content -Encoding utf8`가 BOM을 삽입하는 케이스 대응 (derived 프로젝트
+    오케스트레이터가 흔히 사용)."""
     counts = {t: 0 for t in _COUNTED_TYPES}
     since_ts = read_last_adapt_ts()
     for path in _iter_telemetry_files_since(since_ts):
         try:
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, "r", encoding="utf-8-sig") as fh:
                 for line in fh:
                     line = line.strip()
                     if not line:

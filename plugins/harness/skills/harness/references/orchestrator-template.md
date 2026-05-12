@@ -328,17 +328,26 @@ description: "{도메인} 오케스트레이터 (하이브리드). {키워드}. 
 
 ### 실행 명령 (cross-platform)
 
-**PowerShell (Windows):**
+**PowerShell (Windows — 5.1 호환 + bomless UTF-8):**
 
 ```powershell
-$ts = (Get-Date -AsUTC).ToString("yyyy-MM-ddTHH:mm:ssZ")
-$date = (Get-Date -AsUTC).ToString("yyyy-MM-dd")
-$path = "_workspace\_telemetry\$date.jsonl"
+$utc = [DateTime]::UtcNow
+$ts = $utc.ToString("yyyy-MM-ddTHH:mm:ssZ")
+$date = $utc.ToString("yyyy-MM-dd")
+$path = (Resolve-Path -LiteralPath ".").Path + "\_workspace\_telemetry\$date.jsonl"
 New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
-Add-Content -Path $path -Encoding utf8 -Value (
-  ConvertTo-Json -Compress -InputObject @{ts=$ts; type='harness_invocation'; session_id='{id}'; trigger_keyword='{kw}'}
-)
+$line = ConvertTo-Json -Compress -InputObject ([ordered]@{
+  ts=$ts; type='harness_invocation'; session_id='{id}'; trigger_keyword='{kw}'
+})
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::AppendAllText($path, $line + [Environment]::NewLine, $utf8NoBom)
 ```
+
+> **PS5.1 함정 모음 (empirical):**
+> - `Get-Date -AsUTC`는 PowerShell 7+ 전용. 5.1에서는 `[DateTime]::UtcNow` 사용.
+> - `Add-Content -Encoding utf8`은 **BOM 포함** UTF-8을 출력 — 첫 라인 JSON 파싱 실패. `[System.IO.File]::AppendAllText` + `UTF8Encoding($false)`로 bomless 보장.
+> - 상대경로 `_workspace\...`는 cwd에 따라 다른 위치 — `Resolve-Path` 또는 `$PSScriptRoot` 기반 절대경로 권장.
+> - `[ordered]@{}`로 JSON key 순서 보장 (관측성·diff 안정성).
 
 **bash (POSIX):**
 
