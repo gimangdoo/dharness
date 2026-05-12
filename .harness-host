@@ -1,0 +1,7 @@
+harness host repository marker.
+
+Presence of this file in repo root signals: this is the *host* of the harness plugin
+(self-host area). harness-mcp-* commands check for this marker and refuse to operate
+here — they must run inside a *derived* project that consumed the plugin.
+
+Derived projects MUST NOT have this file.

@@ -16,7 +16,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 
 1. derived 프로젝트의 `.claude/agents/`에 기존 에이전트 1명 이상 (= 하네스가 이미 합성됨) — `/harness:harness-new`가 미실행이면 합성 *시점*으로 돌아가서 처음부터 Phase 5-2를 따르라고 안내 후 중단.
 2. `claude mcp list` 실행으로 현재 등록 MCP 카운트 확인 — 사용자에게 보고 (이미 등록된 것 중복 install 방지).
-3. **dharness root 자체에서 호출하지 않음** — `pwd`가 dharness 본 저장소라면 사용자에게 "dharness root는 self-host CM 격리 영역, derived 프로젝트로 이동 후 재호출" 안내 후 중단. 단, 사용자가 *예외적 검증 환경*임을 명시하면 진행 (사유를 §3 footnote에 기록).
+3. **Host repo guard** — `pwd`에 `.harness-host` marker file 존재 시 (= harness plugin self-host 영역) 사용자에게 "host repository는 self-host 격리 영역, derived 프로젝트로 이동 후 재호출" 안내 후 중단. 단, 사용자가 *예외적 검증 환경*임을 명시하면 진행 (사유를 §3 footnote에 기록).
 
 ## 실행 절차
 
@@ -108,7 +108,7 @@ Step 4 완료 직후 다음 사실을 사용자에게 *반드시* 명시 (LLM이
 - **합성 시점** (= Phase 5-2 1회 합성): `/harness:harness-new` 또는 `/harness:harness-add-agent` — 본 명령 아님.
 - **MCP 서버 자체 디버깅** (connection 실패·도구 에러): MCP 서버 issue tracker 또는 사용자 측 점검.
 - **API 키 발급** (T1+): 사용자 측 절차. 본 명령은 *키가 이미 있다는 전제* — `${API_KEY}` placeholder를 settings.json·shell env에 두고 사용자가 채움.
-- **dharness 본 저장소의 `.claude/`**: 선조건 (3)으로 차단. self-host CM 격리.
+- **Host repo (`.harness-host` marker 존재)의 `.claude/`**: 선조건 (3)으로 차단. self-host 격리.
 
 ## 후속 명령어
 

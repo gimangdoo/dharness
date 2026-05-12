@@ -9,13 +9,13 @@ argument-hint: (없음 또는 --verbose)
 
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (없거나 `--verbose` — verbose면 §3 인벤토리 전체와 도구 enumeration까지 출력)
-- **입력**: derived 프로젝트의 `.claude/agents/`, `.claude/settings.json` (있으면), `claude mcp list` 출력, `plugins/harness/skills/harness/references/permission-profiles.md` §3 (있으면 dharness root 또는 install된 plugin 경로)
+- **입력**: derived 프로젝트의 `.claude/agents/`, `.claude/settings.json` (있으면), `claude mcp list` 출력, `plugins/harness/skills/harness/references/permission-profiles.md` §3 (host repo 또는 install된 plugin 경로)
 - **출력**: 텍스트 보고서 5섹션 (변경 0). 모든 발견은 *권고 수준* — 자동 수정 없음.
 
 ## 선조건 검증 (먼저 실행)
 
 1. derived 프로젝트의 `.claude/agents/`에 기존 에이전트 1명 이상 — 미충족 시 "하네스 미합성" 안내 후 중단 (§5 합성 산출물이 없으면 진단 대상 자체가 없음).
-2. **dharness root 자체에서 호출하지 않음** — `pwd`가 dharness 본 저장소면 사용자에게 "dharness root는 self-host CM 격리 영역" 안내 후 중단 (단, 사용자가 *예외적 검증 환경*임을 명시하면 진행).
+2. **Host repo guard** — `pwd`에 `.harness-host` marker file 존재 시 사용자에게 "host repository는 self-host 격리 영역" 안내 후 중단 (단, 사용자가 *예외적 검증 환경*임을 명시하면 진행).
 
 ## 진단 절차
 
@@ -52,7 +52,7 @@ claude mcp list
 `permission-profiles.md` §3에 박제된 후보 MCP vs `claude mcp list` 결과 diff:
 
 - **§3 박제 + 미설치**: 의도적일 수 있음 (보고만, 권고 없음).
-- **설치 + §3 미박제**: §3 추가 권고 (dharness root 도입자가 추후 채택 시 참조 자료로). dharness root 측 편집 권한이 있으면 사용자에게 1행 추가 제안.
+- **설치 + §3 미박제**: §3 추가 권고 (host repo 도입자가 추후 채택 시 참조 자료로). host repo 측 편집 권한이 있으면 사용자에게 1행 추가 제안.
 - **§3 정의된 도구 enumeration vs 실제 노출 도구**: mismatch면 §11-1 fixture로 검증 권고 (도구명 변환 패턴 등).
 - **🆕 §3-1 매트릭스 default 권고 vs 실제 frontmatter+settings 정합 (14차 사이클)**: 섹션 2에서 추정된 capability profile이 §3-1 매트릭스의 행과 매핑되면, 해당 행의 *권고 MCP 조합* (예: `web-research` → `fetch + memory`)·*도구 카운트*·*default 권한 bucket* vs 실제 agent의 inline `mcpServers:` + `tools:` + `settings.json` 비교. 누락 MCP(예: `web-research` profile인데 `memory` 미합성)는 ⓘ 권고 — 누락이 의도적이면 사용자 명시 확인 후 통과. default permissions bucket과 어긋난 buckets(예: §3-1은 `memory.delete_*` → `deny` 권고인데 실제는 `ask`)은 ⚠️ 권고 (자동 강등 금지 — 사용자 도메인 지식 기반 최종 판정).
 
@@ -79,7 +79,7 @@ claude mcp list
 §10-1 트리거 3종 중 (a)·(b)는 자동 감지 가능:
 
 - **(a) baseline-diff**: `_workspace/_baseline/project_profile.md` (있으면) detection_signals 리스트 vs 현재 코드 grep — 새 키워드(예: `package.json`에 `playwright` 추가, `requirements.txt`에 `sqlalchemy` 등장) 검출 시 후보 MCP 제안.
-  - **baseline 부재 fallback**: `_workspace/_baseline/project_profile.md`이 없으면 (= 사용자가 dharness 메타 스킬 없이 손으로 만든 derived 프로젝트) 본 (a) 분기를 *skip*하고 메시지에 표기:
+  - **baseline 부재 fallback**: `_workspace/_baseline/project_profile.md`이 없으면 (= 사용자가 harness 메타 스킬 없이 손으로 만든 derived 프로젝트) 본 (a) 분기를 *skip*하고 메시지에 표기:
     ```
     ⓘ baseline 미수립 — `/harness:harness-baseline`로 t=0 anchor 생성 시 (a) 자동 감지 활성화. 현재는 (b)·(c)만 사용.
     ```
@@ -146,7 +146,7 @@ Claude Code 현 빌드는 MCP 도구를 *deferred tool pool*로 관리한다. Se
 
 - 신규 MCP 채택 권고가 있으면: `/harness:harness-mcp-adopt <사유>`
 - 정합 결손(섹션 4) 정정: 사용자가 `.claude/settings.json` / agent frontmatter 직접 수정 (자동 수정 금지)
-- §3 미박제 보고가 있고 dharness root 접근 가능하면: 사용자에게 footnote 추가 안내
+- §3 미박제 보고가 있고 host repo 접근 가능하면: 사용자에게 footnote 추가 안내
 - 섹션 6의 parent 적재 ⚠️ 항목 정정: §5-2 예외 조건 미충족이면 해당 MCP를 §5-1 inline 패턴으로 이전 (사용자 수동 — 자동 수정 금지)
 - **🆕 섹션 4 deny 누락 정정**: strict read-only 의도면 settings.json `permissions.deny`에 advertise 도구 중 부수 효과 후보 박제 (사용자 도메인 지식 기반 최종 판정 — 자동 추가 금지). 합성 시점이라면 §10-5 inline 정의 갱신 절차 5-step으로 처리.
 
@@ -154,4 +154,4 @@ Claude Code 현 빌드는 MCP 도구를 *deferred tool pool*로 관리한다. Se
 
 - **자동 수정 0** — 모든 발견은 권고. `harness-mcp-adopt` 또는 사용자 수동 편집 필요.
 - **MCP 서버 자체 디버깅** (connection 실패): MCP 서버 issue tracker.
-- **dharness 본 저장소의 `.claude/`**: 선조건 (2)로 차단.
+- **Host repo (`.harness-host` marker 존재)의 `.claude/`**: 선조건 (2)로 차단.

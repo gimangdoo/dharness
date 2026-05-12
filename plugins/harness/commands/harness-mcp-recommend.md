@@ -20,7 +20,7 @@ argument-hint: <에이전트명 또는 역할 한 문장> [--refresh] [--cascade
 ## 선조건 검증
 
 1. derived 프로젝트의 `.claude/agents/`에 1명 이상 존재 — 미충족 시 "하네스 미합성 — `/harness:harness-new` 먼저 실행" 안내 후 중단. *단* `$ARGUMENTS`가 역할 한 문장이면 가상 평가로 진행 (산출물 없음 — 추천 표만).
-2. **dharness root 자체에서 호출 ❌** — `pwd`가 dharness 본 저장소면 self-host CM 격리 안내 후 중단.
+2. **Host repo guard ❌** — `pwd`에 `.harness-host` marker file 존재 시 self-host 격리 안내 후 중단.
 3. `--weights` 합 != 1.0 ± 0.01이면 형식 에러 후 중단.
 
 ## 실행 절차 — 7-step
@@ -127,7 +127,7 @@ cascade: R0 + R1 (R0 매칭 2건 / R1 보강 1건)
 ## 범위 외
 
 - **자동 install/키 발급/permissions 갱신 ❌** — `/harness:harness-mcp-adopt`로 인계
-- **dharness root**: 선조건 (2)로 차단
+- **Host repo (`.harness-host` marker 존재)**: 선조건 (2)로 차단
 - **MCP 서버 자체 디버깅**: MCP 서버 issue tracker
 
 ## 후속 명령어
