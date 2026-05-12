@@ -47,7 +47,7 @@
    - `settings.json` → `<derived>/.claude/settings.json` (기존 키와 deep merge — 덮어쓰지 말 것)
    - `CLAUDE_md_row.md`의 한 행 → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가
 2. **placeholder 치환** (`code-explorer.agent.md` 본문 끝 표 참조):
-   - `<ABS_PROJECT_DIR>` → derived 프로젝트 루트 절대경로 (예: `C:\Users\user01\myproject`)
+   - `<ABS_PROJECT_DIR>` → derived 프로젝트 루트 절대경로 (예: `C:\Users\<user>\myproject`)
    - `<UVX_ABS_PATH>` → `uvx` 실행 파일 절대경로 (`where uvx` 또는 `which uvx`로 확인)
 3. **`claude mcp add`는 생략 가능** — inline `mcpServers:` 패턴은 spawn 시 connect되므로 parent 등록 불요 (§5-1 권장).
 4. 세션 재시작 후 `Agent` tool로 `subagent_type: "code-explorer"` spawn 검증. 첫 spawn 시 subagent의 도구 풀에 `mcp__filesystem__*` 14종 + `mcp__git__*` 12종 노출 확인 (parent ToolSearch에는 미노출 = 10차 cycle P0 양면 검증과 동일).

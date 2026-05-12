@@ -104,8 +104,8 @@ mcpServers:
 
 | placeholder | 의미 | 예시 (Windows) | 예시 (macOS/Linux) |
 |----|----|----|----|
-| `<ABS_PROJECT_DIR>` | derived 프로젝트 루트 절대경로 | `C:\Users\user01\myproject` | `/Users/user01/myproject` |
-| `<UVX_ABS_PATH>` | `uvx` 실행 파일 절대경로 | `C:\Users\user01\AppData\Roaming\Python\Python312\Scripts\uvx.exe` | `/Users/user01/.local/bin/uvx` |
+| `<ABS_PROJECT_DIR>` | derived 프로젝트 루트 절대경로 | `C:\Users\<user>\myproject` | `/Users/<user>/myproject` |
+| `<UVX_ABS_PATH>` | `uvx` 실행 파일 절대경로 | `C:\Users\<user>\AppData\Roaming\Python\Python312\Scripts\uvx.exe` | `/Users/<user>/.local/bin/uvx` |
 
 **확인 명령:**
 

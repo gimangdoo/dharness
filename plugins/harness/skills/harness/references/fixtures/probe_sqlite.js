@@ -8,7 +8,7 @@
 // 사용법:
 //   1. 패키지 출처 검증 ✓ (위 ⚠️ 룰)
 //   2. 사용자가 §6 정책에 따라 sqlite MCP install을 명시 승인 (§10 Step 3 user confirm gate 통과)
-//   3. uvx 가용 확인 (`uvx --version` — dharness에서는 `C:\Users\user01\AppData\Roaming\Python\Python312\Scripts\uvx.exe` 절대경로)
+//   3. uvx 가용 확인 (`uvx --version` — Windows 예: `%APPDATA%\Python\Python312\Scripts\uvx.exe` 절대경로)
 //   4. 아래 UVX_PATH / DB_PATH 두 상수를 환경에 맞게 수정
 //   5. `node probe_sqlite.js` 실행
 //   6. COUNT=N 라인과 도구 목록을 받아 §10 Step 4 install 진행 여부 최종 판단

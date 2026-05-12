@@ -87,7 +87,7 @@ mcpServers:
 
 | placeholder | 의미 | 예시 (Windows) | 예시 (macOS/Linux) |
 |----|----|----|----|
-| `<UVX_ABS_PATH>` | `uvx` 실행 파일 절대경로 | `C:\Users\user01\AppData\Roaming\Python\Python312\Scripts\uvx.exe` | `/Users/user01/.local/bin/uvx` |
+| `<UVX_ABS_PATH>` | `uvx` 실행 파일 절대경로 | `C:\Users\<user>\AppData\Roaming\Python\Python312\Scripts\uvx.exe` | `/Users/<user>/.local/bin/uvx` |
 | `<IANA_TZ>` | 사용자/팀 default IANA timezone (선택) | `Asia/Seoul` | `America/Los_Angeles` |
 
 **확인 명령:**
