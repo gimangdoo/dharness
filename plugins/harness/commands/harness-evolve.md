@@ -7,8 +7,6 @@ argument-hint: <피드백 한 문장 또는 단락>
 
 사용자 피드백을 받아 `plugins/harness/skills/harness/SKILL.md` Phase 9의 수동 진화 워크플로우를 실행한다. Phase 9-2 표에 따라 피드백 유형을 분류하고 적절한 수정 대상을 찾아 변경한다.
 
-> `/harness:harness-adapt`과 다름: adapt은 **시스템이 감지한 telemetry drift**, evolve는 **사용자가 명시한 피드백**.
-
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (피드백 한 문장 또는 단락; 예: "분석이 너무 피상적이야", "보안 검토도 필요해", "검증을 먼저 해야 할 것 같아")
 - **입력**: `$ARGUMENTS` + 기존 하네스 산출물 + (가능 시) 직전 실행의 `_workspace/` 산출물
@@ -70,7 +68,7 @@ argument-hint: <피드백 한 문장 또는 단락>
 
 ### 5. CLAUDE.md 변경 이력 갱신
 
-**출처를 명시하여 Phase 9와 Phase 10을 구분 가능하게**:
+**출처를 명시**:
 
 ```
 | {YYYY-MM-DD} | Phase 9: 사용자 피드백 — {요약} | {대상 파일} | {사유: 분류된 유형} |
@@ -81,5 +79,5 @@ argument-hint: <피드백 한 문장 또는 단락>
 `$ARGUMENTS`가 다음 패턴이면 사용자에게 **단발 변경 대신 구조적 점검** 권고:
 
 - 같은 유형 피드백이 2회 이상 반복됨 (직전 변경 이력 확인) → "X 패턴 반복 → 구조적 문제 가능성. `/harness:harness-audit` 권장"
-- 에이전트가 반복 실패하는 패턴 → "사용 drift 가능성. `/harness:harness-adapt`로 telemetry 분석 권장"
+- 에이전트가 반복 실패하는 패턴 → "사용 drift 가능성. `/harness:harness-audit` 권장 후 evolve로 보강"
 - 사용자가 오케스트레이터 우회 작업 중 → "트리거 매칭 실패 가능. `/harness:harness-audit`의 §3 변경 이력 누락 검사 권장"
