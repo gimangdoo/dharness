@@ -20,7 +20,7 @@
 1. **에이전트 정의 파일** → `<derived>/.claude/agents/<agent-name>.md`
 2. **`settings.json`** → `<derived>/.claude/settings.json` (기존 키와 *deep merge* — 덮어쓰지 말 것)
 3. **`CLAUDE_md_row.md`의 행** → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가
-4. (a) §3 인벤토리 footnote + §3-1 매트릭스 행은 dharness 본 저장소 PR 영역 (§10 Step 5 atomic 분계 — 도입자는 권고만 보고). 새 MCP가 PoC enumeration 통과 후 §3-1 매트릭스 closure 기준(`tier·profile·도구 카운트·default permissions·Layer 결합` 5컬럼)을 충족하면 *§3과 §3-1 동시* 갱신.
+4. (a) §3 인벤토리 footnote + §3-1 매트릭스 행은 *plugin host 본 저장소* PR 영역 (§10 Step 5 atomic 분계 — 외부 install 도입자는 권고만 보고). 새 MCP가 PoC enumeration 통과 후 §3-1 매트릭스 closure 기준(`tier·profile·도구 카운트·default permissions·Layer 결합` 5컬럼)을 충족하면 *§3과 §3-1 동시* 갱신.
 
 복사 후 §10 Step 4의 `claude mcp add ...` 실행은 *생략* — inline `mcpServers:` 패턴은 parent 컨텍스트에 적재하지 않으므로 등록 자체가 불요 (§5-1 권고). 단 inline 정의의 `command:` / `args:`는 OS·환경별 placeholder 치환 필수 (각 시나리오 README의 "placeholder 치환 표" 참조).
 
@@ -37,6 +37,6 @@
 
 ## 적용 경계 (공통)
 
-- 4 시나리오 모두 *derived 프로젝트* 대상. dharness root에는 적용하지 않음 (§10/§11 분계).
+- 4 시나리오 모두 *derived 프로젝트* 대상. plugin host 본 저장소에는 적용하지 않음 (§10/§11 분계).
 - 시나리오 이름(`data-analyst` / `web-research` / `code-test` / `reasoning-aux`)은 *형태 참고용* — 실제 도메인에 맞게 이름·세부 책임을 교체.
 - 본 4종으로 §3-1 매트릭스 4 capability profile 완전 박제 — **외부 도입자는 별도 시나리오 작성 없이 가장 가까운 예시 복사·치환만으로 합성 출발**.

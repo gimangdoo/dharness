@@ -36,7 +36,7 @@
 
 ## 적용 경계
 
-- 본 예시는 *derived 프로젝트* 대상. dharness root에는 적용하지 않음 (§10/§11 분계).
+- 본 예시는 *derived 프로젝트* 대상. plugin host 본 저장소에는 적용하지 않음 (§10/§11 분계).
 - "web-research"는 가상 이름 — 실제 도메인에 맞게 이름·도메인 specific 책임을 교체. KG 누적 entity의 명명 규칙(`<도메인>:<항목>` 같은 prefix)은 사용자가 직접 정의.
 - 본 예시는 *멀티 inline 패턴*의 형태 참고 — `code-test` profile의 `filesystem` + `git` 결합도 동일 패턴(npx + uvx 혼합)으로 응용 가능.
 

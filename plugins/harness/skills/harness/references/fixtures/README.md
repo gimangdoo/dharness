@@ -36,6 +36,8 @@ $env:PLAYWRIGHT_FLAGS="--caps=vision"; node plugins\harness\skills\harness\refer
 $env:BRAVE_API_KEY="<key>"; node plugins\harness\skills\harness\references\fixtures\probe_brave_search.js
 ```
 
+> ⚠️ **probe_filesystem.js만 사전 치환 필요** — 본 fixture는 server-filesystem의 ALLOWED_DIR 인자가 필수이므로 `<HOST-PROBE-DIR>` placeholder를 *본인 환경의 존재하는 절대경로*로 치환 후 실행. 다른 probe들은 즉시 실행 가능.
+
 ## 합성 산출물 예시 (`synthesis_example/`)
 
 §5 합성 + §10 Step 5 산출물 1세트를 시나리오별 디렉토리로 제공. 외부 도입자가 자신의 도메인으로 매핑할 때 *형태 참고*.

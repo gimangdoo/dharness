@@ -224,7 +224,7 @@ Phase 5-2 합성 시작
 - **자동 install/키 발급/permissions 자동 승급 ❌** — §6 정책 동일 적용.
 - **R2 외부 큐레이션의 spoof 검증 ❌** — 사용자가 trust 명시 + §10 Step 2 probe 필수.
 - **추천 정확도 자체 평가 ❌** — 채택 후 실제 사용 빈도는 Phase 10 telemetry 영역.
-- **dharness root 자체에 적용 ❌** — self-host CM 격리. 추천은 *derived 프로젝트* 합성 시에만.
+- **plugin host 본 저장소 자체에 적용 ❌** — host self-host CM 격리(운영 중인 경우). 추천은 *derived 프로젝트* 합성 시에만.
 
 ---
 

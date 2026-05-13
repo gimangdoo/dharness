@@ -17,8 +17,10 @@
 const { spawn } = require("child_process");
 
 // === 환경별 수정 영역 ===
+// ⚠️ 실행 전 ALLOWED_DIR을 *본인 환경의 존재하는 절대경로*로 치환 필수 (probe-only 디렉토리, 예: `C:\\Users\\<USER>\\mcp-probe\\data` 또는 `/tmp/mcp-probe/data`).
+// 상대경로/미존재 경로는 server-filesystem이 즉시 reject.
 const NPX_PATH = "npx";  // PATH 통과 가정 — Windows에서는 "npx.cmd"로 명시 가능
-const ALLOWED_DIR = "C:\\Users\\user01\\dharness-probe-test\\data";  // 존재하는 bounded 디렉토리 (probe-only 용도)
+const ALLOWED_DIR = "<HOST-PROBE-DIR>";  // 존재하는 bounded 디렉토리 절대경로 (probe-only 용도)
 // =======================
 
 const child = spawn(NPX_PATH, ["-y", "@modelcontextprotocol/server-filesystem", ALLOWED_DIR], {

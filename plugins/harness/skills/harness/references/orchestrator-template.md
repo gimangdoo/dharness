@@ -302,7 +302,7 @@ description: "{도메인} 오케스트레이터 (하이브리드). {키워드}. 
 
 ## Phase 10 Telemetry 강제 블록
 
-모든 템플릿(A/B/C)이 워크플로우 종료 직전 *반드시* 다음 블록을 수행한다. 누락은 dharness self-host CM의 SessionStart 알림 회로(`HARNESS_ADAPT_THRESHOLD_INVOCATIONS=10` / `_FAILURES=2`)를 무력화한다. 본 회로는 `/harness:harness-adapt` 자동 권장 alert의 단일 입력원이다.
+모든 템플릿(A/B/C)이 워크플로우 종료 직전 *반드시* 다음 블록을 수행한다. 누락은 `/harness:harness-adapt` 자동 권장 alert의 단일 입력원을 끊는다. host 측 self-host CM 운영 중이면 SessionStart 알림 회로(임계값 기본 invocations 10 / failures 2, env var `CM_ADAPT_THRESHOLD_INVOCATIONS` / `CM_ADAPT_THRESHOLD_FAILURES`로 오버라이드)도 함께 무력화된다.
 
 ### 이벤트 카탈로그
 
@@ -371,6 +371,6 @@ printf '{"ts":"%s","type":"harness_invocation","session_id":"%s","trigger_keywor
 
 ### 범위 분리 (혼동 방지)
 
-- **derived 프로젝트** = 본 템플릿이 정의하는 LLM-기반 telemetry append (위 명령)
-- **dharness root self-host** = `.claude/hooks/post_tool_use.py`가 *Task tool* 호출마다 자동 emit. derived는 hooks 없으므로 *오케스트레이터 LLM이 직접* append 책임.
+- **derived 프로젝트 (hook 없음)** = 본 템플릿이 정의하는 LLM-기반 telemetry append (위 명령). 오케스트레이터 LLM이 직접 append 책임.
+- **host self-host CM 운영 시 (옵션)** = host의 `.claude/hooks/post_tool_use.py`가 *Task tool* 호출마다 자동 emit. derived는 hook 부재로 LLM append 책임 유지.
 - `_last_adapt` reset은 *호출 context당 1개* — derived의 `_workspace/_telemetry/_last_adapt`는 derived의 `/harness:harness-adapt` 완료 시만 갱신.

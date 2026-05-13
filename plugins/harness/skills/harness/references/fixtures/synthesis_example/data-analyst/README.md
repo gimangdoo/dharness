@@ -32,7 +32,7 @@
 
 ## 적용 경계
 
-- 본 예시는 *derived 프로젝트* 대상. dharness root에는 적용하지 않음 (§10/§11 분계).
+- 본 예시는 *derived 프로젝트* 대상. plugin host 본 저장소에는 적용하지 않음 (§10/§11 분계).
 - "data-analyst"는 가상 이름 — 실제 도메인에 맞게 이름·도메인 specific 책임을 교체.
 - ~~sqlite MCP는 §11-4에서 PoC 미완 상태~~ → **8차 사이클 ✓ 완료** — sqlite MCP의 6 도구 enumeration 확정 (`read_query`/`write_query`/`create_table`/`list_tables`/`describe_table`/`append_insight`). 본 예시의 도구 매핑은 8차 결과를 정합 반영했고, 실제 도입자는 `probe_sqlite.js`를 자기 환경에 맞춰 1회 실행해 *재현 검증*만 하면 된다.
 

@@ -1,6 +1,6 @@
 // §10 Step 2 fixture — pre-install JSON-RPC stdio probe for chrome-devtools MCP (T1)
 //
-// ✅ 패키지 출처 *확정* (23차 사이클, 2026-05-11 dharness 본 세션 verify):
+// ✅ 패키지 출처 *확정* (23차 사이클 empirical, 2026-05-11 plugin host 세션 verify):
 //   - npm package: `chrome-devtools-mcp` (latest v0.25.0, 2026-05-06; 49 versions since 2025-05-13)
 //   - npm Author: **Google LLC** / Maintainers: `mathias` (Mathias Bynens, Chrome DevTools 팀) / `orkon` (Alexei Rudenko, Chrome team) / `google-wombot` (Google 공식 npm 봇)
 //   - GitHub: `ChromeDevTools/chrome-devtools-mcp` (39.2k stars / 2.5k forks / Apache-2.0)
@@ -17,10 +17,10 @@
 //   - **engines: node ^20.19 || ^22.12 || >=23** (모든 49 versions 일관 — 0.0.1만 22+, 0.1.0~0.25.0 모두 20.19+; npm view로 23차 사이클 확정)
 //
 // 🚫 Node engines 함정 (23차 사이클 empirical, 2026-05-11):
-//   - dharness 본 세션 환경(Node v18.15.0, 32-bit `C:\Program Files (x86)\nodejs`)에서 본 fixture 직접 spawn 시 **`ERROR: chrome-devtools-mcp does not support Node v18.15.0`**로 즉시 종료
+//   - 측정 host 세션 환경(Node v18.15.0, 32-bit `C:\Program Files (x86)\nodejs`)에서 본 fixture 직접 spawn 시 **`ERROR: chrome-devtools-mcp does not support Node v18.15.0`**로 즉시 종료
 //   - npm WARN EBADENGINE 부수 출력 — npm은 경고만 띄우지만 패키지 자체가 startup에서 engine 체크하여 hard fail
 //   - **playwright(22차 통과)와 다른 함정 surface**: playwright는 engines 요구가 더 관대 / chrome-devtools-mcp는 Node 메이저 버전 의존이 추가 차단 layer
-//   - probe 실행 전 사용자 측 **Node 20.19+ 가용성 확인 필수** — 옵션: (a) winget `OpenJS.NodeJS.LTS` 시스템 교체 (b) nvm-windows 공존 (c) portable Node zip 1회용 추출. dharness root에서는 시스템 변경 회피로 본 fixture spawn closure (derived 프로젝트별 §10 진입 시점에 사용자 환경 확인)
+//   - probe 실행 전 사용자 측 **Node 20.19+ 가용성 확인 필수** — 옵션: (a) winget `OpenJS.NodeJS.LTS` 시스템 교체 (b) nvm-windows 공존 (c) portable Node zip 1회용 추출. 측정 host 환경에서는 시스템 변경 회피로 본 fixture spawn closure (derived 프로젝트별 §10 진입 시점에 사용자 환경 확인)
 //
 // 사용법 (외부 실행자):
 //   1. ✅ 패키지 출처는 23차 verify로 확정 — 추가 검증 불요

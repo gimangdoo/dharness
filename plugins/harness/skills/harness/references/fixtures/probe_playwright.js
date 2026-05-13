@@ -6,7 +6,7 @@
 //
 // ⚠️ T1 함정 (사용자 명시 승인 필수):
 //   - 첫 실행 시 npx가 패키지 다운로드 + Chromium browser binary 다운로드 (~120MB)
-//   - dharness 본 세션에서는 §6 자동 install 금지 정책에 막힘 — *외부 실행자 권고*
+//   - plugin host 본 폴더 세션은 §6 자동 install 금지 정책 적용 — *외부 실행자 권고*
 //   - 본 세션에서 실행하려면 사용자가 명시 confirm 후 OS 측 npx 가용 확인
 //
 // 사용법 (외부 실행자):

@@ -36,7 +36,7 @@
 
 ## 적용 경계
 
-- 본 예시는 *derived 프로젝트* 대상. dharness root에는 적용하지 않음 (§10/§11 분계 — dharness root의 git 작업은 본체 self-host CM이 deterministic 분류기로 다루며, 별도 에이전트 채널 미도입).
+- 본 예시는 *derived 프로젝트* 대상. plugin host 본 저장소에는 적용하지 않음 (§10/§11 분계 — host self-host CM 운영 시 host 본 git 작업은 deterministic 분류기가 다루며, 별도 에이전트 채널 미도입).
 - "code-explorer"는 가상 이름 — 실제 도메인에 맞게 이름·도메인 specific 책임을 교체. **예시 변형**: `react-reviewer` (filesystem ALLOWED_DIR = `src/components/`) / `db-migration-helper` (filesystem + git + sqlite 트리플 결합) / `monorepo-navigator` (filesystem ALLOWED_DIR = 모노레포 루트).
 - *uvx + npx 혼합 패턴*의 형태 참고 — `reasoning-aux` profile의 `sequential-thinking`(npx) + `time`(uvx) 결합도 동일 패턴.
 

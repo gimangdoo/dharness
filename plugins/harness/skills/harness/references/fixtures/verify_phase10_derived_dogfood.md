@@ -1,10 +1,10 @@
 # Phase 10 derived dogfood verify (2026-05-12)
 
-derived 프로젝트의 Phase 10 telemetry append 회로 실측 검증.
+derived 프로젝트의 Phase 10 telemetry append 회로 실측 검증. *본 verify는 plugin host 본 폴더(self-host CM 운영 중)에서 수행. 외부 install user는 동등 절차를 본인 환경에서 재현 가능.*
 
 ## 환경
-- dharness root: `C:\Users\user01\awesome-files\dharness`
-- derived: `_workspace/_dogfood/sample-research/` (작업 후 cleanup)
+- 측정 host root (예시): `C:\Users\user01\awesome-files\dharness`
+- derived: `<host>/_workspace/_dogfood/sample-research/` (작업 후 cleanup)
 - PowerShell: 5.1 (Windows 11)
 
 ## 발견된 함정 (orchestrator-template 정정 반영)
@@ -16,7 +16,7 @@ derived 프로젝트의 Phase 10 telemetry append 회로 실측 검증.
 | 3 | 상대 경로 `_workspace\...` | cwd 변경 시 다른 위치에 작성 | `Resolve-Path -LiteralPath "."` 기반 절대경로 |
 | 4 | hashtable `@{}` 키 순서 무작위 | JSON 키 순서가 매 실행 변동 → diff 노이즈 | `[ordered]@{}` |
 
-dharness counter helper도 BOM tolerantly 대응 — `open(path, encoding='utf-8-sig')`로 변경 (defensive).
+host self-host CM counter helper도 BOM tolerantly 대응 — `open(path, encoding='utf-8-sig')`로 변경 (defensive).
 
 ## 검증 항목
 

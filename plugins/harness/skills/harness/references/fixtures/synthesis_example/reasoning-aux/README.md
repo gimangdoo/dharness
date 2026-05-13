@@ -36,7 +36,7 @@
 
 ## 적용 경계
 
-- 본 예시는 *derived 프로젝트* 대상. dharness root에는 적용하지 않음 (§10/§11 분계 — dharness root의 reasoning 작업은 메인 세션 LLM이 직접 처리하며 별도 reasoning subagent 미도입).
+- 본 예시는 *derived 프로젝트* 대상. plugin host 본 저장소에는 적용하지 않음 (§10/§11 분계 — host 측 reasoning 작업은 메인 세션 LLM이 직접 처리하며 별도 reasoning subagent 미도입).
 - "multistep-planner"는 가상 이름 — 실제 도메인에 맞게 이름·도메인 specific 책임을 교체. **예시 변형**: `decision-thinker` (트레이드오프 분석 전용) / `meeting-scheduler` (timezone 변환 + 가능 슬롯 제안 전용) / `hypothesis-tester` (가설 검증 chain 전용).
 - *완전 read-only profile*의 형태 참고 — `permissions.deny`를 의도적으로 비우는 패턴은 본 시나리오가 유일.
 
