@@ -44,7 +44,9 @@ dharness는 두 구성요소로 이뤄진다:
 
 ## 변경 이력
 
-CM의 SessionEnd가 자동으로 적재한 draft를 `/cm-claudemd-apply <sid> [사유...]`로 이 표에 삽입한다. 동작 흐름은 [`README.md` "CLAUDE.md 변경 이력 자동 회로"](./README.md#claudemd-변경-이력-자동-회로) 참조. 과거 누적 기록(2026-05 Phase 5-2 24 cycles)은 `archive/full-history` branch에 보존.
+CM의 SessionEnd가 자동으로 적재한 draft를 `/cm-claudemd-apply <sid> [사유...]`로 이 표에 삽입한다. 동작 흐름은 [`README.md` "CLAUDE.md 변경 이력 자동 회로"](./README.md#claudemd-변경-이력-자동-회로) 참조.
+
+> **Archive doctrine (2026-05-13 정합):** commit `951b444` (2026-05-11 Phase 5-2 24차) **이전** 사이클 박제는 `archive/full-history` branch에 동결 보존(read-only). 이후 작업은 main + 본 표 단일 경로로 누적한다. 과거 "history branch에 cycle 디테일 적재 후 main에 pure 기능 분리" doctrine은 951b444 시점 이후 자연 소멸 — retroactive 복원 비용이 회수 가치를 초과해 폐기 결정(2026-05-13).
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |------|----------|------|------|
