@@ -35,7 +35,25 @@
 git clone https://github.com/gimangdoo/dharness.git C:\path\to\dharness
 ```
 
-CM은 dharness 본 폴더에서 자동 동작 — `.claude/settings.local.json`이 hooks 3종을 직접 등록하고 있어 별도 install 없이 다음 Claude Code 세션부터 발화합니다.
+CM은 dharness 본 폴더에서 자동 동작 — `.claude/settings.local.json`이 hooks 3종을 직접 등록하면 별도 install 없이 다음 Claude Code 세션부터 발화합니다. **본 파일은 `.gitignore` 대상(user-local)이라 clone 직후엔 부재합니다** — 최초 1회 다음 template으로 작성:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "py \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\"" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "py \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_tool_use.py\"" }] }
+    ],
+    "SessionEnd": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "py \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_end.py\"" }] }
+    ]
+  }
+}
+```
+
+> `py` 사용 이유: Windows의 Microsoft Store `python` 스텁 회피. Linux/macOS에선 `py` → `python3`로 치환. 임계값 변경 시 동일 객체에 `"env": { "CM_ADAPT_THRESHOLD_INVOCATIONS": "10", "CM_ADAPT_THRESHOLD_FAILURES": "2" }` 필드 추가. 작성 직후 Claude Code 세션을 한 번 재시작하면 SessionStart 훅이 발화 — `/cm-status` 출력의 `observations: N (dharness_event N)`로 확인 가능.
 
 ### 2. harness plugin 설치 (외부 프로젝트용)
 
