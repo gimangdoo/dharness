@@ -36,7 +36,7 @@ from _schema import (
     TOOL_OUTPUTS,
 )
 
-COUNT_TABLES = ("observations", "sessions", "clusters", "daily_summaries")
+COUNT_TABLES = ("observations", "sessions")
 CLAUDE_MD_ROW_WARN_THRESHOLD = 40
 
 DRAFT_ROW_RE = re.compile(r"^```\s*\n(\| .*?\|)\s*\n```", re.MULTILINE)
@@ -66,7 +66,7 @@ def _ensure_db() -> bool:
 def _init_storage() -> list[tuple]:
     """디렉토리 + DB 스키마 부트스트랩. cmd_reset이 wipe 후 호출."""
     created = []
-    for sub in ("sessions", "observations", "clusters"):
+    for sub in ("sessions", "observations"):
         p = MEMORY_ROOT / sub
         existed = p.exists()
         p.mkdir(parents=True, exist_ok=True)
@@ -90,7 +90,6 @@ def cmd_status() -> int:
         recent = conn.execute(
             "SELECT COUNT(*) FROM sessions WHERE date(started_at) >= date('now', '-7 days')"
         ).fetchone()[0]
-        promoted = conn.execute("SELECT COUNT(*) FROM clusters WHERE promoted_path IS NOT NULL").fetchone()[0]
         dh_events = conn.execute("SELECT COUNT(*) FROM observations WHERE section='dharness_event'").fetchone()[0]
     pending_drafts = list(DRAFTS_DIR.glob("*.md")) if DRAFTS_DIR.exists() else []
     history_rows = _count_claudemd_history_rows()
@@ -98,8 +97,6 @@ def cmd_status() -> int:
     print(f"📊 CM 상태 ({REPO_ROOT.name})")
     print(f"  observations:        {counts['observations']} (dharness_event {dh_events})")
     print(f"  sessions:            {counts['sessions']} (최근 7일: {recent})")
-    print(f"  clusters:            {counts['clusters']} (승격 {promoted})")
-    print(f"  daily_summaries:     {counts['daily_summaries']} (historic — 자동 생성 폐기됨)")
     print(f"  CLAUDE.md draft:     {len(pending_drafts)} pending")
     if history_rows is not None:
         warn = "  ⚠ 표가 길어졌습니다 — archive 검토 권장" if history_rows >= CLAUDE_MD_ROW_WARN_THRESHOLD else ""
@@ -128,15 +125,13 @@ def cmd_sessions(limit: int) -> int:
         return 1
     with _connect() as conn:
         rows = conn.execute("""
-            SELECT session_id, date, duration_min,
-                   CASE WHEN digest_path IS NOT NULL THEN '✓' ELSE '·' END AS d,
-                   tools_used
+            SELECT session_id, date, duration_min, tools_used
             FROM sessions ORDER BY date DESC, started_at DESC LIMIT ?
         """, (limit,)).fetchall()
     print(f"📅 최근 {len(rows)}개 세션")
     for r in rows:
         dur = f"{r['duration_min']}m" if r['duration_min'] else "—"
-        print(f"  {r['date']} {r['session_id']} {dur:>5} {r['d']} tools={r['tools_used'] or '[]'}")
+        print(f"  {r['date']} {r['session_id']} {dur:>5} tools={r['tools_used'] or '[]'}")
     return 0
 
 
@@ -279,9 +274,7 @@ def cmd_claudemd_apply(session_id: str, reason_parts: list[str]) -> int:
 
     DRAFTS_APPLIED.mkdir(parents=True, exist_ok=True)
     dest = DRAFTS_APPLIED / draft.name
-    if dest.exists():
-        dest.unlink()
-    draft.rename(dest)
+    draft.replace(dest)
 
     print(f"✅ CLAUDE.md '변경 이력' 표에 행 추가됨.")
     print(f"   삽입 위치: line {last_row_idx + 2}")
@@ -312,9 +305,7 @@ def cmd_claudemd_discard(session_id: str | None) -> int:
         return 0
     for d in targets:
         dest = DRAFTS_DISCARDED / d.name
-        if dest.exists():
-            dest.unlink()
-        d.rename(dest)
+        d.replace(dest)
         print(f"🗑️  {d.name} → {dest.relative_to(REPO_ROOT)}")
     return 0
 

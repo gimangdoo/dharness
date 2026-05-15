@@ -4,7 +4,7 @@
   1. 직전 세션이 dangling(ended_at IS NULL + raw.jsonl 비어있지 않음)인 경우 backfill finalize
   2. session_id 발급 (UUIDv4 6자 hex)
   3. _workspace/_memory/sessions/{id}/ 부트스트랩 + raw.jsonl 빈 파일 생성
-  4. observations.db 미존재 시 4개 테이블 + FTS5 초기화 + ensure_migrations 실행
+  4. observations.db 미존재 시 2개 테이블 + FTS5 초기화 + ensure_migrations 실행
   5. sessions 테이블 INSERT
   6. session_id를 _memory/.current_session에 기록
   7. _workspace/_telemetry/{date}.jsonl에 라이프사이클 이벤트 append
@@ -15,15 +15,15 @@
      LLM 호출 없음. 토큰 budget 2000자.
   9. stdout으로 hookSpecificOutput.additionalContext JSON 송출
 
-daily_summary 블록은 결정적 모델 일관성을 위해 제거됨 (Tier 3B 무산).
-`daily_summaries` 테이블은 historic data 보존용으로 schema만 유지.
+daily_summary 블록은 결정적 모델 일관성을 위해 제거 (Tier 3B 무산).
+R1 (2026-05-14): `daily_summaries` / `clusters` 테이블 + observations 4 컬럼 +
+`sessions.digest_path` 모두 schema에서 제거 — ensure_migrations가 기존 DB도 정리.
 """
 
 from __future__ import annotations
 
 import calendar
 import json
-import shutil
 import sqlite3
 import subprocess
 import sys
@@ -78,8 +78,11 @@ def backfill_dangling_sessions(conn: sqlite3.Connection, now_iso: str) -> list[s
             try:
                 started = calendar.timegm(time.strptime(started_at, "%Y-%m-%dT%H:%M:%SZ"))
                 duration_min = max(0, int((time.time() - started) / 60))
-            except ValueError:
-                pass
+            except ValueError as e:
+                print(
+                    f"[CM SessionStart] started_at parse failed (sid={sid}, value={started_at!r}): {e}",
+                    file=sys.stderr,
+                )
         conn.execute(
             "UPDATE sessions SET ended_at=?, duration_min=?, tools_used=? WHERE session_id=?",
             (now_iso, duration_min, json.dumps(sorted(tools_used)), sid),
@@ -233,10 +236,6 @@ def main() -> int:
     now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     today = time.strftime("%Y-%m-%d", time.gmtime())
 
-    sess_dir = MEMORY_ROOT / "sessions" / session_id
-    sess_dir.mkdir(parents=True, exist_ok=True)
-    (sess_dir / "raw.jsonl").touch()
-
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     backfilled: list[str] = []
     prior_sessions: list[dict] = []
@@ -253,28 +252,21 @@ def main() -> int:
             except Exception as e:
                 print(f"[CM SessionStart] dangling backfill skipped: {e}", file=sys.stderr)
             # session_id 충돌 시 더 긴 hex로 재발급. 충돌 확률은 6자 hex 기준 ~1e-6 이하.
-            for next_hex_len in (8, 10, 14):
+            # INSERT 성공 후에만 sess_dir 생성 — orphan dir 방지.
+            inserted = False
+            for hex_len in (6, 8, 10, 14, 32):
+                if hex_len != 6:
+                    session_id = uuid.uuid4().hex if hex_len == 32 else uuid.uuid4().hex[:hex_len]
                 result = conn.execute(
                     "INSERT OR IGNORE INTO sessions (session_id, date, started_at, project) VALUES (?, ?, ?, ?)",
                     (session_id, today, now_iso, REPO_ROOT.name),
                 )
                 if result.rowcount > 0:
+                    inserted = True
                     break
-                shutil.rmtree(sess_dir, ignore_errors=True)
-                session_id = uuid.uuid4().hex[:next_hex_len]
-                sess_dir = MEMORY_ROOT / "sessions" / session_id
-                sess_dir.mkdir(parents=True, exist_ok=True)
-                (sess_dir / "raw.jsonl").touch()
-            else:
-                # 3회 연속 충돌 — 거의 불가능. 마지막으로 32자 full UUID 사용.
-                shutil.rmtree(sess_dir, ignore_errors=True)
-                session_id = uuid.uuid4().hex
-                sess_dir = MEMORY_ROOT / "sessions" / session_id
-                sess_dir.mkdir(parents=True, exist_ok=True)
-                (sess_dir / "raw.jsonl").touch()
-                conn.execute(
-                    "INSERT OR IGNORE INTO sessions (session_id, date, started_at, project) VALUES (?, ?, ?, ?)",
-                    (session_id, today, now_iso, REPO_ROOT.name),
+            if not inserted:
+                raise RuntimeError(
+                    "session_id collision unresolved after 5 attempts (6/8/10/14/32 hex)"
                 )
             try:
                 prior_sessions = fetch_prior_sessions(conn, session_id, PRIOR_SESSIONS)
@@ -282,6 +274,10 @@ def main() -> int:
                 print(f"[CM SessionStart] prior sessions lookup skipped: {e}", file=sys.stderr)
     finally:
         conn.close()
+
+    sess_dir = MEMORY_ROOT / "sessions" / session_id
+    sess_dir.mkdir(parents=True, exist_ok=True)
+    (sess_dir / "raw.jsonl").touch()
 
     write_session_id(session_id)
 

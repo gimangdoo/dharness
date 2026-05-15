@@ -64,9 +64,9 @@ def _persist_dharness_event(
                 conn.execute(
                     """
                     INSERT INTO observations
-                      (id, session_id, date, section, content, tags, completed, created_at,
-                       category, artifact_kind, phase)
-                    VALUES (?, ?, ?, 'dharness_event', ?, ?, 0, ?, ?, ?, NULL)
+                      (id, session_id, date, section, content, tags, created_at,
+                       category, artifact_kind)
+                    VALUES (?, ?, ?, 'dharness_event', ?, ?, ?, ?, ?)
                     """,
                     (
                         obs_id,
@@ -146,7 +146,10 @@ def main() -> int:
     except json.JSONDecodeError:
         payload = {}
 
-    session_id = read_session_id() or "unknown"
+    session_id = read_session_id()
+    if not session_id:
+        # SessionStart 미실행 — capture 전체 skip. orphan persistence 방지.
+        return 0
     tool_name = payload.get("tool_name") or payload.get("tool") or "unknown"
     tool_input = payload.get("tool_input") or {}
     tool_response = payload.get("tool_response") or payload.get("output") or ""
@@ -155,14 +158,13 @@ def main() -> int:
     now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     today = time.strftime("%Y-%m-%d", time.gmtime())
 
-    if session_id != "unknown":
-        try:
-            _emit_agent_telemetry(
-                tool_name, tool_input, tool_response, serialized,
-                session_id, now_iso, today,
-            )
-        except Exception as e:
-            print(f"[CM PostToolUse] agent telemetry skipped: {e}", file=sys.stderr)
+    try:
+        _emit_agent_telemetry(
+            tool_name, tool_input, tool_response, serialized,
+            session_id, now_iso, today,
+        )
+    except Exception as e:
+        print(f"[CM PostToolUse] agent telemetry skipped: {e}", file=sys.stderr)
 
     sess_dir = MEMORY_ROOT / "sessions" / session_id
     if sess_dir.exists():
@@ -172,10 +174,9 @@ def main() -> int:
                 "tool": tool_name, "output_size": output_size,
             }) + "\n")
 
-    if session_id != "unknown":
-        event = classify_dharness_event(tool_name, tool_input)
-        if event:
-            _persist_dharness_event(session_id, event, tool_name, now_iso, today)
+    event = classify_dharness_event(tool_name, tool_input)
+    if event:
+        _persist_dharness_event(session_id, event, tool_name, now_iso, today)
 
     if output_size <= THRESHOLD_BYTES:
         return 0
@@ -184,7 +185,7 @@ def main() -> int:
     raw_dir.mkdir(parents=True, exist_ok=True)
     n = sum(1 for _ in raw_dir.glob("*"))
     ext = {"WebFetch": "html", "Read": "txt", "Bash": "log"}.get(tool_name, "txt")
-    raw_path = raw_dir / f"{time.time_ns()}_{tool_name.lower()}_{n+1:03d}.{ext}"
+    raw_path = raw_dir / f"{time.time_ns()}_{tool_name.lower()}_{n+1:03d}_{uuid.uuid4().hex[:4]}.{ext}"
     raw_path.write_text(serialized, encoding="utf-8")
 
     TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
