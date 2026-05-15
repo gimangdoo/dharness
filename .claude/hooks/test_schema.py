@@ -391,6 +391,17 @@ class ChainWritesAndCoverage(unittest.TestCase):
     def test_glob_overlap_exact(self):
         self.assertTrue(self.chain._paths_overlap("a.md", "a.md"))
 
+    def test_glob_overlap_single_star_analytical(self):
+        # `a/*x.md` ∩ `a/x*.md` — 둘 다 `a/xx.md` 매칭. 양방향 fnmatch 미검출 → analytical 회로
+        self.assertTrue(self.chain._paths_overlap("a/*x.md", "a/x*.md"))
+        self.assertTrue(self.chain._paths_overlap("a/x*.md", "a/*x.md"))
+
+    def test_glob_overlap_single_star_no_intersection(self):
+        # 다른 prefix — overlap 불가
+        self.assertFalse(self.chain._paths_overlap("a/*x.md", "b/x*.md"))
+        # 다른 suffix
+        self.assertFalse(self.chain._paths_overlap("a/*x.md", "a/x*.txt"))
+
     def _swap_module_roots(self, td_path: Path, agents_dir: Path, skills_dir: Path):
         old = (self.chain.REPO_ROOT, self.chain.AGENTS_DIR, self.chain.SKILLS_DIR)
         self.chain.REPO_ROOT = td_path

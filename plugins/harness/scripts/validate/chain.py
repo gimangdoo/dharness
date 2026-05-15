@@ -153,12 +153,38 @@ def _has_glob(s: str) -> bool:
     return any(ch in s for ch in "*?[")
 
 
+def _single_star_overlap(a: str, b: str) -> bool:
+    """단일 `*` glob 두 개의 교집합 비공집합 여부 결정적 판정.
+
+    A = prefix_A + '*' + suffix_A, B = prefix_B + '*' + suffix_B 일 때
+    겹치는 문자열 존재 조건:
+      (1) 한 prefix가 다른 prefix의 시작
+      (2) 한 suffix가 다른 suffix의 끝
+      (3) 결합 prefix + 결합 suffix가 서로 겹치지 않음 (길이 sufficient)
+    """
+    if a.count("*") != 1 or b.count("*") != 1:
+        return False
+    if "?" in a or "?" in b or "[" in a or "[" in b:
+        return False
+    pa, sa = a.split("*", 1)
+    pb, sb = b.split("*", 1)
+    if not (pa.startswith(pb) or pb.startswith(pa)):
+        return False
+    if not (sa.endswith(sb) or sb.endswith(sa)):
+        return False
+    # 결합 prefix·suffix 길이 합이 한 패턴 길이 -1 (자리 '*') 이하여야 매칭 가능
+    long_prefix = pa if len(pa) >= len(pb) else pb
+    long_suffix = sa if len(sa) >= len(sb) else sb
+    # 결합 string의 prefix와 suffix가 겹치면 (overlap 영역) — 그래도 일치 가능
+    return True
+
+
 def _paths_overlap(a: str, b: str) -> bool:
     """두 writes: path가 동일 파일을 가리킬 가능성 검출.
 
     literal vs literal: exact match.
     literal vs glob: fnmatch(literal, glob).
-    glob vs glob: 양방향 fnmatch — '*' 패턴 보수적으로 교차 판정 (false positive 허용).
+    glob vs glob: 양방향 fnmatch + single-* 분석 (`a/*x.md` ∩ `a/x*.md` 같은 케이스).
     """
     if a == b:
         return True
@@ -169,8 +195,9 @@ def _paths_overlap(a: str, b: str) -> bool:
         return fnmatch.fnmatch(b, a)
     if b_glob and not a_glob:
         return fnmatch.fnmatch(a, b)
-    # 양쪽 glob — 같은 디렉토리 + 확장자 정합 시 잠재 교차로 간주 (보수적)
-    return fnmatch.fnmatch(a, b) or fnmatch.fnmatch(b, a)
+    if fnmatch.fnmatch(a, b) or fnmatch.fnmatch(b, a):
+        return True
+    return _single_star_overlap(a, b)
 
 
 def check_agent_write_path_overlap() -> list[str]:
