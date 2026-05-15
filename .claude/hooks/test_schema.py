@@ -367,6 +367,115 @@ class HarnessNewGates(unittest.TestCase):
                       "SKILL.md: Phase 5 '이름 유일성 사전 점검' doctrine 미박제")
 
 
+class ChainWritesAndCoverage(unittest.TestCase):
+    """A7 glob intersection + Q1 orchestrator agent coverage 회귀 (2026-05-15)."""
+
+    REPO_ROOT = Path(__file__).resolve().parents[2]
+    SCRIPTS_DIR = REPO_ROOT / "plugins" / "harness" / "scripts" / "validate"
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(cls.SCRIPTS_DIR))
+        import importlib
+        import chain  # noqa: E402
+        cls.chain = importlib.reload(chain)
+
+    def test_glob_overlap_literal_vs_glob(self):
+        self.assertTrue(self.chain._paths_overlap("_workspace/output.md", "_workspace/*.md"))
+        self.assertTrue(self.chain._paths_overlap("_workspace/*.md", "_workspace/output.md"))
+
+    def test_glob_overlap_no_intersection(self):
+        self.assertFalse(self.chain._paths_overlap("_workspace/output.md", "_workspace/other.md"))
+        self.assertFalse(self.chain._paths_overlap("a/foo.md", "b/*.md"))
+
+    def test_glob_overlap_exact(self):
+        self.assertTrue(self.chain._paths_overlap("a.md", "a.md"))
+
+    def _swap_module_roots(self, td_path: Path, agents_dir: Path, skills_dir: Path):
+        old = (self.chain.REPO_ROOT, self.chain.AGENTS_DIR, self.chain.SKILLS_DIR)
+        self.chain.REPO_ROOT = td_path
+        self.chain.AGENTS_DIR = agents_dir
+        self.chain.SKILLS_DIR = skills_dir
+        return old
+
+    def _restore_module_roots(self, old):
+        self.chain.REPO_ROOT, self.chain.AGENTS_DIR, self.chain.SKILLS_DIR = old
+
+    def test_e2e_glob_overlap_detected(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            agents = td_path / ".claude" / "agents"
+            agents.mkdir(parents=True)
+            (agents / "agent_a.md").write_text(
+                "---\nname: agent-a\nwrites: [_workspace/*.md]\n---\nbody\n",
+                encoding="utf-8",
+            )
+            (agents / "agent_b.md").write_text(
+                "---\nname: agent-b\nwrites: [_workspace/output.md]\n---\nbody\n",
+                encoding="utf-8",
+            )
+            old = self._swap_module_roots(td_path, agents, td_path / ".claude" / "skills")
+            try:
+                errs = self.chain.check_agent_write_path_overlap()
+            finally:
+                self._restore_module_roots(old)
+            self.assertTrue(
+                any("glob 교집합" in e for e in errs),
+                f"glob intersection FAIL 미발생: errs={errs}",
+            )
+
+    def test_e2e_coverage_dead_agent_flagged(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            agents = td_path / ".claude" / "agents"
+            skills = td_path / ".claude" / "skills"
+            orch_dir = skills / "orchestrator-main"
+            agents.mkdir(parents=True)
+            orch_dir.mkdir(parents=True)
+            (agents / "ghost.md").write_text(
+                "---\nname: ghost\n---\nbody\n", encoding="utf-8"
+            )
+            (orch_dir / "SKILL.md").write_text(
+                "---\nname: orchestrator-main\ndescription: x\n---\nNo agent refs here.\n",
+                encoding="utf-8",
+            )
+            old = self._swap_module_roots(td_path, agents, skills)
+            try:
+                errs = self.chain.check_orchestrator_agent_coverage()
+            finally:
+                self._restore_module_roots(old)
+            self.assertTrue(
+                any("미참조" in e and "ghost" in e for e in errs),
+                f"dead agent FAIL 미발생: errs={errs}",
+            )
+
+    def test_e2e_coverage_referenced_agent_passes(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            td_path = Path(td)
+            agents = td_path / ".claude" / "agents"
+            skills = td_path / ".claude" / "skills"
+            orch_dir = skills / "orchestrator-main"
+            agents.mkdir(parents=True)
+            orch_dir.mkdir(parents=True)
+            (agents / "alive.md").write_text(
+                "---\nname: alive\n---\nbody\n", encoding="utf-8"
+            )
+            (orch_dir / "SKILL.md").write_text(
+                "---\nname: orchestrator-main\ndescription: x\n---\n"
+                "Spawn `.claude/agents/alive.md` for task.\n",
+                encoding="utf-8",
+            )
+            old = self._swap_module_roots(td_path, agents, skills)
+            try:
+                errs = self.chain.check_orchestrator_agent_coverage()
+            finally:
+                self._restore_module_roots(old)
+            self.assertEqual(errs, [], f"referenced agent에 false FAIL: errs={errs}")
+
+
 class SanitizeReason(unittest.TestCase):
     def test_empty(self):
         self.assertEqual(_sanitize_reason([]), "")

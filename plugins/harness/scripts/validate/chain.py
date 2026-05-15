@@ -8,6 +8,7 @@ Usage:
 
 from __future__ import annotations
 
+import fnmatch
 import io
 import json
 import re
@@ -148,16 +149,40 @@ def check_agent_name_uniqueness() -> list[str]:
     return errors
 
 
+def _has_glob(s: str) -> bool:
+    return any(ch in s for ch in "*?[")
+
+
+def _paths_overlap(a: str, b: str) -> bool:
+    """두 writes: path가 동일 파일을 가리킬 가능성 검출.
+
+    literal vs literal: exact match.
+    literal vs glob: fnmatch(literal, glob).
+    glob vs glob: 양방향 fnmatch — '*' 패턴 보수적으로 교차 판정 (false positive 허용).
+    """
+    if a == b:
+        return True
+    a_glob, b_glob = _has_glob(a), _has_glob(b)
+    if not a_glob and not b_glob:
+        return False
+    if a_glob and not b_glob:
+        return fnmatch.fnmatch(b, a)
+    if b_glob and not a_glob:
+        return fnmatch.fnmatch(a, b)
+    # 양쪽 glob — 같은 디렉토리 + 확장자 정합 시 잠재 교차로 간주 (보수적)
+    return fnmatch.fnmatch(a, b) or fnmatch.fnmatch(b, a)
+
+
 def check_agent_write_path_overlap() -> list[str]:
     """agents/*.md frontmatter `writes:` 경로 충돌 검출 (A7 doctrine, 2026-05-15).
 
     frontmatter 내부에 `writes: [path1, path2]` 필드 박제 시 각 path를 owner agent에 매핑.
-    두 agent가 동일 path 박제 시 FAIL. exact string match 기준 — glob 교집합은 향후 확장.
+    exact match + glob intersection 양쪽 검사 — literal-vs-glob 교차 차단.
     """
     errors: list[str] = []
     if not AGENTS_DIR.exists():
         return errors
-    by_path: dict[str, list[str]] = {}
+    agent_paths: list[tuple[str, list[str]]] = []
     for path in AGENTS_DIR.glob("*.md"):
         rel = str(path.relative_to(REPO_ROOT))
         try:
@@ -172,6 +197,11 @@ def check_agent_write_path_overlap() -> list[str]:
             continue
         raw = m.group(1).strip()
         paths = [p.strip().strip("'\"") for p in re.split(r"[,\[\]]", raw) if p.strip()]
+        agent_paths.append((rel, paths))
+
+    # exact match
+    by_path: dict[str, list[str]] = {}
+    for rel, paths in agent_paths:
         for p in paths:
             by_path.setdefault(p, []).append(rel)
     for p, owners in by_path.items():
@@ -179,6 +209,62 @@ def check_agent_write_path_overlap() -> list[str]:
             errors.append(
                 f"write path `{p}` per-agent exclusivity 위반 — {', '.join(owners)} (A7 doctrine)"
             )
+
+    # glob intersection (pairwise cross-agent, exact pairs already flagged above)
+    seen: set[tuple[str, str, str, str]] = set()
+    for i in range(len(agent_paths)):
+        rel_a, paths_a = agent_paths[i]
+        for j in range(i + 1, len(agent_paths)):
+            rel_b, paths_b = agent_paths[j]
+            for pa in paths_a:
+                for pb in paths_b:
+                    if pa == pb:
+                        continue
+                    if not _paths_overlap(pa, pb):
+                        continue
+                    key = (rel_a, rel_b, *sorted([pa, pb]))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    errors.append(
+                        f"write paths `{pa}` ∩ `{pb}` glob 교집합 — {rel_a}, {rel_b} (A7 glob intersection)"
+                    )
+    return errors
+
+
+def check_orchestrator_agent_coverage() -> list[str]:
+    """모든 .claude/agents/*.md는 orchestrator SKILL.md/CLAUDE.md에서 참조 필수 (Q1 cardinality).
+
+    M9 Phase 5 게이트의 정량 보강 — agent 파일은 존재하나 orchestrator가 미참조하면
+    dead agent로 간주하고 FAIL. inline 대안 검토 doctrine 강제.
+    """
+    errors: list[str] = []
+    if not AGENTS_DIR.exists():
+        return errors
+    orch = find_orchestrator()
+    if not orch:
+        return errors
+    try:
+        text = orch.read_text(encoding="utf-8-sig")
+    except OSError:
+        return errors
+    referenced: set[str] = set()
+    for m in AGENT_REF_PATTERN.finditer(text):
+        referenced.add(m.group(1))
+    for path in AGENTS_DIR.glob("*.md"):
+        stem = path.stem
+        if stem in referenced:
+            continue
+        try:
+            atext = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        nm = AGENT_NAME_PATTERN.search(atext)
+        if nm and nm.group(1) in referenced:
+            continue
+        errors.append(
+            f".claude/agents/{stem}.md — orchestrator {orch.relative_to(REPO_ROOT)} 미참조 (Q1 cardinality: dead agent / inline 대안 미검토)"
+        )
     return errors
 
 
@@ -274,6 +360,7 @@ def main(argv: list[str]) -> int:
     errors.extend(check_agent_tools_vs_settings(valid_perms))
     errors.extend(check_agent_name_uniqueness())
     errors.extend(check_agent_write_path_overlap())
+    errors.extend(check_orchestrator_agent_coverage())
     errors.extend(check_skill_name_uniqueness())
     errors.extend(check_reference_links())
 

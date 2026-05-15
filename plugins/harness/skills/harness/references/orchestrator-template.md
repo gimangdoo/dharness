@@ -34,7 +34,9 @@ description: "{도메인} 에이전트 팀을 조율하는 오케스트레이터
 | {teammate-2} | {커스텀 또는 빌트인} | {역할} | {skill} | {output-file} |
 | ... | | | | |
 
-> **A7 doctrine (2026-05-15) — Per-agent write path exclusivity:** 위 표 `출력` 컬럼의 path는 각 에이전트 frontmatter `writes: [path1, path2, ...]` 필드로 박제 강제. 두 에이전트가 동일 path를 박제하면 `plugins/harness/scripts/validate/chain.py` `check_agent_write_path_overlap` 회로가 deterministic FAIL. 같은 path 공유가 필수면 명시적 owner 1명만 `writes:` 박제 + 다른 에이전트는 read-only (`tools: [Read, Glob, Grep]`만). orchestrator의 `Data 흐름` 섹션과 정합 강제 — owner 박제 1:1 매핑.
+> **A7 doctrine (2026-05-15) — Per-agent write path exclusivity:** 위 표 `출력` 컬럼의 path는 각 에이전트 frontmatter `writes: [path1, path2, ...]` 필드로 박제 강제. 두 에이전트가 동일 path를 박제하면 `plugins/harness/scripts/validate/chain.py` `check_agent_write_path_overlap` 회로가 deterministic FAIL. exact match + glob intersection 양쪽 검사 — `_workspace/output.md` ∩ `_workspace/*.md` 같은 literal-vs-glob 교차도 결정적으로 차단된다. 같은 path 공유가 필수면 명시적 owner 1명만 `writes:` 박제 + 다른 에이전트는 read-only (`tools: [Read, Glob, Grep]`만). orchestrator의 `Data 흐름` 섹션과 정합 강제 — owner 박제 1:1 매핑.
+>
+> **Q1 doctrine (2026-05-15) — Orchestrator agent coverage:** 위 표에 row가 있는 모든 에이전트는 본 SKILL.md 본문에서 `.claude/agents/<stem>.md` 또는 frontmatter `name:` slug로 최소 1회 참조 필수. `chain.py` `check_orchestrator_agent_coverage` 회로가 dead agent (파일 존재 + orchestrator 미참조)를 deterministic FAIL. inline 대안 검토 doctrine (M9 Phase 5 게이트) 강제 — 단일 use 에이전트는 inline 회수 후보로 flag.
 
 ## 워크플로우
 
