@@ -3,15 +3,18 @@
 실행:
     py .claude/hooks/test_schema.py
 
-stdlib unittest만 사용 (외부 의존성 0). 4가지 핵심 분류 룰을 커버:
+stdlib unittest만 사용 (외부 의존성 0). 6가지 핵심 룰을 커버:
   1. FILE_TOOLS × harness/CM/CLAUDE.md/README/skip 경로
   2. Bash × git subcommand 매핑 + 비-git 명령 skip
   3. _workspace/__pycache__/.git skip 룰
   4. tool_input 누락 시 None
+  5. P7-2 옵션 B 영문 POC parity (KO/EN pair + 박스 + note + SKILL.md dogfood 매핑 + 구조 parity: section/fence/table/bullet)
+  6. Anti-premature-judgment doctrine 박스 + Phase 1/2 entry 게이트 박제 (SKILL.md)
 """
 
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -157,12 +160,211 @@ class ClassifyBash(unittest.TestCase):
         # 200자 + … 토큰
         self.assertLessEqual(len(result["content"]), 200)
 
+    def test_git_chain_add_commit(self):
+        # P0-2 chain 분류 — `add && commit`이 add가 아니라 commit으로 분류되어야 함 (우선순위)
+        result = classify_dharness_event(
+            "Bash", {"command": "git add file.py && git commit -m 'fix'"}
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["category"], "git_commit")
+        self.assertIn("git_chain", result["tags"])
+
+    def test_git_chain_add_push(self):
+        result = classify_dharness_event(
+            "Bash", {"command": "git add . && git commit -m 'x' && git push"}
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["category"], "git_push")
+        self.assertIn("git_chain", result["tags"])
+
+    def test_git_chain_semicolon(self):
+        result = classify_dharness_event(
+            "Bash", {"command": "git add x ; git rm y ; git commit -m 'm'"}
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["category"], "git_commit")
+
+    def test_git_single_no_chain_tag(self):
+        # 단일 명령은 git_chain tag 없음
+        result = classify_dharness_event("Bash", {"command": "git add file.py"})
+        self.assertIsNotNone(result)
+        self.assertNotIn("git_chain", result["tags"])
+
+    def test_git_chain_with_status_filtered(self):
+        # status는 _GIT_RELEVANT 미존재 — chain에서 filter
+        result = classify_dharness_event(
+            "Bash", {"command": "git status ; git add ."}
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["category"], "git_add")
+
 
 class ClassifyMisc(unittest.TestCase):
     def test_non_recognized_tool(self):
         # WebFetch/Read는 dharness_event 분류 대상 아님
         self.assertIsNone(classify_dharness_event("WebFetch", {"url": "https://example.com"}))
         self.assertIsNone(classify_dharness_event("Read", {"file_path": "README.md"}))
+
+
+class POCParity(unittest.TestCase):
+    """P7-2 옵션 B 영문 POC parity 회귀 — KO/EN pair 4건 invariant.
+
+    검증:
+      1. 4 KO/EN file pair 존재
+      2. KO file 상단 *English POC 박스* (`[file.en.md]` cross-link 포함) 박제
+      3. EN file 하단 `P7-2 POC note` 또는 `P7-1 POC note` 박제
+    """
+
+    REPO_ROOT = Path(__file__).resolve().parents[2]
+    REF_DIR = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references"
+
+    POC_PAIRS = [
+        "team-tools-api",
+        "agent-design-patterns",
+        "skill-testing-guide",
+        "skill-writing-guide",
+    ]
+
+    def test_poc_pair_existence(self):
+        for stem in self.POC_PAIRS:
+            ko = self.REF_DIR / f"{stem}.md"
+            en = self.REF_DIR / f"{stem}.en.md"
+            self.assertTrue(ko.exists(), f"KO source missing: {ko.relative_to(self.REPO_ROOT)}")
+            self.assertTrue(en.exists(), f"EN POC missing: {en.relative_to(self.REPO_ROOT)}")
+
+    def test_ko_has_poc_box_with_en_link(self):
+        for stem in self.POC_PAIRS:
+            ko = self.REF_DIR / f"{stem}.md"
+            text = ko.read_text(encoding="utf-8-sig")
+            self.assertIn("English POC", text,
+                          f"{ko.name}: `English POC` 박스 헤더 미박제")
+            self.assertIn(f"{stem}.en.md", text,
+                          f"{ko.name}: `.en.md` cross-link 미박제")
+
+    def test_en_has_poc_note(self):
+        for stem in self.POC_PAIRS:
+            en = self.REF_DIR / f"{stem}.en.md"
+            text = en.read_text(encoding="utf-8-sig")
+            has_note = ("P7-2 POC note" in text) or ("P7-1 POC note" in text)
+            self.assertTrue(has_note,
+                            f"{en.name}: `P7-1/P7-2 POC note` 미박제")
+
+    def test_structural_parity_section_count(self):
+        """KO/EN ## section count 정합 — EN은 POC note 부록 1 section 추가만 허용."""
+        section_re = re.compile(r"(?m)^##\s")
+        for stem in self.POC_PAIRS:
+            ko_text = (self.REF_DIR / f"{stem}.md").read_text(encoding="utf-8-sig")
+            en_text = (self.REF_DIR / f"{stem}.en.md").read_text(encoding="utf-8-sig")
+            ko_count = len(section_re.findall(ko_text))
+            en_count = len(section_re.findall(en_text))
+            self.assertEqual(en_count, ko_count + 1,
+                             f"{stem}: EN sections ({en_count}) must equal KO ({ko_count}) + 1 POC note. "
+                             "structural drift detected — KO/EN section count divergence.")
+
+    def test_structural_parity_code_fence_count(self):
+        """KO/EN ``` code fence count 정합 — POC note에 fence 없으므로 동수."""
+        for stem in self.POC_PAIRS:
+            ko_text = (self.REF_DIR / f"{stem}.md").read_text(encoding="utf-8-sig")
+            en_text = (self.REF_DIR / f"{stem}.en.md").read_text(encoding="utf-8-sig")
+            ko_count = ko_text.count("```")
+            en_count = en_text.count("```")
+            self.assertEqual(ko_count, en_count,
+                             f"{stem}: code fence count drift — KO={ko_count}, EN={en_count}. "
+                             "structural divergence in fenced code blocks.")
+
+    def test_structural_parity_table_row_count(self):
+        """KO/EN markdown table row count 정합 — POC note에 표 없으므로 동수."""
+        row_re = re.compile(r"(?m)^\|.*\|\s*$")
+        for stem in self.POC_PAIRS:
+            ko_text = (self.REF_DIR / f"{stem}.md").read_text(encoding="utf-8-sig")
+            en_text = (self.REF_DIR / f"{stem}.en.md").read_text(encoding="utf-8-sig")
+            ko_count = len(row_re.findall(ko_text))
+            en_count = len(row_re.findall(en_text))
+            self.assertEqual(ko_count, en_count,
+                             f"{stem}: table row count drift — KO={ko_count}, EN={en_count}. "
+                             "structural divergence in markdown tables.")
+
+    def test_structural_parity_bullet_count(self):
+        """KO/EN bullet list item count 정합 — POC note에 bullet 없으므로 동수."""
+        bullet_re = re.compile(r"(?m)^\s*[-*]\s")
+        for stem in self.POC_PAIRS:
+            ko_text = (self.REF_DIR / f"{stem}.md").read_text(encoding="utf-8-sig")
+            en_text = (self.REF_DIR / f"{stem}.en.md").read_text(encoding="utf-8-sig")
+            ko_count = len(bullet_re.findall(ko_text))
+            en_count = len(bullet_re.findall(en_text))
+            self.assertEqual(ko_count, en_count,
+                             f"{stem}: bullet count drift — KO={ko_count}, EN={en_count}. "
+                             "structural divergence in bullet lists.")
+
+    def test_skill_md_dogfood_box(self):
+        skill_md = self.REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
+        text = skill_md.read_text(encoding="utf-8-sig")
+        self.assertIn("P7-2 옵션 B", text,
+                      "SKILL.md: P7-2 옵션 B dogfood 매핑 박스 미박제")
+        for stem in self.POC_PAIRS:
+            self.assertIn(f"{stem}.en.md", text,
+                          f"SKILL.md dogfood 박스: `{stem}.en.md` 미박제")
+
+
+class HarnessNewGates(unittest.TestCase):
+    """SKILL.md anti-premature-judgment doctrine + Phase 1/2 entry 게이트 박제 회귀.
+
+    사용자 요구 2026-05-15: `/harness:harness-new` 진입 시 cwd 디렉토리 이름·파일 이름 단독
+    도메인 단정 차단. Phase 1 산출물 강제 + Phase 2 필수 5필드 사용자 답변 raw 인용 강제.
+    """
+
+    REPO_ROOT = Path(__file__).resolve().parents[2]
+    SKILL_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
+    CMD_MD = REPO_ROOT / "plugins" / "harness" / "commands" / "harness-new.md"
+
+    def test_anti_premature_judgment_doctrine_present(self):
+        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
+        self.assertIn("Anti-premature-judgment doctrine", text,
+                      "SKILL.md: Anti-premature-judgment doctrine 박스 미박제")
+        self.assertIn("cwd 디렉토리 이름", text,
+                      "SKILL.md: 'cwd 디렉토리 이름' 단정 금지 doctrine 미박제")
+        self.assertIn("단정 허용 조건", text,
+                      "SKILL.md: '단정 허용 조건' 게이트 미박제")
+
+    def test_phase1_entry_gate_present(self):
+        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
+        self.assertIn("Phase 1 entry 게이트", text,
+                      "SKILL.md: Phase 1 entry 게이트 박스 미박제")
+        self.assertIn("산출물 강제", text,
+                      "SKILL.md: Phase 1 '산출물 강제' 문구 미박제")
+        self.assertIn("실 파일 read 강제", text,
+                      "SKILL.md: Phase 1 '실 파일 read 강제' 문구 미박제")
+        self.assertIn("silent skip 차단", text,
+                      "SKILL.md: 'silent skip 차단' 문구 미박제")
+
+    def test_phase2_entry_gate_present(self):
+        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
+        self.assertIn("Phase 2 entry 게이트", text,
+                      "SKILL.md: Phase 2 entry 게이트 박스 미박제")
+        self.assertIn("질문 폭격 강제", text,
+                      "SKILL.md: Phase 2 '질문 폭격 강제' 문구 미박제")
+        self.assertIn("user_confirmed_fields", text,
+                      "SKILL.md: Phase 2 meta.user_confirmed_fields 박제 doctrine 미박제")
+
+    def test_harness_new_command_synced(self):
+        text = self.CMD_MD.read_text(encoding="utf-8-sig")
+        self.assertIn("Anti-premature-judgment", text,
+                      "harness-new.md: 게이트 포인터 미동기화")
+        self.assertIn("entry 게이트 (2026-05-15)", text,
+                      "harness-new.md: 2026-05-15 entry 게이트 포인터 미박제")
+
+    def test_phase5_cardinality_gate_present(self):
+        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
+        self.assertIn("Phase 5 entry 게이트", text,
+                      "SKILL.md: Phase 5 entry 게이트 박스 미박제")
+        self.assertIn("Cardinality justification", text,
+                      "SKILL.md: Phase 5 'Cardinality justification' 문구 미박제")
+        self.assertIn("inline 대안 검토", text,
+                      "SKILL.md: Phase 5 'inline 대안 검토' 컬럼 doctrine 미박제")
+        self.assertIn("single-use → inline", text,
+                      "SKILL.md: Phase 5 'single-use → inline' 룰 미박제")
+        self.assertIn("이름 유일성 사전 점검", text,
+                      "SKILL.md: Phase 5 '이름 유일성 사전 점검' doctrine 미박제")
 
 
 class SanitizeReason(unittest.TestCase):

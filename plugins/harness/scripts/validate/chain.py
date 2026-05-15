@@ -32,6 +32,8 @@ SKILL_DIR_PATTERN = re.compile(r"\.claude/skills/([\w-]+)")
 AGENT_REF_PATTERN = re.compile(r"\.claude/agents/([\w-]+)\.md")
 TOOLS_LINE_PATTERN = re.compile(r"^\s*tools\s*:\s*(.+)$", re.MULTILINE)
 REFERENCE_LINK_PATTERN = re.compile(r"references/([\w/-]+\.md)")
+WRITES_LINE_PATTERN = re.compile(r"^\s*writes\s*:\s*(.+)$", re.MULTILINE)
+FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
 
 
 def collect_agents() -> set[str]:
@@ -120,6 +122,94 @@ def check_agent_tools_vs_settings(valid_perms: set[str]) -> list[str]:
     return errors
 
 
+def check_agent_name_uniqueness() -> list[str]:
+    """agents/*.md frontmatter `name:` slug + file stem 전역 유일성 검증."""
+    errors: list[str] = []
+    if not AGENTS_DIR.exists():
+        return errors
+    by_name: dict[str, list[str]] = {}
+    by_stem: dict[str, list[str]] = {}
+    for path in AGENTS_DIR.glob("*.md"):
+        rel = str(path.relative_to(REPO_ROOT))
+        by_stem.setdefault(path.stem, []).append(rel)
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        m = AGENT_NAME_PATTERN.search(text)
+        if m:
+            by_name.setdefault(m.group(1), []).append(rel)
+    for name, paths in by_name.items():
+        if len(paths) > 1:
+            errors.append(f"agent `name: {name}` 중복 — {', '.join(paths)}")
+    for stem, paths in by_stem.items():
+        if len(paths) > 1:
+            errors.append(f"agent 파일명 `{stem}.md` 중복 — {', '.join(paths)}")
+    return errors
+
+
+def check_agent_write_path_overlap() -> list[str]:
+    """agents/*.md frontmatter `writes:` 경로 충돌 검출 (A7 doctrine, 2026-05-15).
+
+    frontmatter 내부에 `writes: [path1, path2]` 필드 박제 시 각 path를 owner agent에 매핑.
+    두 agent가 동일 path 박제 시 FAIL. exact string match 기준 — glob 교집합은 향후 확장.
+    """
+    errors: list[str] = []
+    if not AGENTS_DIR.exists():
+        return errors
+    by_path: dict[str, list[str]] = {}
+    for path in AGENTS_DIR.glob("*.md"):
+        rel = str(path.relative_to(REPO_ROOT))
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        fm = FRONTMATTER_RE.match(text)
+        if not fm:
+            continue
+        m = WRITES_LINE_PATTERN.search(fm.group(1))
+        if not m:
+            continue
+        raw = m.group(1).strip()
+        paths = [p.strip().strip("'\"") for p in re.split(r"[,\[\]]", raw) if p.strip()]
+        for p in paths:
+            by_path.setdefault(p, []).append(rel)
+    for p, owners in by_path.items():
+        if len(owners) > 1:
+            errors.append(
+                f"write path `{p}` per-agent exclusivity 위반 — {', '.join(owners)} (A7 doctrine)"
+            )
+    return errors
+
+
+def check_skill_name_uniqueness() -> list[str]:
+    """skills/*/SKILL.md frontmatter `name:` 전역 유일성 + 디렉토리명 정합 검증."""
+    errors: list[str] = []
+    if not SKILLS_DIR.exists():
+        return errors
+    by_name: dict[str, list[str]] = {}
+    for skill_md in SKILLS_DIR.glob("*/SKILL.md"):
+        rel = str(skill_md.relative_to(REPO_ROOT))
+        dir_name = skill_md.parent.name
+        try:
+            text = skill_md.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        m = AGENT_NAME_PATTERN.search(text)
+        if not m:
+            continue
+        name = m.group(1)
+        by_name.setdefault(name, []).append(rel)
+        if name != dir_name:
+            errors.append(
+                f"{rel}: frontmatter `name: {name}` ≠ 디렉토리명 `{dir_name}` — Claude Code skill resolver mismatch"
+            )
+    for name, paths in by_name.items():
+        if len(paths) > 1:
+            errors.append(f"skill `name: {name}` 중복 — {', '.join(paths)}")
+    return errors
+
+
 def check_reference_links() -> list[str]:
     errors: list[str] = []
     if not SKILLS_DIR.exists():
@@ -182,6 +272,9 @@ def main(argv: list[str]) -> int:
         errors.extend(find_dangling_in_orchestrator(orch, valid_agents, valid_skills))
 
     errors.extend(check_agent_tools_vs_settings(valid_perms))
+    errors.extend(check_agent_name_uniqueness())
+    errors.extend(check_agent_write_path_overlap())
+    errors.extend(check_skill_name_uniqueness())
     errors.extend(check_reference_links())
 
     status = "PASS" if not errors else "FAIL"

@@ -1,5 +1,7 @@
 # 오케스트레이터 스킬 템플릿
 
+> **Read at phase:** Phase 7 (통합·CLAUDE.md 포인터). orchestrator 스킬 합성 시 단일 출처 템플릿 (3 mode + Phase 10 telemetry capture 예제).
+
 오케스트레이터는 팀 전체를 조율하는 상위 스킬이다. 실행 모드별로 3가지 템플릿을 제공한다:
 
 - **템플릿 A: 에이전트 팀 모드 (기본)** — 2명 이상 협업 시 최우선 선택
@@ -31,6 +33,8 @@ description: "{도메인} 에이전트 팀을 조율하는 오케스트레이터
 | {teammate-1} | {커스텀 또는 빌트인} | {역할} | {skill} | {output-file} |
 | {teammate-2} | {커스텀 또는 빌트인} | {역할} | {skill} | {output-file} |
 | ... | | | | |
+
+> **A7 doctrine (2026-05-15) — Per-agent write path exclusivity:** 위 표 `출력` 컬럼의 path는 각 에이전트 frontmatter `writes: [path1, path2, ...]` 필드로 박제 강제. 두 에이전트가 동일 path를 박제하면 `plugins/harness/scripts/validate/chain.py` `check_agent_write_path_overlap` 회로가 deterministic FAIL. 같은 path 공유가 필수면 명시적 owner 1명만 `writes:` 박제 + 다른 에이전트는 read-only (`tools: [Read, Glob, Grep]`만). orchestrator의 `Data 흐름` 섹션과 정합 강제 — owner 박제 1:1 매핑.
 
 ## 워크플로우
 
