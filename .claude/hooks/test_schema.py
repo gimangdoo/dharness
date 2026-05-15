@@ -476,6 +476,90 @@ class ChainWritesAndCoverage(unittest.TestCase):
             self.assertEqual(errs, [], f"referenced agent에 false FAIL: errs={errs}")
 
 
+class POCDogfoodMeasure(unittest.TestCase):
+    """P7-2 dogfood 정적 측정 회로 회귀 (2026-05-15)."""
+
+    REPO_ROOT = Path(__file__).resolve().parents[2]
+    POC_DIR = REPO_ROOT / "plugins" / "harness" / "scripts" / "poc"
+    PROTOCOL = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references" / "poc-dogfood-protocol.md"
+
+    def test_measure_script_present(self):
+        script = self.POC_DIR / "measure_dogfood.py"
+        self.assertTrue(script.exists(), f"measure_dogfood.py 미존재: {script}")
+
+    def test_protocol_doctrine_present(self):
+        self.assertTrue(self.PROTOCOL.exists(), "poc-dogfood-protocol.md 미존재")
+        text = self.PROTOCOL.read_text(encoding="utf-8-sig")
+        for marker in ("옵션 B-a", "옵션 B-b", "옵션 B-c", "결정 임계", "measure_dogfood.py"):
+            self.assertIn(marker, text, f"protocol doctrine `{marker}` 미박제")
+
+    def test_strip_poc_note_removes_appendix(self):
+        sys.path.insert(0, str(self.POC_DIR))
+        import importlib
+        import measure_dogfood  # noqa: E402
+        measure_dogfood = importlib.reload(measure_dogfood)
+        sample = "# Title\n\nbody body\n\n## P7-2 POC note\n\nappendix line\n"
+        stripped = measure_dogfood._strip_poc_note(sample)
+        self.assertNotIn("appendix line", stripped)
+        self.assertNotIn("P7-2 POC note", stripped)
+        self.assertIn("body body", stripped)
+
+    def test_skill_md_measure_pointer(self):
+        skill_md = self.REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
+        text = skill_md.read_text(encoding="utf-8-sig")
+        self.assertIn("measure_dogfood.py", text, "SKILL.md: measure_dogfood.py pointer 미박제")
+        self.assertIn("poc-dogfood-protocol.md", text, "SKILL.md: protocol reference pointer 미박제")
+
+
+class UpliftBaseline(unittest.TestCase):
+    """Q2 uplift baseline 회로 회귀 (2026-05-15)."""
+
+    REPO_ROOT = Path(__file__).resolve().parents[2]
+    UPLIFT_DIR = REPO_ROOT / "plugins" / "harness" / "scripts" / "uplift"
+    PROTOCOL = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references" / "uplift-protocol.md"
+
+    def test_measure_script_present(self):
+        script = self.UPLIFT_DIR / "measure_session.py"
+        self.assertTrue(script.exists(), f"measure_session.py 미존재: {script}")
+
+    def test_protocol_doctrine_present(self):
+        self.assertTrue(self.PROTOCOL.exists(), "uplift-protocol.md 미존재")
+        text = self.PROTOCOL.read_text(encoding="utf-8-sig")
+        for marker in (
+            "측정 지표", "Fixture task", "결정 게이트", "measure_session.py",
+            "baseline", "harness",
+        ):
+            self.assertIn(marker, text, f"uplift doctrine `{marker}` 미박제")
+
+    def test_summarize_pure_aggregation(self):
+        sys.path.insert(0, str(self.UPLIFT_DIR))
+        import importlib
+        import measure_session  # noqa: E402
+        measure_session = importlib.reload(measure_session)
+        events = [
+            {"type": "session_capture_init", "ts": "2026-05-15T10:00:00Z", "session_id": "x"},
+            {"type": "tool_output_captured", "raw_size": 12345, "session_id": "x"},
+            {"type": "tool_output_captured", "raw_size": 678, "session_id": "x"},
+            {"type": "agent_invocation", "session_id": "x"},
+            {"type": "agent_failure", "session_id": "x"},
+            {"type": "agent_invocation", "session_id": "x"},
+            {"type": "session_capture_finalize", "ts": "2026-05-15T10:05:30Z", "session_id": "x"},
+        ]
+        s = measure_session.summarize("x", events)
+        self.assertEqual(s["tool_invocations"], 2)
+        self.assertEqual(s["total_raw_size_bytes"], 12345 + 678)
+        self.assertEqual(s["agent_invocations"], 2)
+        self.assertEqual(s["agent_failures"], 1)
+        self.assertEqual(s["failure_ratio"], 0.5)
+        self.assertEqual(s["duration_seconds"], 330)
+
+    def test_skill_md_uplift_pointer(self):
+        skill_md = self.REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
+        text = skill_md.read_text(encoding="utf-8-sig")
+        self.assertIn("uplift-protocol.md", text, "SKILL.md: uplift-protocol pointer 미박제")
+        self.assertIn("measure_session.py", text, "SKILL.md: measure_session pointer 미박제")
+
+
 class SanitizeReason(unittest.TestCase):
     def test_empty(self):
         self.assertEqual(_sanitize_reason([]), "")
