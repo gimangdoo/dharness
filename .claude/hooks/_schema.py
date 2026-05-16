@@ -146,9 +146,12 @@ def ensure_migrations(conn: sqlite3.Connection) -> list[str]:
             try:
                 conn.execute(f"ALTER TABLE observations DROP COLUMN {col}")
                 changed.append(f"drop_col:obs.{col}")
-            except sqlite3.OperationalError:
-                # 인덱스/트리거 의존성 등으로 DROP 실패 시 silent skip
-                # (SQLite는 의존성 있을 때 OperationalError 발생)
+            except sqlite3.OperationalError as e:
+                # 인덱스/트리거 의존성 등으로 DROP 실패 시 skip — stderr 로그로 관측성 확보
+                print(
+                    f"[_schema] migration v1→v2 skip: DROP observations.{col} failed: {e}",
+                    file=sys.stderr,
+                )
                 continue
 
     sess_info = conn.execute("PRAGMA table_info(sessions)").fetchall()
@@ -157,8 +160,11 @@ def ensure_migrations(conn: sqlite3.Connection) -> list[str]:
         try:
             conn.execute("ALTER TABLE sessions DROP COLUMN digest_path")
             changed.append("drop_col:sess.digest_path")
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as e:
+            print(
+                f"[_schema] migration v1→v2 skip: DROP sessions.digest_path failed: {e}",
+                file=sys.stderr,
+            )
 
     # v1→v2: dead 테이블 DROP (존재할 때만)
     for tbl in _DROP_TABLES_V2:

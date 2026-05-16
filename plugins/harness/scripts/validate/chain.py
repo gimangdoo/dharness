@@ -35,6 +35,35 @@ TOOLS_LINE_PATTERN = re.compile(r"^\s*tools\s*:\s*(.+)$", re.MULTILINE)
 REFERENCE_LINK_PATTERN = re.compile(r"references/([\w/-]+\.md)")
 WRITES_LINE_PATTERN = re.compile(r"^\s*writes\s*:\s*(.+)$", re.MULTILINE)
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
+DESCRIPTION_LINE_PATTERN = re.compile(r"^\s*description\s*:\s*(.+)$", re.MULTILINE)
+MCP_TOOL_PATTERN = re.compile(r"mcp__([\w-]+)__[\w-]+")
+MCP_SERVER_LINE_PATTERN = re.compile(r"^\s*-\s+([\w-]+)\s*:\s*$", re.MULTILINE)
+
+# Q11 — trigger-keyword-catalog.md 단일 출처. signal_id → [keywords]
+# 본 catalog는 plugin 합성 결과를 검증 — derived `.claude/agents|skills/*.md`의 description이
+# *최소 1 signal*을 hit해야 trigger 명확성 확보. catalog 갱신 시 본 dict도 동기.
+_TRIGGER_SIGNAL_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "S1": ("분석", "검토", "리서치", "요약", "조회", "검색", "탐색", "탐사", "진단", "감사", "점검",
+           "analyze", "review", "research", "summarize", "query", "search", "explore", "audit", "inspect", "investigate"),
+    "S2": ("생성", "작성", "편집", "수정", "커밋", "마이그레이션", "배포", "적용", "등록", "갱신",
+           "create", "write", "edit", "modify", "commit", "migrate", "deploy", "apply", "register", "update"),
+    "S3": ("웹", "외부 API", "스크래핑", "크롤링", "fetch", "페이지", "URL",
+           "web", "external API", "scrape", "crawl", "search engine", "HTTP"),
+    "S4": ("DB", "데이터베이스", "쿼리", "스키마", "테이블", "인덱스", "JOIN",
+           "database", "schema", "migration", "table", "index", "SQL"),
+    "S5": ("PR", "issue", "리뷰", "CI", "CD", "릴리즈", "브랜치", "머지", "워크플로우",
+           "release", "branch", "merge", "pipeline", "workflow"),
+    "S6": ("단계별", "추론", "사고 과정", "장기 메모리", "시간", "타임존", "KG", "지식 그래프",
+           "step-by-step", "reasoning", "chain-of-thought", "long-term memory", "timezone", "knowledge graph"),
+    "S7": ("모델", "학습", "평가", "하이퍼파라미터", "실험 추적", "inference", "feature", "dataset", "라벨", "분류", "회귀", "추천",
+           "model", "training", "evaluation", "hyperparameter", "experiment tracking", "classification", "regression", "recommendation"),
+    "S8": ("Kubernetes", "k8s", "Terraform", "SRE", "oncall", "롤백", "helm", "IaC", "observability",
+           "infrastructure", "monitoring", "rollback"),
+    "S9": ("iOS", "Android", "Swift", "Kotlin", "Flutter", "React Native", "Xcode", "Gradle", "emulator",
+           "IPA", "APK", "모바일", "mobile"),
+    "S10": ("ETL", "ELT", "data pipeline", "Airflow", "dbt", "Spark", "data warehouse", "data lake", "ingestion", "lineage", "DAG",
+            "스키마 변환"),
+}
 
 
 def collect_agents() -> set[str]:
@@ -323,6 +352,220 @@ def check_skill_name_uniqueness() -> list[str]:
     return errors
 
 
+def _extract_frontmatter_block(text: str) -> str | None:
+    m = FRONTMATTER_RE.match(text)
+    return m.group(1) if m else None
+
+
+def _extract_description(text: str) -> str | None:
+    """frontmatter `description:` 추출 — inline / quoted / YAML block scalar (`|` `>`) 지원."""
+    fm = _extract_frontmatter_block(text)
+    if not fm:
+        return None
+    lines = fm.splitlines()
+    for i, line in enumerate(lines):
+        m = DESCRIPTION_LINE_PATTERN.match(line)
+        if not m:
+            continue
+        raw = m.group(1).strip()
+        # YAML block scalar — 다음 들여쓰기 라인들 join
+        if raw in ("|", ">", "|-", ">-", "|+", ">+"):
+            collected: list[str] = []
+            for sub in lines[i + 1:]:
+                if not sub.strip():
+                    continue
+                if re.match(r"^\s+", sub) and not re.match(r"^\S", sub):
+                    collected.append(sub.strip())
+                    continue
+                if re.match(r"^\S", sub):
+                    break
+            sep = "\n" if raw.startswith("|") else " "
+            return sep.join(collected) if collected else None
+        # quoted 또는 plain inline
+        if raw.startswith('"') and raw.endswith('"'):
+            raw = raw[1:-1]
+        elif raw.startswith("'") and raw.endswith("'"):
+            raw = raw[1:-1]
+        return raw
+    return None
+
+
+def _extract_mcp_servers(text: str) -> set[str]:
+    """frontmatter mcpServers: list-of-dicts에서 서버 이름 집합 추출."""
+    fm = _extract_frontmatter_block(text)
+    if not fm:
+        return set()
+    if "mcpServers" not in fm:
+        return set()
+    # mcpServers: 라인 이후만 스캔 — 본문 다른 list 키와 오인 방지
+    idx = fm.index("mcpServers")
+    after = fm[idx:]
+    return {m.group(1) for m in MCP_SERVER_LINE_PATTERN.finditer(after)}
+
+
+def _extract_tools_list(fm: str) -> list[str]:
+    """frontmatter `tools:` 필드를 inline 또는 multi-line YAML list 양쪽 지원으로 파싱."""
+    m = TOOLS_LINE_PATTERN.search(fm)
+    if not m:
+        return []
+    inline = m.group(1).strip()
+    tools: list[str] = []
+    if inline:
+        # inline 형태: tools: [a, b, c] 또는 tools: a
+        for t in re.split(r"[,\[\]]", inline):
+            t = t.strip().strip("'\"")
+            if t:
+                tools.append(t)
+    # multi-line YAML list: `tools:` 라인 뒤의 `  - item` 줄 수집
+    lines = fm.splitlines()
+    in_tools = False
+    for line in lines:
+        if re.match(r"^\s*tools\s*:\s*", line):
+            in_tools = True
+            continue
+        if in_tools:
+            # YAML list item or 들여쓰기 있는 내용
+            li = re.match(r"^\s+-\s+(.+)$", line)
+            if li:
+                t = li.group(1).strip().strip("'\"")
+                if t:
+                    tools.append(t)
+                continue
+            # 들여쓰기 0 + 새 키 = tools 블록 종료
+            if re.match(r"^\S", line):
+                in_tools = False
+    return tools
+
+
+def check_agent_tools_mcp_consistency() -> list[str]:
+    """frontmatter `tools:` allowlist의 `mcp__<server>__<tool>` 항목 ↔ `mcpServers:` 정의 정합 (Q12).
+
+    silent skip 위험 차단: tools:에 mcp 도구 박제했으나 mcpServers: 정의 누락 시 도구 미노출.
+    """
+    errors: list[str] = []
+    if not AGENTS_DIR.exists():
+        return errors
+    for path in AGENTS_DIR.glob("*.md"):
+        rel = str(path.relative_to(REPO_ROOT))
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        fm = _extract_frontmatter_block(text)
+        if not fm:
+            continue
+        tools = _extract_tools_list(fm)
+        if not tools:
+            continue
+        declared_servers = _extract_mcp_servers(text)
+        referenced_servers: set[str] = set()
+        for tool in tools:
+            mm = MCP_TOOL_PATTERN.match(tool)
+            if mm:
+                referenced_servers.add(mm.group(1))
+        missing = referenced_servers - declared_servers
+        for server in sorted(missing):
+            errors.append(
+                f"{rel}: `tools:` references mcp__{server}__* but `mcpServers:` 미선언 — silent skip 위험 (Q12)"
+            )
+    return errors
+
+
+def check_agent_model_field() -> list[str]:
+    """frontmatter `model:` 필드 박제 확인 (Q2 doctrine, permission-profiles.md §5-1-c)."""
+    errors: list[str] = []
+    if not AGENTS_DIR.exists():
+        return errors
+    for path in AGENTS_DIR.glob("*.md"):
+        rel = str(path.relative_to(REPO_ROOT))
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        fm = _extract_frontmatter_block(text)
+        if not fm:
+            continue
+        if not re.search(r"^\s*model\s*:\s*\S+", fm, re.MULTILINE):
+            errors.append(f"{rel}: frontmatter `model:` 필드 누락 (Q2 doctrine — opus/sonnet 명시 필수)")
+    return errors
+
+
+def _tokenize_description(desc: str) -> set[str]:
+    """description에서 trigger 키워드 후보 토큰화 — 한글/영문 단어 단위."""
+    # 한글 음절 연속 + 영문 단어 + 숫자 — 기호·공백 분리
+    tokens = re.findall(r"[가-힣]+|[A-Za-z][A-Za-z0-9_-]+", desc)
+    return {t.lower() for t in tokens if len(t) >= 2}
+
+
+def check_skill_description_overlap(threshold: float = 0.5) -> list[str]:
+    """skill description 트리거 키워드 *pairwise* Jaccard 유사도 검출 (Q5).
+
+    threshold 초과 쌍은 트리거 충돌 가능성 — Phase 8-4 should-NOT regression 사전 감지.
+    """
+    errors: list[str] = []
+    if not SKILLS_DIR.exists():
+        return errors
+    desc_by_skill: list[tuple[str, set[str]]] = []
+    for skill_md in SKILLS_DIR.glob("*/SKILL.md"):
+        try:
+            text = skill_md.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        desc = _extract_description(text)
+        if not desc:
+            continue
+        tokens = _tokenize_description(desc)
+        if len(tokens) < 3:
+            continue
+        desc_by_skill.append((str(skill_md.relative_to(REPO_ROOT)), tokens))
+    for i in range(len(desc_by_skill)):
+        rel_a, toks_a = desc_by_skill[i]
+        for j in range(i + 1, len(desc_by_skill)):
+            rel_b, toks_b = desc_by_skill[j]
+            inter = toks_a & toks_b
+            union = toks_a | toks_b
+            if not union:
+                continue
+            jaccard = len(inter) / len(union)
+            if jaccard >= threshold:
+                sample = ", ".join(sorted(inter)[:5])
+                errors.append(
+                    f"skill description overlap — {rel_a} ↔ {rel_b} (Jaccard {jaccard:.2f} ≥ {threshold}, 공통: {sample}) — Q5 트리거 충돌 위험"
+                )
+    return errors
+
+
+def check_skill_signal_coverage() -> list[str]:
+    """skill description이 trigger-keyword-catalog.md 10 signal 중 *최소 1*을 hit해야 함 (Q11).
+
+    miss 시 자연어 트리거 약함 → Phase 8-4 should-trigger regression 위험.
+    """
+    errors: list[str] = []
+    if not SKILLS_DIR.exists():
+        return errors
+    for skill_md in SKILLS_DIR.glob("*/SKILL.md"):
+        try:
+            text = skill_md.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        desc = _extract_description(text)
+        if not desc:
+            continue
+        rel = str(skill_md.relative_to(REPO_ROOT))
+        desc_lower = desc.lower()
+        hit_signals: list[str] = []
+        for signal_id, keywords in _TRIGGER_SIGNAL_KEYWORDS.items():
+            for kw in keywords:
+                if kw.lower() in desc_lower:
+                    hit_signals.append(signal_id)
+                    break
+        if not hit_signals:
+            errors.append(
+                f"{rel}: description이 trigger-keyword-catalog 10 signal 어느 것도 hit 안 함 (Q11 signal coverage 0) — 트리거 약함"
+            )
+    return errors
+
+
 def check_reference_links() -> list[str]:
     errors: list[str] = []
     if not SKILLS_DIR.exists():
@@ -390,6 +633,10 @@ def main(argv: list[str]) -> int:
     errors.extend(check_orchestrator_agent_coverage())
     errors.extend(check_skill_name_uniqueness())
     errors.extend(check_reference_links())
+    errors.extend(check_agent_tools_mcp_consistency())
+    errors.extend(check_agent_model_field())
+    errors.extend(check_skill_description_overlap())
+    errors.extend(check_skill_signal_coverage())
 
     status = "PASS" if not errors else "FAIL"
     report = {

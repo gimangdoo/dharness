@@ -515,6 +515,41 @@ mcpServers:
 
 > **선택 가이드:** 합성 대상 MCP가 toolset 필터를 지원하면 **무조건 5-1-b**. 미지원이면 5-1-a. 둘 다 inline `mcpServers:`라서 parent 미적재는 동일.
 
+### 5-1-c. 모델 선택 by agent role (Q2 doctrine, 2026-05-16)
+
+frontmatter `model:` 필드는 *capability profile 단독*이 아니라 *agent role 축*으로 결정한다. 과거 "전 에이전트 `model: opus` 일괄" 박제는 비용 ~7배. 본 doctrine은 합성 시 *역할*에 매핑.
+
+| agent role 축 | recommended `model:` | 근거 |
+|---|---|---|
+| **synthesis / 추론 합성** (메인 작성자·QA boundary check·orchestrator) | `opus` | 다중 신호 통합 + 정합성 결정 — 추론 깊이 직결 |
+| **review / 비판** (code-reviewer·security-auditor·design-reviewer) | `opus` | cross-artifact 비교 + edge case 발굴 |
+| **write / 생성** (code-author·schema-migration·doc-author) | `opus` | 산출물 품질 회복 비용 큼 |
+| **read-only / 탐색** (`Explore` 타입·log-grepper·codebase-mapper) | `sonnet` | summarization 위주 — 비용 ~7배 ↓, 품질 손실 미미 |
+| **read-only / 요약** (web-researcher·doc-summarizer·log-analyst) | `sonnet` | input parsing + 압축 — sonnet 충분 |
+| **결정성 검증** (validate script 호출·structure check) | (모델 불요 — script) | LLM 호출 0 |
+
+**Profile × role 매트릭스:**
+
+| capability profile (§2) | 전형 role | recommended |
+|---|---|---|
+| `code-test` | synthesis (PR 작성) / review (PR 리뷰) | opus |
+| `web-research` | read-only 요약 | **sonnet** |
+| `external-integration` | write (DB migration / API 통합) | opus |
+| `reasoning-aux` | synthesis (단계별 추론) | opus |
+| `ml-pipeline` | synthesis (실험 설계) / read-only (결과 요약) | opus / sonnet 혼합 |
+| `devops-infra` | write (배포·rollback) | opus |
+| `mobile-native` | write (빌드 디버깅) | opus |
+| `data-eng` | write (마이그레이션) / read-only (집계 요약) | opus / sonnet 혼합 |
+
+**합성 시 절차:**
+
+1. Phase 5 에이전트 정의 작성 시 본 §5-1-c 표로 role 매핑
+2. `model:` 필드 박제 — opus default, read-only 명시 시 sonnet
+3. `permissions.deny`에 변경 도구 박제는 동일 (model 선택과 무관)
+4. 사용자 명시 override 가능 — "보수적으로 전부 opus로" / "비용 우선 sonnet 최대화"
+
+> **위반 시 검출:** `validate/chain.py` `check_agent_model_field()`가 frontmatter `model:` 누락을 FAIL (P0-2 doctrine 정합). 단 sonnet 매핑이 적절한지의 *판정*은 LLM 영역 — Phase 5.5 self-critique에서 다룬다.
+
 ### 5-2. `.mcp.json` — *예외* 케이스 (anti-pattern, parent 적재 불가피한 경우만)
 
 > ⚠️ **합성 default 아님 (의도 ②③ 위반 패턴)** — `.mcp.json` 등록은 parent 컨텍스트에도 도구 정의를 적재해 토큰을 소비하며, agent-only 접근 원칙도 깨진다. **합성 가이드의 default는 §5-1 inline `mcpServers:` 패턴**이며, 본 §5-2는 다음 *세 가지 예외 조건*에 한정해 사용한다:

@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Meta-skill that turns a domain description into an agent team and skill set. 6 team patterns (Pipeline, Fan-out/Fan-in, Expert Pool, Producer-Reviewer, Supervisor, Hierarchical Delegation), 11-phase factory workflow.",
   "author": {
     "name": "gimangdoo"

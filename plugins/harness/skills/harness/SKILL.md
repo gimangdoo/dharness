@@ -189,7 +189,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 > **Sub-agent 격리 doctrine (P6-3, 2026-05-14)**: 에이전트 N개 정의 파일 작성을 N sub-agent 병렬 호출(`Agent` tool, `general-purpose` + `model: opus`). 각 sub-agent에 단일 에이전트 정의 책임 위임 — parent는 frontmatter `tools:` allowlist 합성 + 통신 프로토콜 매트릭스 통합만 담당. parent 컨텍스트 격리, N개 동시 작성 시간 단축.
 
-**모델 설정:** 모든 에이전트 `model: "opus"`. Agent 호출 시 `model: "opus"` 파라미터 명시 필수 — 하네스 품질은 추론 능력에 직결.
+**모델 설정 (Q2 doctrine, 2026-05-16):** frontmatter `model:` 필드는 *agent role 축*으로 결정 — `permission-profiles.md` §5-1-c 단일 출처. 기본 `opus` (synthesis/review/write), read-only 탐색·요약 전용 sub-agent는 `sonnet` 가능 (비용 ~7배 ↓). Agent 호출 시 frontmatter `model:` 값과 일치하는 파라미터 명시 필수. 일괄 `opus` 강제는 폐기 — capability profile × role 매트릭스로 합성.
 
 **팀 재구성:** 세션당 한 팀만 활성. Phase 간 팀 해체/재구성 가능. 이전 팀 산출물을 파일로 저장 후 새 팀 생성.
 
@@ -291,6 +291,50 @@ skill-name/
 |------|----------|------|------|
 | {YYYY-MM-DD} | 초기 구성 | 전체 | - |
 ````
+
+#### 7-4.5. CLAUDE.md HOW 본문 draft (Q3 doctrine, 2026-05-16)
+
+포인터만 박제된 CLAUDE.md는 *빈집* — 새 세션마다 stack/build/entry point 재탐색이 토큰 손해. Phase 1 `project_profile.md`의 객관 데이터를 HOW 섹션 *draft*로 변환하여 사용자 게이트 후 박제.
+
+**절차:**
+
+1. **추출** — `_workspace/_baseline/project_profile.md`에서 다음 필드 read:
+   - `stack.languages` / `stack.frameworks` / `stack.runtime`
+   - `build_tools` / `entry_points` (manifest scripts·main·exports)
+   - `key_directories` (src·tests·docs·configs)
+   - `commands.dev` / `commands.build` / `commands.test` (manifest scripts에서 추출)
+2. **draft 생성** — `_workspace/_drafts/claudemd_how_{ts}.md`에 다음 template 박제:
+
+   ````markdown
+   ## HOW (auto-drafted from project_profile.md)
+
+   **Stack:** {languages} / {frameworks} / {runtime}
+
+   **Key directories:**
+   - `{path}` — {purpose}
+   - ...
+
+   **Common commands:**
+   ```bash
+   {cmd.dev}     # dev server
+   {cmd.build}   # build
+   {cmd.test}    # tests
+   ```
+
+   **Entry points:**
+   - `{path}` — {role}
+   ````
+
+3. **사용자 게이트** — `/cm-claudemd-apply` 패턴 재사용 또는 사용자에게 inline confirm:
+   - `Y` → CLAUDE.md "변경 이력" 표 *직전*에 HOW 섹션 삽입
+   - `N` → `_workspace/_drafts/discarded/`로 이동
+4. **재생성 트리거** — Phase 10 baseline drift 감지 시(`stack` 변경 등) 사용자에게 "HOW 섹션 재draft?" 제안
+
+**제약:**
+
+- 추출값은 *제안*. anti-premature-judgment doctrine 정합 — 사용자 confirm 없이 박제 금지
+- 7-4 템플릿의 트리거+변경 이력은 *항상* 박제. 본 7-4.5는 *옵션*.
+- 본 단계 skip 가능 — derived 프로젝트가 이미 풍부한 본문을 가진 경우(brownfield) 사용자 판단
 
 #### 7-5. 후속 작업 지원
 
