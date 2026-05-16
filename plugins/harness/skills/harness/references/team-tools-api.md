@@ -1,7 +1,5 @@
 # Team Tools API — 6 도구 시그니처 박제
 
-> **English POC (P7-1, 2026-05-14):** 영문 변환 [team-tools-api.en.md](./team-tools-api.en.md) 공존. P7-2 회귀 검증 통과까지 본 한국어 파일이 source of truth, cross-link 모두 `team-tools-api.md` 그대로.
->
 > **Read at phase:** Sub-agent 활용 시 Phase 1/5/6/8 (격리 호출 패턴 필요 시점) + Phase 4 팀 설계 시 의사코드 검증.
 >
 > **목적**: `TeamCreate` / `SendMessage` / `TaskCreate` / `TaskUpdate` / `TaskGet` / `TaskOutput` 6 도구의 실 API schema 박제. SKILL.md Phase 4·5·7, `agent-design-patterns.md`, `orchestrator-template.md`, `team-examples.md` 의사코드 영역의 단일 출처 reference.

@@ -1,7 +1,5 @@
 # 스킬 테스트 & 반복 개선 가이드
 
-> **English POC (P7-2 옵션 B, 2026-05-15):** 영문 변환 [skill-testing-guide.en.md](./skill-testing-guide.en.md) 공존. 실 세션 dogfood telemetry 박제까지 본 한국어 파일이 source of truth, cross-link 모두 `skill-testing-guide.md` 그대로. cl100k_base 측정 savings: **45.2%** (KO 5052 / EN 2768 tok).
->
 > **Read at phase:** Phase 6 (스킬 생성 후 자체 검증) + Phase 8 (트리거 회귀 검증). should/should-NOT 트리거 매트릭스 박제.
 
 하네스에서 생성한 스킬의 품질을 검증하고 반복적으로 개선하는 방법론. SKILL.md Phase 6·8의 보충 레퍼런스.
