@@ -12,7 +12,8 @@
 
 const { spawn } = require("child_process");
 
-const UVX_PATH = "C:\\Users\\user01\\AppData\\Roaming\\Python\\Python312\\Scripts\\uvx.exe";
+// ⚠️ uvx PATH 통과 가정 — 미통과 시 본인 환경의 절대경로로 치환 (Windows 예: `%APPDATA%\\Python\\Python312\\Scripts\\uvx.exe` / *nix 예: `/usr/local/bin/uvx`)
+const UVX_PATH = "uvx";
 
 const child = spawn(UVX_PATH, ["mcp-server-time"], {
   stdio: ["pipe", "pipe", "pipe"],

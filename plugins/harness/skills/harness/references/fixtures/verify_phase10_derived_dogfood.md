@@ -3,7 +3,7 @@
 derived 프로젝트의 Phase 10 telemetry append 회로 실측 검증. *본 verify는 plugin host 본 폴더(self-host CM 운영 중)에서 수행. 외부 install user는 동등 절차를 본인 환경에서 재현 가능.*
 
 ## 환경
-- 측정 host root (예시): `C:\Users\user01\awesome-files\dharness`
+- 측정 host root (예시): `<HOST-ROOT>` (예: `C:\Users\<USER>\<workspace>\dharness` 또는 `/home/<USER>/dharness`)
 - derived: `<host>/_workspace/_dogfood/sample-research/` (작업 후 cleanup)
 - PowerShell: 5.1 (Windows 11)
 

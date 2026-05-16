@@ -20,7 +20,8 @@
 const { spawn } = require("child_process");
 
 // === 환경별 수정 영역 ===
-const UVX_PATH = "C:\\Users\\user01\\AppData\\Roaming\\Python\\Python312\\Scripts\\uvx.exe";
+// ⚠️ uvx PATH 통과 가정 — 미통과 시 본인 환경의 절대경로로 치환 (Windows 예: `%APPDATA%\\Python\\Python312\\Scripts\\uvx.exe` / *nix 예: `/usr/local/bin/uvx`)
+const UVX_PATH = "uvx";
 const DB_PATH = "./data/app.db";  // 실제 SQLite DB 경로로 교체 (시연 시 빈 파일이라도 됨)
 // =======================
 
