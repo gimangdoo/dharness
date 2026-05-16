@@ -97,7 +97,7 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 > - 의도 ②(적재 최소화)의 baseline 자체가 docs 추정보다 우호적. inline `mcpServers:` 패턴 없이도 약식 절감이 작동.
 > - 단 도구 *이름·description*은 여전히 등록 도구 수에 비례 → Layer A(서버 advertise 축소)의 가치 유효
 > - Layer B(subagent 격리)는 *deferred pool 자체를 subagent 안으로 이동* → parent에는 이름조차 안 나타남, schema lazy-fetch도 subagent 내부에서만 → 절감 폭은 더 큼
-> - **§11-3 측정 메트릭 재정의** (6차 사이클 갱신 완료): "도구 카운트 변화"에서 "M1=system prompt 토큰 / M2=deferred pool 카운트 / M3=schema fetch 빈도" 3축 조합으로 — `references/fixtures/verify_11_3.md` 본문 반영됨, 외부 실행자는 갱신본 사용
+> - **§11-3 측정 메트릭 재정의** (6차 사이클 갱신 완료): "도구 카운트 변화"에서 "M1=system prompt 토큰 / M2=deferred pool 카운트 / M3=schema fetch 빈도" 3축 조합으로 — 측정 fixture `verify_11_3.md`은 `archive/full-history` branch의 `fixtures/` 하위에 박제
 
 ---
 

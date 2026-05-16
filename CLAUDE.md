@@ -7,7 +7,7 @@ dharness는 두 구성요소로 이뤄진다:
 1. **`harness` plugin** (`plugins/harness/`) — 도메인 한 문장 → 에이전트 팀 + 스킬 세트로 변환하는 메타 스킬 팩토리. 외부 install 대상.
    - `skills/harness/SKILL.md` — 메타 스킬 본체 (Phases 0-10)
    - `skills/harness/references/` — 설계 가이드 (permission-profiles, design-patterns 등)
-   - `commands/harness-*.md` — `/harness:harness-*` 슬래시 커맨드 7종
+   - `commands/harness-*.md` — `/harness:harness-*` 슬래시 커맨드 16종
 2. **Context Manager** (root `.claude/` + `_workspace/`) — dharness 본 폴더 한정 self-host 런타임. 결정적 hooks 3종 + `/cm-*` 5 슬래시 커맨드 + `memory-search` 1 스킬. PostToolUse가 dharness 작업 단위(skill/agent/hook/command/manifest 변경)를 자동 분류해 누적하고, SessionEnd가 CLAUDE.md "변경 이력" 표 행 draft를 자동 적재. **dharness 본 폴더 영구 부속** — 외부 install 미지원.
 
 - `.claude-plugin/marketplace.json` — `harness` plugin 단일 카탈로그

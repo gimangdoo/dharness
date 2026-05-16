@@ -133,7 +133,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 │   └── harness/               # PLUGIN — 메타 스킬 팩토리
 │       ├── .claude-plugin/plugin.json
 │       ├── skills/harness/    # SKILL.md + references/
-│       └── commands/          # harness-* 9개
+│       └── commands/          # harness-* 16개
 ├── _workspace/                # DATA — CM 런타임 산출물 (gitignore)
 │   ├── _telemetry/            # 라이프사이클 이벤트 append-only JSONL
 │   ├── _memory/               # 세션·클러스터·observations.db (dharness_event 포함)

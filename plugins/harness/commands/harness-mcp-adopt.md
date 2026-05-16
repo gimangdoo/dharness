@@ -74,7 +74,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 | (a) | `permission-profiles.md` §3 sqlite/playwright/... 행 | 도구 enumeration 채움 + install 명령 footnote (Step 2 결과 그대로) |
 | (b) | `<derived>/.claude/agents/<agent-name>.md` frontmatter | `tools:` allowlist에 신규 `mcp__<server>__*` 추가 — Step 3 user confirm 결과만 |
 | (c) | `<derived>/.claude/settings.json` | `permissions.allow` / `permissions.ask` 갱신 (deep merge — 기존 키 보존) |
-| (d) | `<derived>/CLAUDE.md` 변경 이력 표 | 1행 추가. 형식은 `references/fixtures/synthesis_example/CLAUDE_md_row.md` 참조 |
+| (d) | `<derived>/CLAUDE.md` 변경 이력 표 | 1행 추가. 형식은 `references/fixtures/synthesis_example/<scenario>/CLAUDE_md_row.md` 참조 (`web-research` / `data-analyst` / `code-test` / `reasoning-aux`) |
 
 `references/fixtures/synthesis_example/`이 sqlite 시나리오의 (b)·(c)·(d) 박제 예시.
 
@@ -92,7 +92,7 @@ Step 4 완료 직후 다음 사실을 사용자에게 *반드시* 명시 (LLM이
 ⚠️ 다음 세션부터 사용 가능 — mid-session `claude mcp add`는 본 세션 도구 풀에 미적재 (empirical 4차 사이클 — 양면 검증). 새 도구가 LLM에 노출되려면 세션 재시작 필수. 합성 시점에 install된 신규 MCP도 동일.
 
 후속 권고:
-  - 다음 세션 시작 후 `references/fixtures/verify_11_1.md` fixture로 노출 패턴 검증 (도구명 하이픈 보존 vs 변환 등)
+  - 다음 세션 시작 후 도구 노출 패턴 검증 (도구명 하이픈 보존 vs 변환 등 — fixture `verify_11_1.md`은 `archive/full-history` branch의 `fixtures/` 하위에 박제)
   - `/harness:harness-mcp-status`로 정합 점검 (parent 적재 비용·격리 무결성)
 ```
 
