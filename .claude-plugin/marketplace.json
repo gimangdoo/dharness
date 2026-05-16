@@ -13,7 +13,7 @@
         "ref": "main"
       },
       "description": "Meta-skill that turns a domain description into an agent team and skill set. 6 team patterns, 11-phase factory workflow.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "author": {
         "name": "gimangdoo"
       },
