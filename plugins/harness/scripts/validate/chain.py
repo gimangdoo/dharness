@@ -28,6 +28,11 @@ SETTINGS_FILES = [
     REPO_ROOT / ".claude" / "settings.local.json",
 ]
 
+# Plugin-internal check (self-host doctrine). harness plugin 단일 구조 가정.
+PLUGIN_SKILL_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
+PLUGIN_REFERENCES_DIR = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references"
+PLUGIN_COMMANDS_DIR = REPO_ROOT / "plugins" / "harness" / "commands"
+
 AGENT_NAME_PATTERN = re.compile(r"^\s*name\s*:\s*[\"']?([\w-]+)[\"']?\s*$", re.MULTILINE)
 SKILL_DIR_PATTERN = re.compile(r"\.claude/skills/([\w-]+)")
 AGENT_REF_PATTERN = re.compile(r"\.claude/agents/([\w-]+)\.md")
@@ -566,6 +571,14 @@ def check_skill_signal_coverage() -> list[str]:
     return errors
 
 
+_CODE_FENCE_RE = re.compile(r"```.*?(?:\n|$).*?(?:```|\Z)", re.DOTALL)
+
+
+def _strip_code_fences(text: str) -> str:
+    """fenced code block (``` ... ```)을 빈 줄로 치환 — link scan false-positive 차단 (P4)."""
+    return _CODE_FENCE_RE.sub("", text)
+
+
 def check_reference_links() -> list[str]:
     errors: list[str] = []
     if not SKILLS_DIR.exists():
@@ -576,12 +589,47 @@ def check_reference_links() -> list[str]:
             text = skill_md.read_text(encoding="utf-8-sig")
         except OSError:
             continue
+        scanned = _strip_code_fences(text)
         skill_dir = skill_md.parent
-        for match in REFERENCE_LINK_PATTERN.finditer(text):
+        for match in REFERENCE_LINK_PATTERN.finditer(scanned):
             rel_path = match.group(1)
             target = skill_dir / "references" / rel_path
             if not target.exists():
                 errors.append(f"{skill_md.relative_to(REPO_ROOT)}: dangling reference `references/{rel_path}`")
+    return errors
+
+
+def check_plugin_internal_references() -> list[str]:
+    """harness plugin 본체 내부 cross-reference 검증 (P2 self-host doctrine).
+
+    검사 대상: `plugins/harness/skills/harness/SKILL.md` + `references/*.md` + `commands/*.md`.
+    각 파일의 `references/<path>.md` 패턴이 `plugins/harness/skills/harness/references/` 하위에 실존하는지 확인.
+    fence 안 예시는 `_strip_code_fences`로 건너뜀.
+    """
+    errors: list[str] = []
+    if not PLUGIN_REFERENCES_DIR.exists():
+        return errors
+
+    targets: list[Path] = []
+    if PLUGIN_SKILL_MD.exists():
+        targets.append(PLUGIN_SKILL_MD)
+    targets.extend(sorted(PLUGIN_REFERENCES_DIR.glob("*.md")))
+    if PLUGIN_COMMANDS_DIR.exists():
+        targets.extend(sorted(PLUGIN_COMMANDS_DIR.glob("*.md")))
+
+    for path in targets:
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        scanned = _strip_code_fences(text)
+        for match in REFERENCE_LINK_PATTERN.finditer(scanned):
+            rel_path = match.group(1)
+            target = PLUGIN_REFERENCES_DIR / rel_path
+            if not target.exists():
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)}: dangling plugin reference `references/{rel_path}`"
+                )
     return errors
 
 
@@ -633,6 +681,7 @@ def main(argv: list[str]) -> int:
     errors.extend(check_orchestrator_agent_coverage())
     errors.extend(check_skill_name_uniqueness())
     errors.extend(check_reference_links())
+    errors.extend(check_plugin_internal_references())
     errors.extend(check_agent_tools_mcp_consistency())
     errors.extend(check_agent_model_field())
     errors.extend(check_skill_description_overlap())
