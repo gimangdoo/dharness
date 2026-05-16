@@ -1,7 +1,9 @@
 """CM hook 공용 인프라 — DDL 단일 정의 + session_id 파일 기반 전달 + 도메인 분류기.
 
-DDL은 본 모듈이 단일 진실 원천이다. observations/sessions/clusters/daily_summaries
-4개 테이블 + observations_fts FTS5 가상 테이블을 정의한다.
+DDL은 본 모듈이 단일 진실 원천이다. observations/sessions 2개 테이블 +
+observations_fts FTS5 가상 테이블을 정의한다. (R1 2026-05-14: dead schema
+`clusters` / `daily_summaries` / `observations.{embedding,completed,cluster_id,phase}` /
+`sessions.digest_path` 제거.)
 
 session_id는 SessionStart hook 시점에 파일에 기록되고, PostToolUse/SessionEnd
 hook이 같은 파일에서 읽는다. hook은 별도 프로세스이므로 환경 변수로는 전달되지 않는다.
@@ -66,11 +68,9 @@ DDL = """
 CREATE TABLE IF NOT EXISTS observations (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL, date TEXT NOT NULL,
   section TEXT NOT NULL, content TEXT NOT NULL, tags TEXT,
-  embedding BLOB, completed INTEGER DEFAULT 0, cluster_id TEXT,
   created_at TEXT NOT NULL,
   category TEXT,
-  artifact_kind TEXT,
-  phase TEXT
+  artifact_kind TEXT
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
   content, session_id, tags,
@@ -79,63 +79,98 @@ CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
 CREATE TABLE IF NOT EXISTS sessions (
   session_id TEXT PRIMARY KEY, date TEXT NOT NULL, started_at TEXT NOT NULL,
   ended_at TEXT, duration_min INTEGER, tools_used TEXT,
-  digest_path TEXT, project TEXT
-);
-CREATE TABLE IF NOT EXISTS clusters (
-  cluster_id TEXT PRIMARY KEY, theme TEXT NOT NULL, confidence REAL NOT NULL,
-  member_count INTEGER NOT NULL DEFAULT 0, tags TEXT, embedding BLOB,
-  promoted_path TEXT, created_at TEXT NOT NULL, last_updated TEXT NOT NULL,
-  last_accessed TEXT
-);
-CREATE TABLE IF NOT EXISTS daily_summaries (
-  date TEXT PRIMARY KEY, summary TEXT NOT NULL,
-  session_ids TEXT NOT NULL, generated_at TEXT NOT NULL
+  project TEXT
 );
 CREATE INDEX IF NOT EXISTS observations_category_idx ON observations(category);
 CREATE INDEX IF NOT EXISTS observations_artifact_kind_idx ON observations(artifact_kind);
 """
 
 
-_MIGRATIONS: tuple[tuple[str, str], ...] = (
+_ADD_COLUMNS_V1: tuple[tuple[str, str], ...] = (
     ("category", "TEXT"),
     ("artifact_kind", "TEXT"),
-    ("phase", "TEXT"),
 )
+_DROP_COLUMNS_V2_OBS: tuple[str, ...] = ("embedding", "completed", "cluster_id", "phase")
+_DROP_TABLES_V2: tuple[str, ...] = ("clusters", "daily_summaries")
 
-# user_version=0: 컬럼 추가 전. user_version=1: category/artifact_kind/phase + 인덱스 적용 후.
-SCHEMA_VERSION = 1
+# user_version=0: 초기 (category/artifact_kind 미존재).
+# user_version=1: v0 + category/artifact_kind/phase + 인덱스 적용 후.
+# user_version=2: v1 - dead schema (clusters/daily_summaries 테이블 + observations 4 컬럼 +
+#                 sessions.digest_path) 제거 (R1 2026-05-14).
+SCHEMA_VERSION = 2
 
 
 def ensure_migrations(conn: sqlite3.Connection) -> list[str]:
-    """누락된 컬럼을 ALTER TABLE로 추가. PRAGMA user_version으로 빠른 short-circuit.
+    """누락 컬럼 ADD / dead 컬럼·테이블 DROP. PRAGMA user_version으로 short-circuit.
 
     매 hook 프로세스마다 호출되지만, 첫 번째 PRAGMA user_version 조회로 대부분 즉시 반환.
     SCHEMA_VERSION 미만일 때만 PRAGMA table_info → ALTER 흐름 진입.
+
+    v0→v2: category/artifact_kind ADD COLUMN + dead schema DROP (phase는 ADD 없이 바로 skip).
+    v1→v2: dead schema DROP만.
+    v2: no-op.
+
+    SQLite 3.35+ ALTER TABLE DROP COLUMN 활용. Python 3.12+ 기본 sqlite3 라이브러리는
+    SQLite 3.40+ 번들이므로 안전.
     """
     current_version = conn.execute("PRAGMA user_version").fetchone()[0]
     if current_version >= SCHEMA_VERSION:
         return []
 
-    cur = conn.execute("PRAGMA table_info(observations)")
-    existing = {row[1] for row in cur.fetchall()}
-    if not existing:
-        # 빈 DB — DDL이 이미 최신 컬럼을 만들었음. version만 갱신.
+    changed: list[str] = []
+    obs_info = conn.execute("PRAGMA table_info(observations)").fetchall()
+    obs_cols = {row[1] for row in obs_info}
+
+    if not obs_cols:
+        # 빈 DB — DDL이 최신 schema를 이미 만들었음. version만 갱신.
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         return []
-    added: list[str] = []
-    for col, typ in _MIGRATIONS:
-        if col not in existing:
+
+    # v0→v1: category/artifact_kind 누락 시 ADD COLUMN (phase는 v2에서 drop이므로 skip)
+    for col, typ in _ADD_COLUMNS_V1:
+        if col not in obs_cols:
             conn.execute(f"ALTER TABLE observations ADD COLUMN {col} {typ}")
-            added.append(col)
-    if added:
+            changed.append(f"add:{col}")
+            obs_cols.add(col)
+    if any(c.startswith("add:") for c in changed):
         conn.execute(
             "CREATE INDEX IF NOT EXISTS observations_category_idx ON observations(category)"
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS observations_artifact_kind_idx ON observations(artifact_kind)"
         )
+
+    # v1→v2: dead 컬럼 DROP (존재할 때만 — fresh DB는 이미 없음)
+    for col in _DROP_COLUMNS_V2_OBS:
+        if col in obs_cols:
+            try:
+                conn.execute(f"ALTER TABLE observations DROP COLUMN {col}")
+                changed.append(f"drop_col:obs.{col}")
+            except sqlite3.OperationalError:
+                # 인덱스/트리거 의존성 등으로 DROP 실패 시 silent skip
+                # (SQLite는 의존성 있을 때 OperationalError 발생)
+                continue
+
+    sess_info = conn.execute("PRAGMA table_info(sessions)").fetchall()
+    sess_cols = {row[1] for row in sess_info}
+    if "digest_path" in sess_cols:
+        try:
+            conn.execute("ALTER TABLE sessions DROP COLUMN digest_path")
+            changed.append("drop_col:sess.digest_path")
+        except sqlite3.OperationalError:
+            pass
+
+    # v1→v2: dead 테이블 DROP (존재할 때만)
+    for tbl in _DROP_TABLES_V2:
+        result = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tbl,)
+        ).fetchone()
+        if result:
+            conn.execute(f"DROP TABLE {tbl}")
+            changed.append(f"drop_table:{tbl}")
+
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-    return added
+    return changed
 
 
 # ---------------------------- domain classifier ----------------------------
@@ -164,6 +199,8 @@ _FILE_RULES: tuple[tuple[re.Pattern[str], str, str], ...] = (
 )
 
 _GIT_SUBCOMMAND_RE = re.compile(r"^\s*git\s+(\S+)")
+# chain 명령(`&&`/`;`/`|`/newline 등 separator) — 마지막 git subcommand가 우세
+_GIT_CHAIN_RE = re.compile(r"(?:^|[;&|\n]|&&)\s*git\s+(\S+)")
 _GIT_RELEVANT = {
     "commit": ("git_commit", "git"),
     "add": ("git_add", "git"),
@@ -215,22 +252,34 @@ def classify_dharness_event(tool_name: str, tool_input: dict) -> dict | None:
         return None
     if tool_name == "Bash":
         command = tool_input.get("command", "") or ""
-        m = _GIT_SUBCOMMAND_RE.match(command)
-        if not m:
+        # chain 분류 (P0-2): `git add X && git commit ...`처럼 여러 git 호출이 한 명령에 있으면
+        # bash chain semantic상 *마지막* subcommand가 terminal action. fallback은 첫 토큰 매칭.
+        chain_subs = [m.group(1) for m in _GIT_CHAIN_RE.finditer(command)]
+        if not chain_subs:
+            m = _GIT_SUBCOMMAND_RE.match(command)
+            if not m:
+                return None
+            chain_subs = [m.group(1)]
+        # _GIT_RELEVANT 매핑 가능 항목만 후보 (status/log 등 read-only는 제외)
+        candidates = [s for s in chain_subs if s in _GIT_RELEVANT]
+        if not candidates:
             return None
-        sub = m.group(1)
-        mapped = _GIT_RELEVANT.get(sub)
-        if not mapped:
-            return None
+        # bash chain semantic 정합 — 마지막 매핑 가능 subcommand가 terminal action
+        sub = candidates[-1]
+        mapped = _GIT_RELEVANT[sub]
         category, artifact_kind = mapped
         head = command.strip().splitlines()[0]
         if len(head) > 200:
             head = head[:199] + "…"
+        tags = ["bash", category, artifact_kind]
+        # chain 사실 자체를 tag로 박제 (관측성) — 매핑 가능 subcommand 2개 이상일 때만
+        if len(candidates) > 1:
+            tags.append("git_chain")
         return {
             "category": category,
             "artifact_kind": artifact_kind,
             "content": head,
-            "tags": ["bash", category, artifact_kind],
+            "tags": tags,
         }
     return None
 
@@ -239,7 +288,8 @@ def classify_dharness_event(tool_name: str, tool_input: dict) -> dict | None:
 
 # Phase 10 자동 adapt 알림 카운터. `_workspace/_telemetry/*.jsonl`을 ascending 스캔해
 # `_last_adapt` mtime 이후의 `harness_invocation` / `agent_invocation` / `agent_failure`
-# 이벤트를 카운트한다. `_last_adapt`는 `/harness:harness-adapt` 완료 시 touch.
+# 이벤트를 카운트한다. `_last_adapt` 파일은 `/harness:harness-adapt` 완료 시 shell
+# (Set-Content / `date >`)로 직접 write — 본 모듈의 Python writer 없음.
 
 _COUNTED_TYPES = {"harness_invocation", "agent_invocation", "agent_failure"}
 
@@ -252,14 +302,6 @@ def read_last_adapt_ts() -> float:
         return LAST_ADAPT_FILE.stat().st_mtime
     except OSError:
         return 0.0
-
-
-def touch_last_adapt() -> None:
-    """`/harness:harness-adapt` 완료 표지. 카운터 reset 트리거."""
-    LAST_ADAPT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    LAST_ADAPT_FILE.write_text(
-        time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), encoding="utf-8"
-    )
 
 
 def _iter_telemetry_files_since(since_ts: float) -> list[Path]:

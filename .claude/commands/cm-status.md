@@ -1,5 +1,5 @@
 ---
-description: "Context Manager 상태 출력 — _memory/ 디렉토리 통계, observations.db 행 수, 최근 세션 수, 클러스터 수"
+description: "Context Manager 상태 출력 — _memory/ 디렉토리 통계, observations.db 행 수, 최근 세션 수, draft pending"
 ---
 
 # /cm-status
@@ -20,11 +20,11 @@ Context Manager 시스템의 현재 상태를 출력한다.
 
 `py .claude/hooks/cm_commands.py status`를 호출하여 다음을 집계:
 
-1. `observations.db` 4개 테이블의 row 수
-2. 최근 7일 세션 수 + digest 보유 비율
-3. clusters 중 confidence 임계 구간별 분포
-4. 마지막 SessionEnd 시각, 마지막 memory_promoted 시각
-5. 미완료 Do 항목 수
+1. `observations.db` 2개 테이블의 row 수 (R1 2026-05-14: clusters/daily_summaries 제거)
+2. observations 중 `section='dharness_event'` row 수
+3. 최근 7일 세션 수
+4. 미적용 CLAUDE.md draft 수
+5. CLAUDE.md "변경 이력" 표 행 수 + archive 임계 경고
 
 ## 범위 외 / 후속 명령
 

@@ -26,11 +26,7 @@ def flatten_to_transcript(raw_path: Path) -> tuple[str, set[str], int]:
             continue
         kind = evt.get("kind")
         ts = evt.get("ts", "")
-        if kind == "user_message":
-            lines.append(f"\n## {ts} — User\n{evt.get('content', '')}\n")
-        elif kind == "assistant_message":
-            lines.append(f"\n## {ts} — Assistant\n{evt.get('content', '')}\n")
-        elif kind == "tool_call":
+        if kind == "tool_call":
             tool = evt.get("tool", "?")
             tools_used.add(tool)
             lines.append(f"\n- {ts} tool_call: {tool}\n")
