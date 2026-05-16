@@ -1,6 +1,24 @@
 # 스킬 테스트 & 반복 개선 가이드
 
-하네스에서 생성한 스킬의 품질을 검증하고 반복적으로 개선하는 방법론. SKILL.md Phase 6의 보충 레퍼런스.
+> **English POC (P7-2 옵션 B, 2026-05-15):** 영문 변환 [skill-testing-guide.en.md](./skill-testing-guide.en.md) 공존. 실 세션 dogfood telemetry 박제까지 본 한국어 파일이 source of truth, cross-link 모두 `skill-testing-guide.md` 그대로. cl100k_base 측정 savings: **45.2%** (KO 5052 / EN 2768 tok).
+>
+> **Read at phase:** Phase 6 (스킬 생성 후 자체 검증) + Phase 8 (트리거 회귀 검증). should/should-NOT 트리거 매트릭스 박제.
+
+하네스에서 생성한 스킬의 품질을 검증하고 반복적으로 개선하는 방법론. SKILL.md Phase 6·8의 보충 레퍼런스.
+
+> **휴리스틱 임계값 catalog + tuning 가이드 (P2-4 — 2026-05-14):** 본 doc의 임계값은 *경험치 기반* 휴리스틱. 도메인 복잡도에 따라 조정.
+>
+> | 임계 | default | 근거 | tuning 권장 |
+> |---|---|---|---|
+> | 초기 테스트 프롬프트 개수 (§2) | 2~3개 | 휴리스틱 — 핵심 + 엣지 + (선택) 복합 최소 커버 | 복잡 도메인(ML / 도메인 specific DSL)에선 5~7개 |
+> | 테스트 프롬프트 커버 카테고리 (§2) | 핵심 사용 사례 / 엣지 / 복합 (선택) | 휴리스틱 — 흔한 실패 mode 분리 | 안전·규제 도메인에선 *부정 케이스* 추가 (잘못된 입력 거부 검증) |
+> | trigger 회귀 eval 쿼리 (§7) | 20개 (should-trigger 10 + should-NOT 10) | 휴리스틱 — `8~10`은 floor, `10+10`은 도메인 모호도 흡수 | 단순 도메인 (CRUD) 8+8 / 모호 도메인 (ML "모델" 혼동) 15+15 |
+> | should-trigger / should-NOT 비율 (§7) | 1:1 (10:10) | 휴리스틱 — false-positive ↔ false-negative 대칭 | recall 우선 도메인 (보안 검출) 12:8 / precision 우선 (cost-sensitive) 8:12 |
+> | Train/Test split (§7) | 60% / 40% | 휴리스틱 — Train 12개로 description 튜닝 + Test 8개로 회귀 | 쿼리 ≥30개면 70/30 — 통계적 안정성 ↑ |
+> | near-miss 비율 (§7) | should-NOT 쪽 다수 배치 | 휴리스틱 — 경계 모호함이 trigger 정확도 핵심 | 도메인 jargon 충돌 多 (ML "모델"/도메인 modeling)에선 ≥50% near-miss |
+> | trigger 정확도 floor (§7) | 8개 미만 → 보장 불가 | 휴리스틱 — 변동성 누적 floor | 8개는 절대 floor, 10개 default 권장 |
+>
+> 본 표는 *baseline* — 도메인 복잡도·jargon 충돌 빈도에 맞춰 조정. 임계값 변경 시 `_baseline/intent_profile.md`의 `quality.test_rigor` 필드와 동기 갱신 권장.
 
 ---
 

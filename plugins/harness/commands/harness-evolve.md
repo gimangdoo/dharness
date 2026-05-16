@@ -1,13 +1,26 @@
 ---
-description: 사용자 피드백을 입력으로 Phase 9 수동 진화 실행 — 피드백 유형 → 수정 대상 매핑(9-2 표) → 변경 적용 → 변경 이력 기록.
+description: 사용자 피드백을 입력으로 Phase 9 수동 진화 실행 — 피드백 유형 → 수정 대상 매핑(9-2 표) → 변경 적용 → 변경 이력 기록. 사용자 발화 진화 진입점.
 argument-hint: <피드백 한 문장 또는 단락>
 ---
 
-# Harness — Evolve
+# Harness — Evolve (사용자 피드백 진입점)
 
 사용자 피드백을 받아 `plugins/harness/skills/harness/SKILL.md` Phase 9의 수동 진화 워크플로우를 실행한다. Phase 9-2 표에 따라 피드백 유형을 분류하고 적절한 수정 대상을 찾아 변경한다.
 
-> `/harness:harness-adapt`과 다름: adapt은 **시스템이 감지한 telemetry drift**, evolve는 **사용자가 명시한 피드백**.
+## 진화 명령 3분기 doctrine (2026-05-14)
+
+| 명령 | 진입 시점 | 입력 | 특화 워크플로우 |
+|---|---|---|---|
+| **`/harness:harness-evolve`** | 사용자가 *명시적 피드백* 발화 | 자유 텍스트 | 본 명령 |
+| **`/harness:harness-adapt`** | 시스템이 *telemetry drift* 자동 감지 (또는 사용자 명시 점검) | `_workspace/_telemetry/*.jsonl` | Phase 10 |
+| **`/harness:harness-remove` / `-split` / `-merge`** | 사용자가 *구조적 변경* 명시 (삭제/분할/통합) | `agent|skill <이름>` | 격리 워크플로우 (자유 텍스트 진단 불필요 — 결정성 ↑) |
+
+**언제 어느 것?**:
+- "분석이 너무 피상적" / "팀이 너무 큼" / "보안 검토도 필요" → **evolve** (자유 발화 + LLM 분류)
+- "최근 10회 호출에서 X 에이전트 실패율 30%" → **adapt** (telemetry 시그널)
+- "X 에이전트 제거" / "Y를 둘로 쪼개" → **remove / split** (격리 워크플로우 + dangling cleanup 결정성)
+
+본 명령이 자유 텍스트 진단 후 *구조적 변경*으로 판단되면 Step 3 변경안 제시 단계에서 격리 명령으로 *위임 안내*.
 
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (피드백 한 문장 또는 단락; 예: "분석이 너무 피상적이야", "보안 검토도 필요해", "검증을 먼저 해야 할 것 같아")
@@ -61,8 +74,12 @@ argument-hint: <피드백 한 문장 또는 단락>
 |---|---|
 | 새 에이전트 추가 필요 | `/harness:harness-add-agent` |
 | 새 스킬 추가 필요 | `/harness:harness-add-skill` |
+| 에이전트/스킬 제거 필요 | `/harness:harness-remove <agent|skill> <이름>` |
+| 책임 분할 필요 | `/harness:harness-split <agent|skill> <원본> <결과 2개 이상>` |
+| 책임 통합 필요 | `/harness:harness-merge <agent|skill> <결과> <원본 2개 이상>` |
 | baseline 자체 갱신 필요 | `/harness:harness-baseline` |
-| 정합성 점검 먼저 | `/harness:harness-audit` |
+| 정합성 점검 먼저 (LLM 추론) | `/harness:harness-audit` |
+| 결정적 일관성 검증 (LLM 0) | `/harness:harness-validate` |
 
 ### 4. 변경 적용
 
@@ -82,4 +99,4 @@ argument-hint: <피드백 한 문장 또는 단락>
 
 - 같은 유형 피드백이 2회 이상 반복됨 (직전 변경 이력 확인) → "X 패턴 반복 → 구조적 문제 가능성. `/harness:harness-audit` 권장"
 - 에이전트가 반복 실패하는 패턴 → "사용 drift 가능성. `/harness:harness-adapt`로 telemetry 분석 권장"
-- 사용자가 오케스트레이터 우회 작업 중 → "트리거 매칭 실패 가능. `/harness:harness-audit`의 §3 변경 이력 누락 검사 권장"
+- 사용자가 오케스트레이터 우회 작업 중 → "트리거 매칭 실패 가능. `/harness:harness-audit` Step 3 (CLAUDE.md 변경 이력 의미 정합) 검사 권장"

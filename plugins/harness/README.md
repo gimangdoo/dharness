@@ -58,20 +58,52 @@ claude --plugin-dir <path>/plugins/harness
 | **자연어 트리거** | 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화 |
 | **Slash command** | `/harness:harness-*` 결정적 호출 | Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-### Slash command 카탈로그 (10개)
+### Slash command 카탈로그 (16개)
 
+**합성·확장 (5)**
 ```
-/harness:harness-new <도메인>          # Phase 0~8 전체 (신규 구축)
-/harness:harness-add-agent <역할>      # Phase 4·5·7·8 (1·2·3 skip)
-/harness:harness-add-skill <스킬>      # Phase 6·7·8 (1~5 skip)
-/harness:harness-baseline              # Phase 1·2 재실행 + drift 분석
-/harness:harness-audit                 # 정합성 감사 (read-only)
-/harness:harness-evolve <피드백>       # Phase 9 수동 진화
-/harness:harness-adapt                 # Phase 10 telemetry drift 점검
-/harness:harness-mcp-recommend <에이전트|역할>  # Phase 5-2 MCP 후보 3축 점수 추천
-/harness:harness-mcp-adopt <사유>      # 런타임 MCP 채택 (§10 dynamic adoption)
-/harness:harness-mcp-status            # MCP·도구·권한 정합 진단 (read-only)
+/harness:harness-new <도메인> [--mode=single|derived]    # Phase 0~8 전체 (신규 구축, 단일/derived 양쪽 1급)
+/harness:harness-add-agent <역할>                          # Phase 4·5·7·8 (1·2·3 skip)
+/harness:harness-add-skill <스킬>                          # Phase 6·7·8 (1~5 skip)
+/harness:harness-split <agent|skill> <원본> <결과 2+>     # 책임 분할 (격리 워크플로우)
+/harness:harness-merge <agent|skill> <결과> <원본 2+>     # 책임 통합 (격리 워크플로우)
 ```
+
+**제거·진화 (3)**
+```
+/harness:harness-remove <agent|skill> <이름>              # 명시적 제거 + dangling cleanup (격리 워크플로우)
+/harness:harness-evolve <피드백>                           # Phase 9 수동 진화 (사용자 발화 진입점)
+/harness:harness-adapt                                     # Phase 10 telemetry drift 진입점
+```
+
+**진단·검증 (4)**
+```
+/harness:harness-status [--verbose]                        # 진행 가시성 단일 진입점 (read-only)
+/harness:harness-baseline                                  # Phase 1·2 재실행 + drift 분석
+/harness:harness-audit                                     # LLM 추론 영역 정합성 감사 (read-only)
+/harness:harness-validate [--json] [--strict]              # 결정적 구조·schema·chain 검증 (LLM 0)
+```
+
+**MCP (1 통합 + 3 원본 = 4)**
+```
+/harness:harness-mcp <recommend|adopt|status> [args]       # 통합 진입점 — 첫 인자 subcommand 분기 (Mg2 2026-05-14)
+/harness:harness-mcp-recommend <에이전트|역할>             # Phase 5-2 MCP 후보 3축 점수 추천
+/harness:harness-mcp-adopt <사유>                          # 런타임 MCP 채택 (§10 dynamic adoption)
+/harness:harness-mcp-status                                # MCP·도구·권한 정합 진단 (read-only)
+```
+
+> 통합 명령은 *추가* 진입점 — 기존 3 명령도 그대로 유지된다 (install 사용자 break-change 0). 신규 사용자에는 단일 진입점 권장.
+
+### 명령 분기 doctrine (2026-05-14)
+
+| 의도 | 명령 |
+|---|---|
+| 사용자 *명시 피드백* (자유 텍스트) | `evolve` |
+| 시스템 *자동 drift 감지* (telemetry) | `adapt` |
+| 명시적 *제거·분할·통합* (격리) | `remove` / `split` / `merge` |
+| *LLM 추론* 영역 감사 (의미·일관성) | `audit` |
+| *deterministic* 영역 검증 (구조·schema·chain) | `validate` |
+| 진행 가시성 *단일 진입점* | `status` |
 
 ## 워크플로우 개요
 

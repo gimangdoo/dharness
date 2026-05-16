@@ -38,9 +38,9 @@ argument-hint: <스킬 이름 또는 스킬 의도 한 줄>
 2. **Phase 7-1·7-3 (오케스트레이터 갱신, 영향 시)**:
    - 새 스킬을 사용하는 에이전트의 작업 흐름·데이터 전달 갱신
    - 트리거 키워드 영향 시 오케스트레이터 description 갱신
-3. **Phase 8 (검증)**:
-   - **필수**: §1 구조 검증, §4 트리거 검증 (스킬 description의 should-trigger / should-NOT-trigger 8~10개씩)
-   - **권장**: §3 실행 테스트 (스킬에 2~3개 현실적 테스트 프롬프트, with-skill vs without-skill 비교)
+3. **Phase 8 (검증)** — `SKILL.md` Phase 8 sub-step 매핑:
+   - **필수**: Phase 8-1 구조 검증, Phase 8-4 트리거 검증 (스킬 description의 should-trigger / should-NOT-trigger 8~10개씩)
+   - **권장**: Phase 8-3 실행 테스트 (스킬에 2~3개 현실적 테스트 프롬프트, with-skill vs without-skill 비교)
 4. **CLAUDE.md 변경 이력 갱신**:
    ```
    | {YYYY-MM-DD} | 스킬 추가: {이름} | .claude/skills/ + (영향 시) 오케스트레이터 | {사유} |

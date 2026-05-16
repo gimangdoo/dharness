@@ -1,6 +1,10 @@
 # 스킬 작성 가이드
 
-하네스에서 생성하는 스킬의 품질을 높이기 위한 상세 작성 가이드. SKILL.md Phase 4의 보충 레퍼런스.
+> **English POC (P7-2 옵션 B, 2026-05-15):** 영문 변환 [skill-writing-guide.en.md](./skill-writing-guide.en.md) 공존. 실 세션 dogfood telemetry 박제까지 본 한국어 파일이 source of truth, cross-link 모두 `skill-writing-guide.md` 그대로. cl100k_base 측정 savings: **43.7%** (KO 3105 / EN 1748 tok).
+>
+> **Read at phase:** Phase 6 (스킬 생성). 작성 패턴 + 예시 + 데이터 스키마 표준.
+
+하네스에서 생성하는 스킬의 품질을 높이기 위한 상세 작성 가이드. SKILL.md Phase 6의 보충 레퍼런스.
 
 ---
 

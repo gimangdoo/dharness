@@ -282,7 +282,7 @@ skill-name/
 
 **목표:** {핵심 목표 한 줄}
 
-**트리거:** {도메인} 관련 작업 요청 시 `{orchestrator-skill-name}` 스킬을 사용하라. 또는 `/harness:harness-*` slash command로 명시적 호출 — 카탈로그: `harness-new`/`harness-add-agent`/`harness-add-skill`/`harness-baseline`/`harness-audit`/`harness-evolve`/`harness-adapt`/`harness-mcp-recommend`/`harness-mcp-adopt`/`harness-mcp-status`. 단순 질문은 직접 응답 가능.
+**트리거:** {도메인} 관련 작업 요청 시 `{orchestrator-skill-name}` 스킬을 사용하라. 또는 `/harness:harness-*` slash command로 명시적 호출 — 카탈로그: `harness-new`/`harness-add-agent`/`harness-add-skill`/`harness-baseline`/`harness-audit`/`harness-evolve`/`harness-adapt`/`harness-mcp-recommend`/`harness-mcp-adopt`/`harness-mcp-status`/`harness-mcp`/`harness-merge`/`harness-remove`/`harness-split`/`harness-status`/`harness-validate`. 단순 질문은 직접 응답 가능.
 
 **Phase 10 자동 알림:** 세션 시작 시 `_workspace/_telemetry/`의 최신 `.jsonl` 파일을 확인하라. 마지막 Adapt 시각(= `_workspace/_telemetry/_delta_*.md` 또는 `_workspace/_telemetry/_rollback/{ts}/` 중 가장 최근 mtime, 둘 다 없으면 telemetry 첫 이벤트의 ts) 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면, 사용자에게 알린다: "하네스가 {N}회 실행되었습니다. `/harness:harness-adapt`로 drift 점검을 권장합니다." — telemetry 파일이 없거나 읽기 비용이 클 경우 건너뛴다.
 

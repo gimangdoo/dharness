@@ -28,7 +28,7 @@ host self-host CM counter helper도 BOM tolerantly 대응 — `open(path, encodi
 | `harness_invocation` 1 + `agent_invocation` 2 라인 모두 JSON parse 성공 | ✓ |
 | counter helper가 derived path에서 정확 카운트 | ✓ (1/2/0) |
 | 11 invoc + 2 fail 추가 → 임계값 도달 alert_due=True | ✓ |
-| `touch_last_adapt()` 후 카운터 reset → 0/0/0 alert_due=False | ✓ |
+| `_last_adapt` 파일 touch (harness-adapt 완료 shell write) 후 카운터 reset → 0/0/0 alert_due=False | ✓ |
 | `/harness:harness-adapt` 선조건 (telemetry + baseline 존재) 충족 | ✓ |
 
 ## 한계 (미검증)

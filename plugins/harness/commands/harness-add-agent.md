@@ -7,6 +7,8 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
 
 기존 하네스가 있다는 전제 하에 새 에이전트 1명을 추가한다. **Phase 1·2·3는 스킵**하여 baseline 재분석 비용을 치르지 않는다. Phase 0 매트릭스의 "에이전트 추가" 행에 해당하는 명시적 진입점이다.
 
+> **Cross-doc 인용 규약 (M3 단일 출처 — 2026-05-14):** 본 문서의 bare `§N`은 `references/permission-profiles.md §N`을 가리킨다. SKILL.md Phase 8 sub-step은 `Phase 8-N` 형식. 예외(다른 doc 참조)는 인라인 명시.
+
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (에이전트 역할 한 줄; 예: "보안 리뷰어", "DB 마이그레이션 검증자")
 - **입력**: 기존 `.claude/agents/`, `.claude/skills/`, `_workspace/_baseline/*.md`, 기존 오케스트레이터 스킬
@@ -37,28 +39,27 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
    - **빌트인 타입(`general-purpose`/`Explore`/`Plan`)이라도 파일 생성 필수**
    - `model: "opus"` 명시
    - 필수 섹션: 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업, 팀 통신 프로토콜
-   - **Phase 5-2 (도구·MCP 자동 할당)**: capability profile 매칭 → `claude mcp list`로 인벤토리 확인 → 사용자 confirm → frontmatter `tools:` allowlist 합성. 카탈로그·결정 트리·안전 정책은 `plugins/harness/skills/harness/references/permission-profiles.md` 단일 출처(§3-§7). 외부 MCP는 자동 install·자동 `allow` 금지(T0 한정).
-     - **§3-1 매트릭스 1차 후보 발췌 (14차 사이클 — `런타임 가용 default 카탈로그`):** profile 확정 후 §3-1에서 행 매핑 — code-test(`git`+`filesystem`) / web-research(`fetch`+`memory`) / external-integration(`sqlite`) / reasoning-aux(`sequential-thinking`+`time`). 각 행에 `default permissions bucket`이 박제되어 있어 `permissions.allow/ask/deny` 합성에 1:1 활용. 멀티 inline `mcpServers:` 패턴(N개 MCP 동시 등재) 예시는 `fixtures/synthesis_example/web-research/`(fetch+memory) + §3-1 "채택 패턴 권고" YAML 참조.
-     - 신규 MCP를 *합성 시점*에 install했다면 사용자에게 **"다음 세션부터 사용 가능"** 명시 (mid-session 미전파 — empirical 확정).
-     - 프로젝트 진행 중 신규 MCP 채택은 **§10 dynamic adoption** — 별도 진입점 `/harness:harness-mcp-adopt <사유>` (본 명령 범위 외).
-     - **🆕 inline `mcpServers:` 합성 시 deny 박제 default (10차 P0 새 발견 함의):** inline 서버의 도구는 frontmatter `tools:` allowlist로 *줄지 않으므로*, 부수 효과 도구(`write_*`/`insert_*`/`update_*`/`delete_*`/`exec_*` 등)는 *반드시* `settings.json permissions.deny`에 박제. `ask`로 강등하면 사용자 confirm 1회로 통과 — strict read-only 의도라면 `deny`가 default (§5-3 참조). 합성 후 정합 점검은 `/harness:harness-mcp-status` §4 (deny vs inline advertise 도구 매트릭스).
-     - **§4 결정 트리 분기 c (MCP 미install) 발화 시 처리:**
-       1. 본 명령(`harness-add-agent`)에서 *합성을 즉시 중단* — agent.md / settings.json / CLAUDE.md 4 산출물 어느 하나도 작성하지 않음.
-       2. 사용자에게 다음 안내를 출력 후 응답 종료:
-          ```
-          ⚠️ 합성 중단 — 새 에이전트의 capability profile에 매핑되는 MCP `<server-name>`이 현재 derived 프로젝트에 미install.
-          → 먼저 `/harness:harness-mcp-adopt <사유>`로 채택 (§10 5-step: discover → probe → confirm → install → reflect)
-          → install 완료 + *세션 재시작* 후 본 명령(`/harness:harness-add-agent <역할>`) 재호출
-          ```
-       3. 재호출 시 §4 결정 트리 분기 a/b가 발화하도록 *세션 재시작 후*에만 진행 — mid-session에서는 install된 MCP가 도구 풀에 미적재라 합성해도 inline `mcpServers:` 검증 불가.
-       4. **자동 install·자동 fallback 금지 (§6)** — 본 분기에서 LLM이 임의로 `claude mcp add`를 실행하면 §6 정책 위반.
+   - **Phase 5-2 (도구·MCP 자동 할당)** — 절차·doctrine 단일 출처: `permission-profiles.md` §0-2 진입 매트릭스 + `mcp-recommendation.md` §1·§5 (Mg1 통합 — 2026-05-14).
+     - **본 명령 진입 시 read 순서** (`permission-profiles.md` §0-2 표 발췌):
+       1. `mcp-recommendation.md` §1 (signal 10종 S1~S10 추출)
+       2. `permission-profiles.md` §2 (8 capability profile 매칭)
+       3. `permission-profiles.md` §3·§3-1 (T0 7종 매트릭스 1차 후보)
+       4. `permission-profiles.md` §4 결정 트리 (profile → MCP 매핑 + 분기 a/b/c/d)
+       5. `permission-profiles.md` §5-1 (inline `mcpServers:` 합성) + §5-3 (permissions deny 강제)
+     - **사용자 confirm gate**: profile 확정 + MCP 후보 표 (§3-1 + mcp-recommendation §3 점수) 동봉. `claude mcp list`로 install 여부 확인.
+     - **본 명령 *범위 외* (별도 진입점 위임)**:
+       - 런타임 MCP 채택 (§4 분기 c 발화 — MCP 미install) → `/harness:harness-mcp-adopt <사유>` (§10 5-step). 본 명령 *합성 즉시 중단* + 사용자 안내 출력 후 응답 종료. **자동 install 금지** (§6).
+       - 합성 *후* 정합 진단 → `/harness:harness-mcp-status`
+     - **본 명령 *고유* 안내 (단일 출처)**:
+       - 신규 MCP를 *합성 시점*에 install했다면 사용자에게 **"다음 세션부터 사용 가능"** 명시 (mid-session 미전파 — empirical 확정, §5-1 cycle 4)
+       - inline `mcpServers:` 합성 시 부수 효과 도구는 **반드시 `settings.json permissions.deny` 박제** (Layer C 강제, §5-3 doctrine)
 3. **Phase 7-1·7-3 (오케스트레이터 수정)**: 기존 오케스트레이터 스킬에 새 에이전트 반영.
    - 팀 구성·작업 할당·데이터 흐름 갱신
    - description에 새 트리거 키워드(있으면) 추가
    - **새 오케스트레이터 생성 금지** — 기존 수정만
-4. **Phase 8 (검증, 부분)**:
-   - **필수**: §1 구조 검증, §2 실행 모드 검증, §4 트리거 검증
-   - **변경 영향 시**: §3 실행 테스트, §5 드라이런
+4. **Phase 8 (검증, 부분)** — `SKILL.md` Phase 8 sub-step 매핑:
+   - **필수**: Phase 8-1 구조 검증, Phase 8-2 실행 모드 검증, Phase 8-4 트리거 검증
+   - **변경 영향 시**: Phase 8-3 실행 테스트, Phase 8-5 드라이런
 5. **CLAUDE.md 변경 이력 갱신**: Phase 7-4 템플릿 형식으로 한 행 추가.
    ```
    | {YYYY-MM-DD} | 에이전트 추가: {이름} | 오케스트레이터 + .claude/agents/ | {사유} |

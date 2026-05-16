@@ -1,5 +1,9 @@
 # Agent Team Design Patterns
 
+> **English POC (P7-2 옵션 B, 2026-05-15):** 영문 변환 [agent-design-patterns.en.md](./agent-design-patterns.en.md) 공존. 실 세션 dogfood telemetry 박제까지 본 한국어 파일이 source of truth, cross-link 모두 `agent-design-patterns.md` 그대로. cl100k_base 측정 savings: **49.6%** (KO 5408 / EN 2724 tok).
+>
+> **Read at phase:** Phase 4 (팀 패턴 선택) + Phase 5 (에이전트 정의 시 패턴 적용). cross-phase 참조 시 명시적 재read.
+
 ## 실행 모드: 에이전트 팀 vs 서브 에이전트
 
 두 가지 실행 모드의 핵심 차이를 이해하고 적합한 모드를 선택한다.

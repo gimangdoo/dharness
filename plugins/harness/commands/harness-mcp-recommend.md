@@ -7,6 +7,8 @@ argument-hint: <에이전트명 또는 역할 한 문장> [--refresh] [--cascade
 
 `references/mcp-recommendation.md` 엔진을 *명시* 호출하는 진입점. Phase 5-2 합성 *중*에는 SKILL.md가 자동 트리거하지만, 본 명령은 (a) 기존 에이전트에 후보 보강 (b) 합성 후 점검 (c) 대안 후보 탐색 시 사용한다.
 
+> **Cross-doc 인용 규약 (M3 단일 출처 — 2026-05-14):** 본 문서의 bare `§N`은 `references/permission-profiles.md §N`을 가리킨다. `references/mcp-recommendation.md §N`은 `mcp-recommendation §N` prefix로 명시. 예외(다른 doc 참조)는 인라인 명시.
+
 ## 컨텍스트
 
 - **인자**: `$ARGUMENTS`
@@ -31,11 +33,11 @@ argument-hint: <에이전트명 또는 역할 한 문장> [--refresh] [--cascade
 
 - `$ARGUMENTS`가 기존 에이전트명이면 `.claude/agents/<name>.md` 읽고 frontmatter `description:` + 본문 "핵심 역할" 발췌
 - 역할 한 문장이면 그 문장 자체가 입력
-- mcp-recommendation.md §1 6 신호(S1~S6) 중 매칭 신호 집합 추출 — LLM 직접 분류
+- `mcp-recommendation.md` §1 10 신호(S1~S10 — 6 general + 4 domain, P6-11 2026-05-14) 중 매칭 신호 집합 추출 — LLM 직접 분류
 
 ### R-2. R0 검색 (Tier R0 = §3 인벤토리 + §3-1 매트릭스)
 
-- §1 신호 → §3-1 capability profile 행 매핑
+- `mcp-recommendation §1` 신호 → §3-1 capability profile 행 매핑
 - 매칭 행의 권고 MCP 발췌 (예: S1+S3 → web-research 행 → fetch + memory)
 - §3 인벤토리에서 추가 매칭 후보 grep (Tier T0 우선)
 

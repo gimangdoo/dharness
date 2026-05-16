@@ -1,6 +1,73 @@
 # Permission Profiles — MCP·도구 자동 할당 카탈로그
 
+> **Read at phase:** Phase 5-2 (MCP·도구 자동 할당). 8 capability profile (4 범용 + 4 도메인) × MCP 매트릭스. mcp-recommendation.md와 동반 read.
+
 Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구 + MCP 도구 + 권한을 자동 합성할 때 사용하는 카탈로그·결정 트리·합성 룰. Phase 5는 이 문서를 *참조*만 하고, 본 문서가 단일 진실 원천.
+
+---
+
+## 0. Closure Summary & Navigation (2026-05-14 M5 박제)
+
+> **목적**: 본 문서 1100+ LOC. Phase 5-2 진입 LLM이 *어느 § 부터 read*해야 하는지 단일 진입점 표. *모든 § 다 read* 금지 — phase별 read 단축 + token 절감.
+
+### 0-1. 한 줄 요약
+
+도메인 한 문장 → ① **3-layer 권한 모델** (§1: A=서버 advertise / B=inline mcpServers / C=permissions allow/ask/deny) ② **8 capability profile** (§2: code-test / web-research / external-integration / reasoning-aux + ml-pipeline / devops-infra / mobile-native / data-eng) ③ **MCP 후보 inventory + 매트릭스** (§3, §3-1) ④ **결정 트리** (§4) ⑤ **합성 산출물 템플릿** (§5) → 자동 합성. 채택 절차는 §10. 검증 미완 항목은 §11 fixture로 후속 PoC.
+
+### 0-2. 진입 § 매트릭스 — phase·작업별
+
+| 작업 | 진입 § | 동반 read |
+|---|---|---|
+| Phase 5-2 합성 시작 (default) | §0 → §2 → §4 → §5-1 | mcp-recommendation.md §1 (signal 추출) |
+| capability profile 결정 | §2 (8 profile 정의 — *전문 sub-grep만*) + §3-1 매트릭스 (권고 MCP 행) | — |
+| MCP 후보 검색 | §3 (T0/T1/T2 inventory) + §3-1 매트릭스 | mcp-recommendation.md §2-3 (3축 점수) |
+| 합성 산출물 YAML | §5-1 (inline mcpServers Layer B *default*) — anti-pattern은 §5-2 | — |
+| settings.json permissions | §5-3 (Layer C 게이트) — 부수 효과 도구 deny 강제 | §3 default bucket |
+| 안전 정책 검토 | §6 (자동 install/키 발급 금지) | — |
+| dynamic adoption (run-time MCP 채택) | §10 5-step (discover → probe → confirm → install → reflect) | mcp-recommendation.md §5 절차 |
+| 진행 가시성 (read-only 진단) | §3 + §3-1 (인벤토리) + §10-4 rollback 이력 | `/harness:harness-mcp-status` |
+| 검증 상태 확인 | §8 (검증 상태 표) — PoC 미완 항목 식별 | §11 fixture |
+| 실증 가능한 reproducer | §11-1~§11-4 (재현 레시피) | — |
+
+### 0-3. § 분류 — *반드시 read* vs *조건부 read* vs *심화 read*
+
+| 등급 | § | doctrine |
+|---|---|---|
+| **A. 반드시 read** (Phase 5-2 진입 시) | §1 (3-layer) / §2 (8 profile) / §4 (결정 트리) / §5-1 (합성 default) / §5-3 (permissions) | doctrine 무지 시 silent fail 위험 |
+| **B. 조건부 read** | §3·§3-1 (MCP 후보 검색 시) / §5-2 (parent 적재 *예외*만 — 99% 케이스 X) / §10 (run-time 채택 시) / §6 (자동 install 금지 doctrine 확인) | 작업 의제별 진입 |
+| **C. 심화 read** (특수 상황만) | §7 (Phase 5 호출 절차 디테일) / §8 (검증 상태 누적표) / §9 (Plugin subagent 제약) / §11 (실증 reproducer) | docs-level deep dive |
+
+### 0-4. § 간 cross-reference
+
+```
+§1 (Layer 모델) ──┬─→ §5-1·§5-2·§5-3 (Layer A·B·C 구현)
+                  └─→ §6 (Layer 안전 정책)
+§2 (8 profile) ───┬─→ §3-1 매트릭스 (profile×MCP)
+                  └─→ §4 결정 트리 (profile 매핑)
+§3 inventory ─────┬─→ §3-1 매트릭스 (T0 검증 완료 7종 cross-mapping)
+                  └─→ §10 dynamic adoption (T1+/T2~ 채택)
+§4 결정 트리 ─────┬─→ §5-1·§5-2 합성 분기
+                  └─→ mcp-recommendation.md (1-R 단계)
+§5-1 inline ──────┬─→ §5-3 permissions deny (inline 도구 전체 advertise — Layer C 강제)
+                  └─→ §11-2 spawn 측정 (parent isolation empirical)
+§10 dynamic ──────┬─→ §3 inventory 갱신 = §3-1 매트릭스 동기 갱신
+                  └─→ §10-4 rollback 이력
+```
+
+### 0-5. 8 profile 빠른 참조
+
+| Profile | 시그널 | T0 권고 MCP | §3-1 행 |
+|---|---|---|---|
+| code-test | S2+S5 | git, filesystem | §3-1 행 1 |
+| web-research | S1+S3 | fetch, memory | §3-1 행 2 |
+| external-integration | S2+S4+S5 | sqlite (+T1+ github) | §3-1 행 3 |
+| reasoning-aux | S6 | sequential-thinking, time | §3-1 행 4 |
+| ml-pipeline (2026-05-14) | S7 | filesystem + sqlite + memory + sequential-thinking + git | §3-1 행 5 |
+| devops-infra (2026-05-14) | S8 | git + filesystem + time + sequential-thinking | §3-1 행 6 |
+| mobile-native (2026-05-14) | S9 | filesystem + git + sequential-thinking (+T1 playwright/chrome-devtools) | §3-1 행 7 |
+| data-eng (2026-05-14) | S10 | sqlite + filesystem + git + memory + sequential-thinking | §3-1 행 8 |
+
+> **Signal S1~S10 정의**: mcp-recommendation.md §1.
 
 ---
 
@@ -34,9 +101,11 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 
 ---
 
-## 2. Capability Profiles (4종)
+## 2. Capability Profiles (8종)
 
 각 프로파일은 ① 빌트인 도구 ② MCP 후보 ③ 추천 toolset 필터 ④ 격리 권장 여부를 묶는다.
+
+> **8 profile 분류 doctrine (2026-05-14 P6-11 확장)**: §2-1~§2-4는 *범용 4종* (PoC 완료 매트릭스 §3-1 박제). §2-5~§2-8은 *도메인 4종* (2026-05-14 신설 — ml-pipeline / devops-infra / mobile-native / data-eng). 도메인 4종의 MCP 후보 다수는 PoC 미완 — §3-1 매트릭스 진입은 §10 dynamic adoption 절차로 cycle별 누적.
 
 ### 2-1. `code-test` — 테스트·코드 워크플로우
 - **빌트인:** `Bash`, `Read`, `Edit`, `Glob`, `Grep`, `Write`
@@ -59,11 +128,92 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 - **MCP 후보:** `sequential-thinking`, `memory`, `time`
 - **격리:** 불필요 — parent에 직접 부착해도 토큰 비용 낮음
 
+### 2-5. `ml-pipeline` — ML 학습·실험·모델 관리
+
+> **도메인 시그널:** "모델/학습/평가/실험 추적/하이퍼파라미터/데이터셋/feature/inference"
+
+- **빌트인:** `Bash` (notebook execution / training script run), `Read`, `Edit`, `Write`, `Glob`, `Grep`
+- **MCP 후보:**
+  - T0 ✓ — `filesystem` (dataset/artifact path-roots 격리), `sqlite` (실험 추적 — MLflow 대체 또는 보조), `memory` (지식 그래프로 도메인 사실 누적), `sequential-thinking` (실험 설계 단계별 추론), `git` (모델 카드·실험 코드 버전)
+  - T1+ 후보(PoC 미완) — `github` (모델 PR·릴리즈), `huggingface-mcp`(추정), `wandb-mcp`(추정) — §10 dynamic adoption 진입 필요
+- **격리:** **강력 권장** — 데이터셋 read·notebook 실행 결과가 토큰 부담 크고, 모델 로드는 spawn 비용 큰 부수 효과 → 서브에이전트가 *실험 결과 요약만* 반환
+- **default 권한 doctrine:** dataset read = `allow`, model write/checkpoint = `ask` (부수 효과 큼), 외부 dataset hub fetch = `ask` (PII·라이선스 surface)
+- **PoC 미완 표기:** 본 profile은 T0 후보 5종만 §3-1 매트릭스에 cross-mapping 가능 (`filesystem`/`sqlite`/`memory`/`sequential-thinking`/`git`). 전용 MCP(huggingface/wandb 등)는 §3 행 추가 후 §3-1 진입
+
+### 2-6. `devops-infra` — 인프라·배포·운영
+
+> **도메인 시그널:** "배포/CI/CD/인프라/모니터링/스케줄링/롤백/SRE/oncall/Kubernetes/Terraform"
+
+- **빌트인:** `Bash` (kubectl/terraform/aws-cli 호출), `Read`, `Edit`, `Write`
+- **MCP 후보:**
+  - T0 ✓ — `git`, `filesystem` (IaC 파일 path-roots), `time` (스케줄링 timezone 변환), `sequential-thinking` (롤백 절차 단계별)
+  - T1+ — `github` (Actions toolset — CI/CD), `slack` (T2~ — 알림 채널)
+  - PoC 미완 — `kubernetes-mcp`(추정), `terraform-mcp`(추정), `aws-mcp`(추정), `datadog-mcp`(추정) — §10 진입 필요
+- **격리:** **필수** — production 변경 surface 극대 → 서브에이전트가 read-only 진단 → parent가 변경 confirm gate
+- **default 권한 doctrine:** 모든 *변경* 도구(`apply`/`destroy`/`rollback`/`deploy`) `ask` 또는 `deny` default — 사용자 명시 confirm 없이 자동 `allow` 금지. `slack` 발화는 `ask` (production 알림은 회수 불가)
+- **회수 doctrine:** `kubectl delete`/`terraform destroy` 등 비가역 명령은 §10-4 rollback 절차로 회수 불가 — *사전 dry-run* gate 필수
+
+### 2-7. `mobile-native` — 모바일/네이티브 앱
+
+> **도메인 시그널:** "iOS/Android/native/Swift/Kotlin/Flutter/React Native/Xcode/Gradle/emulator/build"
+
+- **빌트인:** `Bash` (Xcode/Gradle build, simulator 제어), `Read`, `Edit`, `Write`, `Glob`, `Grep`
+- **MCP 후보:**
+  - T0 ✓ — `filesystem` (project root + iOS/Android subdir 격리), `git`, `sequential-thinking` (빌드 실패 디버깅 단계별)
+  - T1 — `playwright` (mobile emulation `--browser=webkit` for iOS Safari 시뮬), `chrome-devtools` (Android WebView debug — Chrome remote debugging port)
+  - PoC 미완 — `appium-mcp`(추정), `xcode-mcp`(추정), `android-mcp`(추정) — §10 진입 필요
+- **격리:** **권장** — 빌드 toolchain (Xcode build, Gradle sync) 시간·spawn 비용 큼 → 서브에이전트가 빌드 후 실패 로그 요약만 반환
+- **default 권한 doctrine:** `Bash` build 명령 `allow`, code signing / IPA upload / TestFlight 발화 `ask` (배포 surface). filesystem write는 native project root 격리 강제 (cross-project mutation 방지)
+- **caveat:** `playwright --browser=webkit`은 iOS Safari *시뮬*만 — 실 device 측정은 본 profile 외부 (Appium 등 미완)
+
+### 2-8. `data-eng` — 데이터 엔지니어링·ETL·파이프라인
+
+> **도메인 시그널:** "ETL/ELT/data pipeline/Airflow/dbt/Spark/스키마 변환/data warehouse/data lake/ingestion"
+
+- **빌트인:** `Bash` (dbt run / airflow CLI / spark-submit), `Read`, `Edit`, `Write`, `Glob`, `Grep`
+- **MCP 후보:**
+  - T0 ✓ — `sqlite` (로컬 staging/scratch DB), `filesystem` (data lake path-roots), `git` (pipeline 코드 버전), `memory` (스키마 사실 누적 — 컬럼 의미·lineage), `sequential-thinking` (스키마 마이그레이션 단계별)
+  - T2~ — `postgres` (production warehouse — `read_query` only 강제 권장), PoC 미완: `snowflake-mcp`(추정), `bigquery-mcp`(추정), `databricks-mcp`(추정), `dbt-mcp`(추정) — §10 진입 필요
+- **격리:** **필수** — DB 접근 boundary 명확화 + 대용량 query 결과 토큰 부담 → 서브에이전트가 *집계 결과 요약만* 반환, raw row 미반환
+- **default 권한 doctrine:**
+  - production DB 접근: `read_query` `allow`, `write_query`/`create_table`/`drop_table` `deny` default (마이그레이션은 별도 dedicated agent + 사용자 confirm)
+  - staging/scratch DB: `read_query`/`write_query` `allow`, `drop_*` `ask`
+  - PII 포함 테이블 query 결과는 서브에이전트가 hash/redact 후 parent에 반환 권장 (compliance 시그널 GDPR/HIPAA/PCI-DSS 매칭 시 hard 강제)
+- **회수 doctrine:** `truncate`/`drop`/`delete` 등 비가역은 dry-run + 사용자 명시 confirm 2단 gate. backup 절차 박제 권장
+
 ---
 
 ## 3. MCP 후보 인벤토리 (Tier 분류)
 
 `*` = 공식 reference (anthropic/modelcontextprotocol), `+` = API 키 필요, `~` = 유료/민감 데이터
+
+### 3-0. verification_status 정책 (P6-9 — 2026-05-14)
+
+§3 인벤토리의 각 MCP는 다음 3 status 중 하나로 분류 — Phase 5-2 *합성 default 풀* 포함 여부 결정.
+
+| status | symbol | 합성 default 풀 | 점수 페널티 (`A` 정확도) | 사용 자격 |
+|---|---|---|---|---|
+| **probe-verified** | ✓ | 포함 | +4 (probe ✓ 보너스 — 기존 §3 점수표 정합) | 즉시 사용 가능. fixture source-grep 100% 일치 + 도구 enumeration 박제 |
+| **docs-only** | 📜 | **제외** | -2 ("docs only" 페널티 — `mcp-recommendation.md §3` 매핑) | 사용자 명시 R-7 confirm + §10 Step 2 probe 통과 시 승격 |
+| **pending** | ⚠️ | **제외** | -4 (대칭 페널티 — 박제 정보 부족) | §10 dynamic adoption 진입 + Step 2 probe 필수. inline `mcpServers:` 직접 합성 ❌ |
+
+#### MCP × verification_status (2026-05-14 cycle 박제)
+
+| MCP | status | 근거 |
+|---|---|---|
+| `fetch` / `sequential-thinking` / `git` / `sqlite` | ✓ | `fixtures/probe_*.js` 실행 OK + `tools/list` source-grep 100% 일치 (cycle ≤22) |
+| `filesystem` / `time` / `memory` | ✓ (probe-only) | install 미수행이나 stdio JSON-RPC probe로 도구 enum 확정 (13~18차 cycle) |
+| `playwright` | ✓ | 22차 외부 PowerShell probe 실행 — default 23종 + caps=vision +6종 empirical 확정 |
+| `chrome-devtools` | 📜 → ✓ (verify-only) | 23차 npm/GitHub source verify 확정 (Google LLC org / Apache-2.0 / mcpName 정합). Node ≥20.19 host 환경 의존. probe 도구 enum은 host 측 별건 |
+| `brave-search` / `tavily` / `exa` / `firecrawl` / `github` | 📜 | docs 박제 (17차) + 18차 fixture 준비. API 키 보유 후 §10 Step 2 probe 필수 |
+| `slack` / `postgres` | ⚠️ | 이름·Tier·카테고리만 박제. 합성 default 풀 ❌ |
+
+> **합성 default 풀 doctrine (P6-9):** Phase 5-2가 inline `mcpServers:` *자동 합성* 시 ✓ 외 status는 **금지**. 📜는 R-7 confirm gate에서 *제안*만, ⚠️는 §10 dynamic adoption 진입 안내 후 응답 종료.
+>
+> **점수 페널티 정합 (`mcp-recommendation.md §3` cross-reference):** docs-only `-2`, pending `-4`. 본 표 갱신 시 mcp-recommendation 양 doc 동시 적용 필수.
+>
+> **status 승격 워크플로우:** 📜 → ✓는 §10 Step 2 probe 1회로 자동 승격. ⚠️ → 📜는 trusted source 확인 + fixture 준비 (`fixtures/probe_<server>.js`) 후 확정. ⚠️ → ✓는 1단계 점프 ❌ (probe 완료가 docs 박제 확정을 함의 X — npm cross-check + source verify 별건).
+
 
 | Tier | 정의 | 자동 적용 정책 |
 |------|------|--------------|
@@ -134,8 +284,14 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 | **web-research** | `fetch` + `memory` | 4 + 9 | §5-1-a Layer B 단독 (fetch/memory 모두 toolset 필터 미지원) | `fetch` 4종 `allow` (모두 read-only) / `memory` read 3종 `allow` + create/add 3종 `ask` + delete 3종 `deny` | ✅ 다음 세션부터 |
 | **external-integration** | `sqlite` (+ T1+ `github` 별도) | 6 | §5-1-a Layer B 단독 (sqlite는 toolset 미지원) / `github`는 §5-1-b Layer A+B 결합 (env `GITHUB_TOOLSETS`) | `sqlite` read 3종 `allow` + write 3종 `deny` (read-only 강제) | ✅ 다음 세션부터 |
 | **reasoning-aux** | `sequential-thinking` + `time` | 1 + 2 | §5-1-a Layer B 단독 (toolset 미지원, 둘 다 부수 효과 0) | 3종 모두 `allow` (read-only) | ✅ 다음 세션부터 |
+| **ml-pipeline** (2026-05-14 신설) | `filesystem` + `sqlite` + `memory` + `sequential-thinking` + `git` (T0만, cross-mapping 5종) | 14 + 6 + 9 + 1 + 12 = 42 | §5-1-a Layer B 단독 (전부 toolset 미지원 — 5 MCP 동시 등록 부담 ↑ → *합성 시 도메인별로 2~3종 선별* 권장) | dataset read `allow` / 모델 write·실험 DB write `ask` / git commit `ask` | ✅ 다음 세션부터 (전용 MCP huggingface/wandb 등은 §10 진입 후 추가) |
+| **devops-infra** (2026-05-14 신설) | `git` + `filesystem` + `time` + `sequential-thinking` (T0 4종) | 12 + 14 + 2 + 1 = 29 | §5-1-a Layer B 단독 | git 12종 `ask` (commit/checkout/reset 부수 효과) / filesystem write `deny` (IaC 변경은 명시 confirm) / time 2종 `allow` / `kubectl`/`terraform` 등은 `Bash` 빌트인으로 — 변경 도구 패턴 매칭 `ask` | ✅ 다음 세션부터 (kubernetes/terraform/aws MCP는 §10 진입 후 추가) |
+| **mobile-native** (2026-05-14 신설) | `filesystem` + `git` + `sequential-thinking` (T0 3종) + `playwright`/`chrome-devtools` (T1, derived 프로젝트별) | 14 + 12 + 1 + 23 + 44 | §5-1-a Layer B 단독 (T0) / §5-1-b Layer A+B (playwright caps 필터) | filesystem write iOS/Android root 격리 / git `ask` / playwright `browser_run_code_unsafe` `deny` (RCE-equivalent) / chrome-devtools `install_extension`/`execute_*` `deny` | ✅ 다음 세션부터 (Appium/Xcode MCP는 §10 진입 후 추가) |
+| **data-eng** (2026-05-14 신설) | `sqlite` + `filesystem` + `git` + `memory` + `sequential-thinking` (T0 5종) | 6 + 14 + 12 + 9 + 1 = 42 | §5-1-a Layer B 단독 | sqlite `read_query` `allow` / `write_query` `ask` / `create_table`/`drop_table` `deny` (마이그레이션은 dedicated agent) / filesystem data lake path-root 격리 | ✅ 다음 세션부터 (postgres T2~ + snowflake/bigquery/databricks/dbt MCP는 §10 진입 후 추가) |
 
 > **매트릭스의 권고는 *제안*이지 default 강제가 아님** — §4 결정 트리의 사용자 confirm 게이트가 항상 우선. 사용자 도메인이 매트릭스 외 조합을 요구하면 (예: web-research에 `git` 필요) §10 dynamic adoption 절차로 후보 확장.
+
+> **도메인 4종 cross-mapping doctrine (2026-05-14):** 도메인 profile 4종(ml-pipeline/devops-infra/mobile-native/data-eng)은 *전용 T0 MCP가 거의 없음* — T0 5종(`filesystem`/`sqlite`/`memory`/`git`/`sequential-thinking`/`time`)을 도메인 시그널 매칭에 따라 *재조합*하는 형태. 전용 MCP(huggingface/kubernetes/appium/snowflake 등)는 PoC 미완 — §10 dynamic adoption 진입 후 §3 행 추가 → 본 매트릭스 행 갱신. PoC 미완 항목은 "후보 풀에서 *옵션*"이지 default 합성 사용 X.
 
 ### 채택 패턴 권고 — 7 MCPs 통합 inline `mcpServers:` (참고 예시)
 
@@ -189,11 +345,12 @@ Phase 5에서 에이전트 명세를 받았을 때:
    → 사용자 confirm 전엔 합성 금지
 
 1-R. (옵션·default ON) MCP Recommendation 엔진 호출
-   → mcp-recommendation.md §1 신호 추출 (6 신호)
+   → mcp-recommendation.md §1 신호 추출 (10 신호 — 범용 6 S1~S6 + 도메인 4 S7~S10)
    → §2 후보 풀 cascade (R0 §3·§3-1 → R1 modelcontextprotocol/servers → R2 외부 큐레이션)
    → §3 3축 점수 (효율성/확장성/정확도) — top-K 표 + 권고 조합
    → R-7 confirm gate → 채택은 §10 5-step로 인계
    ※ 후보 매핑(§4 본 트리)은 *어떤 profile에 어떤 MCP*, 추천(mcp-recommendation.md)은 *후보 간 점수*
+   ※ 도메인 신호 S7~S10 매칭 시 capability profile §2-5~§2-8 매핑 — 전용 MCP는 PoC 미완 다수 → T0 5종(filesystem/sqlite/memory/git/sequential-thinking) cross-mapping default, 전용 MCP는 §10 dynamic adoption 진입 제안만
 
 2. 사용자 confirm된 profile들에 대해 후보 MCP 열거
    → `claude mcp list`로 install 여부 체크

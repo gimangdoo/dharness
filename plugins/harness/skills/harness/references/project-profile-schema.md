@@ -1,5 +1,7 @@
 # Project Profile Schema
 
+> **Read at phase:** Phase 1 (Code Research 출력 형식). business_context + compliance 7축 확장 박제 (2026-05-14 P6-10).
+
 Phase 1 Code Research의 표준 출력 형식. 코드베이스 분석으로 수집한 5축 객관적 신호를 구조화한 schema.
 
 ---
@@ -138,6 +140,31 @@ pain_points:
       metric_name: string             # cyclomatic, file_loc, function_loc, ...
       value: float
       threshold: float
+
+# --- 7-axis 확장 (P6-10, 2026-05-14) — business_context + compliance ---
+
+business_context:                     # 도메인·사용자·비즈니스 신호 — Phase 4 패턴 선택 + qa-agent-guide §6-9 매핑
+  domain: fintech | health | edu | ecom | dev-tool | research | gov | media | gaming | iot | other | unknown
+  domain_confidence: 0.0-1.0          # 추론 신뢰도 (LICENSE/README/docs grep + LLM 추론)
+  users:
+    persona: string | null            # 1줄 — 누가 쓰는가 (예: "백엔드 개발자", "보험 인수 심사관")
+    audience_scale: solo | small_team | large_team | enterprise | public | unknown
+  business_signals:                   # 결정적 grep 신호
+    license: string | null            # LICENSE 파일 추출
+    readme_mentions: [string]         # README에 박제된 도메인 키워드
+    docs_paths: [path]                # docs/ 하위에서 도메인 단서 발견 경로
+
+compliance:                           # 규제·법적 제약 — Phase 5 permission profile + qa-agent-guide cross-cut
+  regulatory: [string]                # enum 다중: GDPR | HIPAA | PCI-DSS | SOX | SOC2 | ISO27001 | KISA | GxP | none | unknown
+  detection_signals:                  # 결정적 grep — 의존성·환경변수·docs
+    dependencies_hits: [string]       # 예: ["stripe (PCI-DSS 강제)", "hipaa-fhir-* (HIPAA 시사)"]
+    env_var_hits: [string]            # 예: ["AWS_KMS_KEY_ID", "GDPR_DATA_REGION"]
+    docs_hits: [path]                 # docs/, README에서 compliance 단서 발견 경로
+  data_classification:                # 처리 데이터 민감도 (LLM 추론)
+    pii: bool | unknown               # 개인식별정보
+    phi: bool | unknown               # 보건의료정보
+    pci: bool | unknown               # 결제카드 정보
+    financial: bool | unknown
 
 meta:
   unanalyzed: [string]                # 스캔 모드로 인해 수집 안 한 섹션. 예: ["maturity", "pain_points"]

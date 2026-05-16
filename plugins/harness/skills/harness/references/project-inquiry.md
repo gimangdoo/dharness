@@ -1,5 +1,7 @@
 # Project Inquiry 가이드
 
+> **Read at phase:** Phase 2 (Project Inquiry 진입). 두 브랜치별 채우기 전략 + profile-finding → question 매핑 룰.
+
 Phase 2 Project Inquiry의 실행 가이드. `project_profile.md`(객관 신호, 선택)와 사용자 발화를 입력으로 `intent_profile.md`(`references/intent-profile-schema.md`의 schema 준수)를 채우는 절차·추론 매핑·질문 생성 룰.
 
 ---

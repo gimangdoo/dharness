@@ -1,12 +1,29 @@
 ---
-description: Phase 10 Runtime Adaptation 수동 트리거. telemetry ↔ baseline 비교로 drift 감지 → 변경안 제시 → 사용자 승인 → 적용. 자동 적용 없음.
+description: Phase 10 Runtime Adaptation 수동 트리거 — telemetry drift 자동 감지 진입점. baseline 비교 → 변경안 → 승인 → 적용. 자동 적용 없음.
 ---
 
-# Harness — Adapt
+# Harness — Adapt (telemetry drift 진입점)
 
 `plugins/harness/skills/harness/SKILL.md` Phase 10의 **Diagnostic + Adapt 레이어**를 수동으로 실행한다. 누적된 telemetry와 baseline을 비교하여 drift를 감지하고, 변경안을 제시한 뒤 사용자 승인을 받아 적용한다.
 
 > **자동 적용은 없다.** 모든 변경은 명시적 사용자 승인이 필요하다.
+
+## 진화 명령 3분기 doctrine (2026-05-14)
+
+| 명령 | 진입 시점 | 입력 | 특화 워크플로우 |
+|---|---|---|---|
+| **`/harness:harness-evolve`** | 사용자가 *명시적 피드백* 발화 | 자유 텍스트 | Phase 9 |
+| **`/harness:harness-adapt`** | 시스템이 *telemetry drift* 자동 감지 (또는 사용자 명시 점검) | `_workspace/_telemetry/*.jsonl` | 본 명령 |
+| **`/harness:harness-remove` / `-split` / `-merge`** | 사용자가 *구조적 변경* 명시 | `agent|skill <이름>` | 격리 워크플로우 |
+
+**언제 본 명령?**:
+- 마지막 Adapt 이후 N회 이상 호출 누적 (`harness-status` §3 임계 초과 시)
+- 단일 큰 drift (보안 취약점, 새 프레임워크) 감지 또는 의심
+- 사용자가 "점검", "drift 확인", "적응" 등 발화
+
+**언제 본 명령 아님?**:
+- 사용자가 *구체 피드백* 발화 시 → `evolve`
+- *명시적 제거/분할/통합* 요청 → `remove` / `split` / `merge`
 
 ## 컨텍스트
 - **입력**: `_workspace/_telemetry/*.jsonl` (누적 telemetry, Phase 10 Capture 레이어 산출), `_workspace/_baseline/*.md` (t=0 anchor)

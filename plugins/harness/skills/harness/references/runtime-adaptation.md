@@ -1,6 +1,24 @@
 # Runtime Adaptation 가이드
 
+> **Read at phase:** Phase 10 (telemetry drift 적응). telemetry schema + capture 신호 + diagnostic 룰 + adapt 룰 + 승인 UX.
+
 Phase 10 Runtime Adaptation의 실행 가이드. 하네스가 프로젝트 변화·사용 패턴을 자동으로 관측하고 baseline에서 벗어난 부분을 사용자에게 제안 + 승인 모델로 적용하는 메커니즘.
+
+> **휴리스틱 임계값 catalog + tuning 가이드 (P2-4 — 2026-05-14):** Phase 10 임계값은 *empirical 측정 아닌 휴리스틱*. 도메인별 telemetry 누적 후 조정 권장.
+>
+> | 임계 | default | 근거 | tuning 권장 |
+> |---|---|---|---|
+> | drift 보고 건수/세션 (§7-7) | 5건 | 휴리스틱 — confirm gate 과부하 방지 | telemetry 신호 풍부 도메인(data eng / ML)에서 7~10건 |
+> | new_dependency minor / major (§5-5) | 1개 / ≥3개 | 휴리스틱 — 단일 추가는 기능 단위, 다중은 stack 변경 | 모노레포·monorepo lock 도메인에선 minor=2개, major=≥5개 |
+> | session 시작 project_signal 스캔 (§4-3) | ≤2초 | 측정 목표 (대화 응답성 보존) | 큰 monorepo (>100k LOC)에선 ≤5초 허용 |
+> | 이전 세션 캐시 재사용 (§4-3) | 7일 | 휴리스틱 — 일주일 cadence가 dependency drift 평균 주기 | 변동 큰 도메인(early-stage startup)에선 3일 / stable 도메인(LTS)에선 14일 |
+> | 새 디렉토리 신호 (§5-5) | 50+ files | 휴리스틱 — module 신설 단위 | 소규모 도메인에선 20+, monorepo에선 100+ |
+> | 커버리지 drift 신호 (§5-5) | ±15pp | 휴리스틱 — measurement noise 초과 변동 | 강한 quality gate 도메인에선 ±10pp / loose 도메인에선 ±20pp |
+> | confidence 자동 적용 (§8) | high + user_confirmed | 휴리스틱 — silent fail 방지 | 회귀 telemetry 누적 풍부 시 high 단독으로 완화 |
+> | 핫스팟 임계 (`code-research.md §9`) | 5% churn 또는 10회 변경 | 휴리스틱 — long-tail 분포 cutoff | mature 코드베이스에선 3% + 20회 (변동 가속) |
+> | 핫스팟 outlier (`code-research.md §9`) | 95-percentile | 측정 분포 기반 (heavy-tail 가정) | normal 분포 추정 도메인에선 99-percentile |
+>
+> 본 표는 *baseline* — 도메인별 telemetry 누적 후 조정. 임계값 변경 시 본 박스 행 갱신 + `_baseline/intent_profile.md`의 `tuning_overrides` 필드 박제 권장.
 
 ---
 

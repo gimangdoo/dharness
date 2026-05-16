@@ -1,11 +1,13 @@
 ---
-description: 프로젝트 진행 중 신규 MCP 채택 (런타임 시점). §10 dynamic adoption 전용 진입점 — discover → probe → confirm → install → reflect 5-step.
+description: 프로젝트 진행 중 신규 MCP 채택 (런타임 시점). permission-profiles §10 dynamic adoption 전용 진입점 — discover → probe → confirm → install → reflect 5-step.
 argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 ---
 
 # Harness — MCP Adopt
 
 기존 derived 프로젝트가 *진행 중* 신규 MCP가 필요해질 때 호출하는 명령. Phase 5-2 합성 *시점*과 분리된 **런타임 시점**의 채택 채널이다. description 매칭이 아닌 명시적 호출.
+
+> **Cross-doc 인용 규약 (M3 단일 출처 — 2026-05-14):** 본 문서의 bare `§N`은 `references/permission-profiles.md §N`을 가리킨다. 예외(다른 doc 참조)는 인라인 명시.
 
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (예: "playwright로 e2e 테스트 자동화 필요", "github MCP로 PR 메타데이터 조회", "tavily로 외부 리서치")

@@ -1,6 +1,22 @@
 # Code Research 방법론
 
+> **Read at phase:** Phase 1 (Code Research 진입). greenfield/brownfield 감지 + 5축 조사 + quick scan vs deep audit 분기.
+
 Phase 1 Code Research의 실행 가이드. 코드베이스를 분석해 `project_profile.md`(`references/project-profile-schema.md`의 schema 준수)를 채우는 절차와 휴리스틱.
+
+> **휴리스틱 임계값 catalog + tuning 가이드 (P2-4 — 2026-05-14):** Phase 1 분석 임계값은 *측정 분포 기반*. 도메인별 코드베이스 크기에 따라 조정.
+>
+> | 임계 | default | 근거 | tuning 권장 |
+> |---|---|---|---|
+> | quick vs deep 분기 키워드 (§5) | "간단/빠르게/quick/대략" → quick / "전체/깊이/자세히/deep" → deep | 휴리스틱 — 사용자 발화 키워드 매칭 | 명시 키워드 없으면 default quick. 코드베이스 >50k LOC면 deep 권장 |
+> | 핫스팟 churn 비율 (§9-1) | 5% 이상 | 휴리스틱 — long-tail 분포 cutoff | mature 코드베이스(>3 year)에선 3% 더 엄격 |
+> | 핫스팟 절대 변경 횟수 (§9-1) | 10회 이상 | 휴리스틱 — period_days=30 가정 | period_days=90이면 25회로 비례 확장 |
+> | churn 측정 period_days (§9-1) | 30일 | 휴리스틱 — release cycle 평균 | 큰 프로젝트(>1000 파일)는 90일 / fast-iteration startup은 14일 |
+> | 큰 프로젝트 기준 (§9-1) | >1000 파일 | 휴리스틱 — git log noise 누적 | monorepo는 >5000 / single-package는 >500 |
+> | 95-percentile outlier (§9) | percentile=95 | 측정 분포 기반 (heavy-tail 가정) | normal 추정 도메인은 99-percentile / strict는 90-percentile |
+> | 새 디렉토리 신호 (`runtime-adaptation.md §5-5`) | 50+ files | 휴리스틱 — module 신설 단위 | 소규모(<10k LOC) 20+, monorepo 100+ |
+>
+> 본 표는 *baseline* — 도메인별 코드베이스 크기·연식·release cadence에 맞춰 조정 권장. 임계값 변경 시 `_baseline/project_profile.md`의 `analysis_overrides` 필드에 박제 권장.
 
 ---
 

@@ -1,11 +1,13 @@
 ---
-description: 현재 derived 프로젝트의 MCP 상태 진단 — 등록 MCP·에이전트 도구 매트릭스·토큰 비용 추정·§3 인벤토리 정합·§10 trigger 신호 자동 감지. 읽기 전용.
+description: 현재 derived 프로젝트의 MCP 상태 진단 — 등록 MCP·에이전트 도구 매트릭스·토큰 비용 추정·permission-profiles §3 인벤토리 정합·permission-profiles §10 trigger 신호 자동 감지. 읽기 전용.
 argument-hint: (없음 또는 --verbose)
 ---
 
 # Harness — MCP Status
 
-기존 derived 프로젝트의 MCP·도구·권한 상태를 *읽기 전용*으로 진단한다. `/harness:harness-mcp-adopt`(쓰기)와 한 쌍을 이루는 진입점이며, §10 trigger 신호 자동 감지 + parent vs subagent 적재 토큰 비용 추정으로 채택 시점·격리 정합 판정을 보조한다. description 매칭이 아닌 명시적 호출.
+기존 derived 프로젝트의 MCP·도구·권한 상태를 *읽기 전용*으로 진단한다. `/harness:harness-mcp-adopt`(쓰기)와 한 쌍을 이루는 진입점이며, `permission-profiles.md` §10 trigger 신호 자동 감지 + parent vs subagent 적재 토큰 비용 추정으로 채택 시점·격리 정합 판정을 보조한다. description 매칭이 아닌 명시적 호출.
+
+> **Cross-doc 인용 규약 (M3 단일 출처 — 2026-05-14):** 본 문서의 bare `§N`은 `references/permission-profiles.md §N`을 가리킨다. 본 명령 *자체 보고* 섹션은 `섹션 N`으로 표기 (cross-doc과 구분). 예외(다른 doc 참조)는 인라인 명시.
 
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (없거나 `--verbose` — verbose면 §3 인벤토리 전체와 도구 enumeration까지 출력)

@@ -1,5 +1,7 @@
 # Intent Profile Schema
 
+> **Read at phase:** Phase 2 (Project Inquiry 출력 형식). `required:` 배열 + `confidence_low` + `source` 박제 (2026-05-14 M2 + P6-4 + P6-6).
+
 Phase 2 Project Inquiry의 표준 출력 형식. 사용자의 주관적 의도·제약·우선순위를 7개 섹션으로 구조화한 schema.
 
 ---
@@ -59,6 +61,14 @@ constraints:
   timeline:
     horizon: prototype | mvp | production
     deadline: string | null             # ISO 날짜 또는 자유 텍스트("Q3 2026")
+  compliance:                           # P6-10 신규 (2026-05-14) — regulatory 박제
+    regulatory: [string]                # enum 다중: GDPR | HIPAA | PCI-DSS | SOX | SOC2 | ISO27001 | KISA | GxP | none
+    data_handling:                      # 처리 데이터 민감도
+      pii: bool | unknown
+      phi: bool | unknown
+      pci: bool | unknown
+      financial: bool | unknown
+    audit_retention_days: int | null    # 감사 로그 보존 기간 (compliance-driven)
 
 architecture:
   deployment_target: [web | mobile | desktop | server | embedded]   # 다중 선택 가능
@@ -80,6 +90,15 @@ meta:
   explicit_assumptions: [string]        # 사용자가 명시한 전제. 예: "팀이 React 익숙함"
   inferred_fields: [string]             # brownfield 전용. dot-path로 표기 (예: "constraints.tech_stack.locked_in")
   user_confirmed_fields: [string]       # 사용자가 직접 확인/수정한 필드. dot-path
+  confidence_low: [string]              # P6-6 신규 (2026-05-14) — confidence 낮은 필드 dot-path. Phase 10 drift 가중치 0.7 이하 룰 활성
+  source: { string: string }            # P6-4 신규 (2026-05-14) — inferred_fields 항목별 source 인용. dot-path → manifest 경로 매핑. 인용 0이면 schema 위반 → Phase 1 재합성 트리거.
+
+required:                               # P6-10 / M2 (2026-05-14) — 다운스트림 hard-code 신뢰 박제
+  - constraints.tech_stack
+  - constraints.team.size
+  - constraints.timeline.horizon
+  - architecture.deployment_target
+  - quality.test_rigor
 ```
 
 ### Enum 값 의미 보충
