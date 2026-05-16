@@ -145,7 +145,6 @@ def fetch_git_status_short(max_lines: int) -> list[str]:
             ["git", "status", "--short"],
             cwd=str(REPO_ROOT),
             capture_output=True,
-            text=True,
             timeout=2,
             encoding="utf-8",
             errors="replace",
