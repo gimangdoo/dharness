@@ -366,6 +366,33 @@ class HarnessNewGates(unittest.TestCase):
         self.assertIn("이름 유일성 사전 점검", text,
                       "SKILL.md: Phase 5 '이름 유일성 사전 점검' doctrine 미박제")
 
+    def test_phase3_5_self_critique_present(self):
+        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
+        self.assertIn("Phase 3.5: Self-Critique on Domain Analysis", text,
+                      "SKILL.md: Phase 3.5 self-critique 섹션 미박제")
+        self.assertIn("single-pass silent error", text,
+                      "SKILL.md: Phase 3.5 'single-pass silent error' 검출 doctrine 미박제")
+        self.assertIn("_critique_phase3_", text,
+                      "SKILL.md: Phase 3.5 '_critique_phase3_' 산출물 박제 미명시")
+
+    def test_phase5_5_self_critique_present(self):
+        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
+        self.assertIn("Phase 5.5: Self-Critique on Agent Definitions", text,
+                      "SKILL.md: Phase 5.5 self-critique 섹션 미박제")
+        self.assertIn("역할 중복", text,
+                      "SKILL.md: Phase 5.5 '역할 중복' cross-review doctrine 미박제")
+        self.assertIn("_critique_phase5_", text,
+                      "SKILL.md: Phase 5.5 '_critique_phase5_' 산출물 박제 미명시")
+
+    def test_phase7_5_dry_run_present(self):
+        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
+        self.assertIn("Phase 7.5: Orchestrator Dry-Run Simulation", text,
+                      "SKILL.md: Phase 7.5 dry-run 섹션 미박제")
+        self.assertIn("dead link", text,
+                      "SKILL.md: Phase 7.5 'dead link' 검출 doctrine 미박제")
+        self.assertIn("_critique_phase7_", text,
+                      "SKILL.md: Phase 7.5 '_critique_phase7_' 산출물 박제 미명시")
+
 
 class ChainWritesAndCoverage(unittest.TestCase):
     """A7 glob intersection + Q1 orchestrator agent coverage 회귀 (2026-05-15)."""
