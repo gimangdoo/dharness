@@ -106,6 +106,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 > 2. **질문 폭격 강제**: 필수 5필드 미답변 상태에서 Phase 3 진입 차단. 사용자가 "다 알아서 하라" 등 답변 거부 시 → 추론값으로 채우되 `meta.inferred_fields`에 박제 + 별도 confirm 게이트(추론값 표 출력 → "이대로 진행?" 명시 인가 후만 Phase 3).
 > 3. **단정 표현 금지 (Phase 2 미완 상태에서)**: Phase 1과 동일 — `domain: X` 단정 출력 금지. Phase 2 완료(모든 필수 5필드 user_confirmed_fields OR 사용자 인가된 inferred_fields)된 후에만 Phase 3에서 단정 표현 허용.
 > 4. **brownfield 4단계 강제 순서**: 자동 추론 → *사용자 확인* → 갭 → 코드 grounded 질문. 1단계(자동 추론)만 수행하고 2단계 skip 금지.
+> 5. **Grilling 모드 분기**: `meta.confidence_low` 항목 ≥1 OR 필수 5필드 1차 거부 시 `references/grilling-loop.md` 1q-at-a-time + recommended answer 패턴 적용. cap 5 question, 초과 시 batch 자동 fallback. 추천 답안 출처는 `project_profile.md` signals ≥2 또는 §3-1 직접 매핑만 허용 — 디렉토리·파일 이름 단독 추천 doctrine 위반.
 >
 > **이유:** Phase 0.5 anti-premature-judgment doctrine의 evidence 조건 #2 ("Phase 2 산출물 필수 5필드 user_confirmed_fields") 충족 회로. 본 게이트 미준수 시 디렉토리/파일 이름 기반 단정이 silent로 Phase 3-6에 유출되어 잘못된 하네스 산출.
 
@@ -117,7 +118,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 **필수 5개 (스킵 불가):** `constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor`. 그 외는 스킵 가능, 스킵 시 `meta.open_questions`에 등록.
 
-> 채우기 전략 상세, 자동 추론 매핑, 코드 grounded 질문 패턴(13종), 섹션별 질문 카탈로그는 `references/project-inquiry.md`. 풀 schema와 인스턴스 예시는 `references/intent-profile-schema.md`.
+> 채우기 전략 상세, 자동 추론 매핑, 코드 grounded 질문 패턴(13종), 섹션별 질문 카탈로그는 `references/project-inquiry.md`. 풀 schema와 인스턴스 예시는 `references/intent-profile-schema.md`. Low confidence 추론 또는 필수 5필드 1차 거부 시 1q-at-a-time + LLM 추천 답안 패턴은 `references/grilling-loop.md` (mattpocock grill-me 흡수, 2026-05-19).
 
 ### Phase 3: 도메인 분석
 
@@ -497,7 +498,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > |---|---|---|
 > | Phase 0 | (없음 — 기존 하네스 read만) | 감사 진입 |
 > | Phase 1 | `code-research.md`, `project-profile-schema.md` | Code Research 진입 |
-> | Phase 2 | `project-inquiry.md`, `intent-profile-schema.md` | Project Inquiry 진입 |
+> | Phase 2 | `project-inquiry.md`, `intent-profile-schema.md`, `grilling-loop.md` (Low confidence 또는 필수 5필드 1차 거부 시) | Project Inquiry 진입 |
 > | Phase 3 | (없음 — Phase 1+2 합성) | 도메인 분석 |
 > | Phase 4 | `agent-design-patterns.md`, `team-examples.md` | 팀 패턴 선택 |
 > | Phase 5 | `agent-design-patterns.md`, `team-examples.md`, `qa-agent-guide.md` (QA 에이전트 정의 시) | 에이전트 정의 |

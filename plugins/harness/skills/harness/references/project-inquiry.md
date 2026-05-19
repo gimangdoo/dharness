@@ -216,6 +216,18 @@ brownfield 단계 1(자동 추론)에서 `project_profile.md`의 각 필드가 `
 
 **일괄 확인 옵션:** High confidence 항목이 5개 이상이면 "모두 맞음" 단축 응답을 제공하여 사용자 부담을 줄인다.
 
+### 4-4-b. Grilling 모드 (Low confidence 추론 1q-at-a-time)
+
+`meta.confidence_low` 또는 §3-2 추정 매핑(Low confidence) 항목은 batch 표 대신 *1q + LLM 추천 답안* 으로 순차 확인. 사용자 부담은 batch보다 약간 ↑이나 거부율 ↓ + doctrine 박제 강도 ↑.
+
+| 진입 조건 | `meta.confidence_low` 항목 ≥1, 또는 사용자 명시 요청 ("하나씩 물어줘") |
+|---|---|
+| 표시 형태 | `{필드}: ? / recommended: {값} / 근거: {source} / → 맞음 / 수정 / 모르겠음 / 코드 봐` |
+| Cap | 단일 session 최대 5 question — 초과 시 §4-4 batch로 자동 전환 |
+| Skip 룰 | §4-3 그대로 적용 + "코드 봐" 응답 시 §3 자동 추론 재실행 (1회 한정) |
+
+상세 패턴, 추천 답안 anti-premature-judgment 가드, Phase별 진입점, `meta.grilling_log[]` 박제 룰은 `references/grilling-loop.md` 단일 출처.
+
 ### 4-5. 자유 텍스트 정규화
 
 자유 텍스트 응답을 frontmatter에 넣을 때:
@@ -343,6 +355,8 @@ profile에서 finding이 많이 나올 수 있다. 모두 묻지 않고 다음 �
 | **한 번에 한 finding** | 멀티-finding 질문은 사용자가 어디에 답하는지 모호해진다 |
 | **소요 시간 예고** | "코드 grounded 질문 5개 — 약 2분 소요"로 끝이 보이게 |
 
+> §6-1 finding이 Low confidence + 사용자 답변 거부율 우려 시 `references/grilling-loop.md` grilling 모드로 분기 가능 — 1q + recommended answer + "코드 봐" 응답으로 자동 추론 재실행.
+
 ### 6-4. 출력 갱신
 
 코드 grounded 질문의 응답은 다음 필드에 누적:
@@ -369,13 +383,15 @@ meta:
 
 필수 5개 (`tech_stack`, `team.size`, `timeline.horizon`, `deployment_target`, `test_rigor`)는 스킵을 허용하지 않는다. 사용자가 비우려 하면 다음 룰로 재질문.
 
-### 7-1. 1차 재질문 — 기본값 제시
+### 7-1. 1차 재질문 — 기본값(= recommended answer) 제시
 
 ```
 '{필드}'는 다운스트림에서 반드시 필요해요 (예: {다운스트림 사용처}).
 모르겠으면 다음 기본값으로 진행할까요?
   → {기본값}
 ```
+
+기본값은 `grilling-loop.md` §3의 `recommended answer`와 동일 출처 룰을 따른다 — `project_profile.md` signals ≥2 또는 §3-1 직접 매핑만 허용, 디렉토리·파일 이름 단독 추천 금지 (Phase 0.5 anti-premature-judgment doctrine 정합). 사용자 1차 거부 후 §7-2 진입 직전 grilling 1회 시도 가능.
 
 | 필드 | 다운스트림 사용처 | 기본값 |
 |------|----------------|--------|
