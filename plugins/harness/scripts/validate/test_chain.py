@@ -1,10 +1,11 @@
-"""chain.py 신규 검사 함수 단위 테스트 (Tier A 박제, 2026-05-16).
+"""chain.py 신규 검사 함수 단위 테스트 (Tier A 박제, 2026-05-16 + grill-me Phase B, 2026-05-19).
 
 커버:
   Q2  — check_agent_model_field (frontmatter `model:` 필드 강제)
   Q5  — check_skill_description_overlap (pairwise Jaccard ≥ threshold 트리거 충돌)
   Q11 — check_skill_signal_coverage (10 signal 중 최소 1 hit)
   Q12 — check_agent_tools_mcp_consistency (`tools:` mcp__ ↔ `mcpServers:` 정의 정합)
+  G1  — check_intent_profile_grilling_log (meta.grilling_log[] doctrine — phase/mode/source enum)
 
 실행:
     py plugins/harness/scripts/validate/test_chain.py
@@ -160,6 +161,87 @@ class CheckSkillSignalCoverage(_ChainTestBase):
     def test_ml_signal_hit_passes(self):
         self._write_skill("s1", "모델 학습 hyperparameter 평가")
         self.assertEqual(chain.check_skill_signal_coverage(), [])
+
+
+class CheckIntentProfileGrillingLog(_ChainTestBase):
+    def _write_intent_profile(self, frontmatter_body: str) -> Path:
+        baseline = self.root / "_workspace" / "_baseline"
+        baseline.mkdir(parents=True)
+        path = baseline / "intent_profile.md"
+        path.write_text(f"---\n{frontmatter_body}\n---\n", encoding="utf-8")
+        return path
+
+    def test_no_intent_profile_passes(self):
+        self.assertEqual(chain.check_intent_profile_grilling_log(), [])
+
+    def test_no_grilling_log_passes(self):
+        self._write_intent_profile("meta:\n  open_questions: []\n  inferred_fields: []\n")
+        self.assertEqual(chain.check_intent_profile_grilling_log(), [])
+
+    def test_valid_entry_passes(self):
+        fm = (
+            "meta:\n"
+            "  inferred_fields: []\n"
+            "  grilling_log:\n"
+            "    - phase: \"2\"\n"
+            "      field: constraints.team.size\n"
+            "      mode: grilling\n"
+            "      recommended: solo\n"
+            "      recommended_source: section_3_1_direct\n"
+            "      user_response: \"맞음\"\n"
+            "      timestamp: \"2026-05-19T12:00:00Z\"\n"
+        )
+        self._write_intent_profile(fm)
+        self.assertEqual(chain.check_intent_profile_grilling_log(), [])
+
+    def test_invalid_source_fails(self):
+        fm = (
+            "meta:\n"
+            "  grilling_log:\n"
+            "    - phase: \"2\"\n"
+            "      field: constraints.team.size\n"
+            "      mode: grilling\n"
+            "      recommended: solo\n"
+            "      recommended_source: directory_name\n"
+            "      user_response: \"맞음\"\n"
+        )
+        self._write_intent_profile(fm)
+        errors = chain.check_intent_profile_grilling_log()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("anti-premature-judgment", errors[0])
+        self.assertIn("directory_name", errors[0])
+
+    def test_missing_required_key_fails(self):
+        fm = (
+            "meta:\n"
+            "  grilling_log:\n"
+            "    - phase: \"2\"\n"
+            "      field: constraints.team.size\n"
+            "      mode: grilling\n"
+            "      recommended: solo\n"
+        )
+        self._write_intent_profile(fm)
+        errors = chain.check_intent_profile_grilling_log()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("필수 키 누락", errors[0])
+        self.assertIn("recommended_source", errors[0])
+
+    def test_invalid_phase_fails(self):
+        fm = (
+            "meta:\n"
+            "  grilling_log:\n"
+            "    - phase: \"7\"\n"
+            "      field: scope.must_have\n"
+            "      mode: grilling\n"
+            "      recommended: \"X\"\n"
+            "      recommended_source: signals>=2\n"
+            "      user_response: \"맞음\"\n"
+        )
+        self._write_intent_profile(fm)
+        errors = chain.check_intent_profile_grilling_log()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("phase", errors[0])
+        self.assertIn("7", errors[0])
 
 
 if __name__ == "__main__":

@@ -183,6 +183,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 > 2. **`single-use → inline` 룰**: `inline 대안 검토`에서 `inline-OK` 판정 시 에이전트 생성 금지. parent prompt에 직접 삽입.
 > 3. **이름 유일성 사전 점검**: 제안 N개 slug + 기존 `.claude/agents/*.md` 파일 slug 전역 grep. 중복 시 rename 강제 (chain.py `check_agent_name_uniqueness` 회로가 사후 검출하나 사전 차단이 비용 ↓).
 > 4. **사용자 응답 enum**: `OK / N 감소 / N 증가 / 수정` — 게이트 통과 전 sub-agent 병렬 dispatch 금지.
+> 5. **Grilling 옵션 (Phase C, 2026-05-19)**: `inline 대안 검토` 컬럼 답이 모호한 후보 1~2개 (예: "단일 호출인지 다중인지 경계 모호") 한정 — `references/grilling-loop.md` 1q + recommended answer 패턴으로 후보별 challenge. 전체 N개 grilling은 합성 시간 폭증 — 모호 후보 cap 2.
 >
 > 위반 시: Phase 5.5 self-critique에서 책임 중복·gap 검출되어 cycle 재진입 — 사전 게이트가 비용 ↓.
 
@@ -283,7 +284,7 @@ skill-name/
 
 **목표:** {핵심 목표 한 줄}
 
-**트리거:** {도메인} 관련 작업 요청 시 `{orchestrator-skill-name}` 스킬을 사용하라. 또는 `/harness:harness-*` slash command로 명시적 호출 — 카탈로그: `harness-new`/`harness-add-agent`/`harness-add-skill`/`harness-baseline`/`harness-audit`/`harness-evolve`/`harness-adapt`/`harness-mcp-recommend`/`harness-mcp-adopt`/`harness-mcp-status`/`harness-mcp`/`harness-merge`/`harness-remove`/`harness-split`/`harness-status`/`harness-validate`. 단순 질문은 직접 응답 가능.
+**트리거:** {도메인} 관련 작업 요청 시 `{orchestrator-skill-name}` 스킬을 사용하라. 또는 `/harness:harness-*` slash command로 명시적 호출 — 카탈로그: `harness-new`/`harness-add-agent`/`harness-add-skill`/`harness-baseline`/`harness-audit`/`harness-evolve`/`harness-adapt`/`harness-mcp-recommend`/`harness-mcp-adopt`/`harness-mcp-status`/`harness-mcp`/`harness-merge`/`harness-remove`/`harness-split`/`harness-status`/`harness-validate`/`harness-grill`. 단순 질문은 직접 응답 가능.
 
 **Phase 10 자동 알림:** 세션 시작 시 `_workspace/_telemetry/`의 최신 `.jsonl` 파일을 확인하라. 마지막 Adapt 시각(= `_workspace/_telemetry/_delta_*.md` 또는 `_workspace/_telemetry/_rollback/{ts}/` 중 가장 최근 mtime, 둘 다 없으면 telemetry 첫 이벤트의 ts) 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면, 사용자에게 알린다: "하네스가 {N}회 실행되었습니다. `/harness:harness-adapt`로 drift 점검을 권장합니다." — telemetry 파일이 없거나 읽기 비용이 클 경우 건너뛴다.
 
@@ -385,6 +386,8 @@ skill-name/
 #### 9-1. 실행 후 피드백 수집
 
 매 하네스 실행 완료 후 사용자에게 피드백 요청 — "결과에서 개선할 부분이 있나요?" / "팀 구성·워크플로우에 바꿀 점이 있나요?". 강요하지 않되 기회는 반드시 제공.
+
+> **Grilling 분기 (Phase C, 2026-05-19)**: 사용자 피드백 어휘 모호 시 ("이상해" / "별로야" / "뭔가 빠진 듯" 등) `references/grilling-loop.md` 1q + recommended answer 패턴으로 §9-2 표 5행 중 어느 진화 대상인지 분기. recommendation 출처는 직전 실행 telemetry signal — 디렉토리·파일 이름 단독 추천 doctrine 위반. cap 5 question.
 
 #### 9-2. 피드백 반영 경로
 
