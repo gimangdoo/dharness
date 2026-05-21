@@ -261,6 +261,29 @@ description: "1-2문장 역할 설명. 트리거 키워드 나열."
 | 컨텍스트 | 컨텍스트 부담이 크면 분리 | 가볍고 빠르면 통합 |
 | 재사용성 | 다른 팀에서도 쓰면 분리 | 이 팀에서만 쓰면 통합 고려 |
 
+## 에이전트 깊이 — deep vs shallow (deletion test)
+
+분리 기준 4축이 "나눌까 합칠까"를 판단한다면, **깊이**는 "이 에이전트가 제 몫을 하는가"를 판단한다. mattpocock `improve-codebase-architecture`의 deep/shallow module 개념을 에이전트에 적용 (2026-05-21 흡수).
+
+| 구분 | 정의 | 신호 |
+|------|------|------|
+| **deep 에이전트** | 통신 프로토콜은 작고 안정적인데 그 뒤에 많은 책임을 캡슐화 — leverage 높음 | 입출력 프로토콜 짧음, 작업 원칙·판단 다수 |
+| **shallow 에이전트** | 프로토콜이 내부 책임만큼 복잡 — parent를 거쳐 한 번 더 전달만 하는 pass-through wrapper | 프로토콜과 작업 원칙의 복잡도가 비슷, 단일 호출만 수행 |
+
+### deletion test
+
+에이전트 cardinality가 의심스러우면 **삭제 시뮬레이션**으로 판정한다:
+
+1. 이 에이전트를 정의에서 지운다고 가정한다.
+2. 책임을 호출 지점(parent prompt)에 직접 인라인한다.
+3. 판정:
+   - **복잡도가 사라짐** — parent prompt가 거의 안 늘어남 → pass-through였다. 에이전트 생성 금지, 인라인.
+   - **복잡도가 N개 호출 지점에 흩어져 재등장** → 에이전트가 leverage를 제공했다. 유지.
+
+이것이 Phase 5 cardinality 게이트 `inline 대안 검토` 컬럼의 결정 논리다 — `inline-OK` 판정 = deletion test에서 "복잡도 사라짐".
+
+> **핵심 원칙:** 단일 호출 + 작은 프로토콜 = shallow. shallow 에이전트는 parent에 통신 오버헤드만 더하고 leverage는 0이다. Phase 5.5 self-critique는 책임 중복·gap뿐 아니라 **shallow 에이전트(pass-through wrapper)** 도 검출한다.
+
 ## 스킬 vs 에이전트 구분
 
 | 구분 | 스킬 (Skill) | 에이전트 (Agent) |

@@ -19,7 +19,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 > **메타 단계** — 프로젝트 코드가 아니라 **기존 하네스 산출물**(`.claude/agents/`, `.claude/skills/`, `CLAUDE.md`)의 현황을 확인하여 실행 모드를 결정한다. 프로젝트 코드 분석은 Phase 1부터 시작된다. Phase 0는 항상 실행되며 건너뛸 수 없다.
 
-1. `프로젝트/.claude/agents/`, `프로젝트/.claude/skills/`, `프로젝트/CLAUDE.md`를 읽는다
+1. `프로젝트/.claude/agents/`, `프로젝트/.claude/skills/`, `프로젝트/CLAUDE.md`를 읽고, `_workspace/_baseline/`·`_workspace/_critique_phase*_*.md` 존재를 확인한다
 2. 현황에 따라 실행 모드를 분기한다:
    - **신규 구축**: 에이전트/스킬 디렉토리가 없거나 비어있음 → Phase 1부터 전체 실행
    - **기존 확장**: 기존 하네스가 있고 새 에이전트/스킬 추가 요청 → 아래 매트릭스에 따라 필요한 Phase만 실행
@@ -35,6 +35,13 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 | **baseline 갱신** (코드/의도 재분석) | **필수** | **필수** | 영향 시 | 영향 시 | 영향 시 | 영향 시 | 영향 시 | 필수 |
 
 > baseline 갱신 트리거: (1) 사용자가 "프로젝트 다시 분석", "baseline 갱신" 등 명시 요청, (2) Phase 10이 stack/architecture의 큰 변화를 감지, (3) 마지막 분석 후 일정 기간 경과(권장 3개월).
+
+> **🔄 중단된 factory run 감지 doctrine (mattpocock handoff 흡수, 2026-05-21):** Phase 0 step 1에서 `_workspace/_baseline/` 또는 `_workspace/_critique_phase*_*.md`는 존재하는데 `.claude/agents/`·`.claude/skills/`가 비었거나 불완전하면, 이전 factory 세션이 중간에 멈춘 것이다 (context 한계·세션 종료 등). 이 경우:
+> 1. **재개 지점 판정**: 존재하는 phase 산출물 중 최대 N — `_critique_phase{N}` 최대값, 없으면 `intent_profile.md` 존재 시 Phase 2까지, `project_profile.md`만 존재 시 Phase 1까지 완료로 본다.
+> 2. **사용자 게이트**: "이전 구축이 Phase {N}까지 완료됨 — Phase {N+1}부터 재개할까, 처음부터 다시 할까?"를 제시한다. 신규 구축/기존 확장/운영 분기보다 *우선* 판정.
+> 3. **handoff 문서 불요**: phase 산출물(`_workspace/_baseline/*.md`, `_critique_phase*`)이 구조화된 채 박제돼 있어 그 자체가 handoff다 — 별도 요약 문서를 만들지 않는다. 재개 세션은 해당 파일을 *재read*하여 컨텍스트를 복원한다.
+>
+> **이유:** 11-phase factory는 긴 워크플로우 — context 한계로 중간 종료 시 처음부터 재실행은 Phase 1·2 재분석 비용 낭비. 산출물이 이미 파일로 박제돼 있으므로 재개가 정답. mattpocock `handoff` 스킬의 "대화 → handoff 문서" 개념을 factory에 적용하되, 산출물 파일이 이미 handoff 역할을 하므로 별도 문서 생성은 생략.
 
 3. 기존 에이전트/스킬 목록과 CLAUDE.md 기록을 대조하여 불일치(drift)를 감지
 4. 감사 결과를 사용자에게 요약 보고하고, 실행 계획 확인
@@ -179,7 +186,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 >    - `name` (kebab-case slug, 전역 유일)
 >    - `핵심 책임` (1줄)
 >    - `근거` (Phase 1·2·3 산출물 인용 — 어느 신호/요구에서 본 에이전트가 도출됐는지)
->    - `inline 대안 검토` (이 책임이 단일 호출만 필요하면 별도 에이전트 대신 parent prompt 직접 삽입 가능한지 — 답 `inline-OK` 시 cardinality 1 감소)
+>    - `inline 대안 검토` (이 책임이 단일 호출만 필요하면 별도 에이전트 대신 parent prompt 직접 삽입 가능한지 — 답 `inline-OK` 시 cardinality 1 감소. 판정 논리 = deletion test, `references/agent-design-patterns.md` "에이전트 깊이" 참조)
 > 2. **`single-use → inline` 룰**: `inline 대안 검토`에서 `inline-OK` 판정 시 에이전트 생성 금지. parent prompt에 직접 삽입.
 > 3. **이름 유일성 사전 점검**: 제안 N개 slug + 기존 `.claude/agents/*.md` 파일 slug 전역 grep. 중복 시 rename 강제 (chain.py `check_agent_name_uniqueness` 회로가 사후 검출하나 사전 차단이 비용 ↓).
 > 4. **사용자 응답 enum**: `OK / N 감소 / N 증가 / 수정` — 게이트 통과 전 sub-agent 병렬 dispatch 금지.
@@ -212,7 +219,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 1. **격리된 sub-agent N개 병렬 호출** (Agent tool, `general-purpose` + `model: opus`):
    - 각 sub-agent 입력: Phase 5에서 생성한 단일 에이전트 정의 + 다른 N-1개 에이전트 정의의 *프로토콜 헤더만* (핵심 역할 + 통신 프로토콜)
-   - 지시: "본 에이전트 정의가 팀 내에서 (a) 책임 중복 없음? (b) gap 메움? (c) 통신 프로토콜 정합? cross-check."
+   - 지시: "본 에이전트 정의가 팀 내에서 (a) 책임 중복 없음? (b) gap 메움? (c) 통신 프로토콜 정합? (d) shallow 아님 — 프로토콜이 내부 책임만큼 복잡한 pass-through wrapper 아닌지(deletion test, `references/agent-design-patterns.md` "에이전트 깊이")? cross-check."
 2. **충돌 발견 시**: 사용자 게이트
 3. **합의 시**: Phase 6로 진행
 
