@@ -20,6 +20,14 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 > **메타 단계** — 프로젝트 코드가 아니라 **기존 하네스 산출물**(`.claude/agents/`, `.claude/skills/`, `CLAUDE.md`)의 현황을 확인하여 실행 모드를 결정한다. 프로젝트 코드 분석은 Phase 1부터 시작된다. Phase 0는 항상 실행되며 건너뛸 수 없다.
 
 1. `프로젝트/.claude/agents/`, `프로젝트/.claude/skills/`, `프로젝트/CLAUDE.md`를 읽고, `_workspace/_baseline/`·`_workspace/_critique_phase*_*.md` 존재를 확인한다
+
+> **🔄 중단된 factory run 감지 doctrine (mattpocock handoff 흡수, 2026-05-21):** step 1에서 `_workspace/_baseline/` 또는 `_workspace/_critique_phase*_*.md`는 존재하는데 `.claude/agents/`·`.claude/skills/`가 비었거나 불완전하면, 이전 factory 세션이 중간에 멈춘 것이다 (context 한계·세션 종료 등). 이 경우 step 2의 신규/기존/운영 분기보다 *먼저* 판정한다:
+> 1. **재개 지점 판정**: 존재하는 phase 산출물 중 최대 N — `_critique_phase{N}` 최대값, 없으면 `_workspace/_baseline/intent_profile.md` 존재 시 Phase 2까지, `_workspace/_baseline/project_profile.md`만 존재 시 Phase 1까지 완료로 본다.
+> 2. **사용자 게이트**: "이전 구축이 Phase {N}까지 완료됨 — Phase {N+1}부터 재개할까, 처음부터 다시 할까?"를 제시한다.
+> 3. **handoff 문서 불요**: phase 산출물(`_workspace/_baseline/*.md`, `_critique_phase*`)이 구조화된 채 박제돼 있어 그 자체가 handoff다 — 별도 요약 문서를 만들지 않는다. 재개 세션은 해당 파일을 *재read*하여 컨텍스트를 복원한다.
+>
+> **이유:** 11-phase factory는 긴 워크플로우 — context 한계로 중간 종료 시 처음부터 재실행은 Phase 1·2 재분석 비용 낭비. 산출물이 이미 파일로 박제돼 있으므로 재개가 정답. mattpocock `handoff` 스킬의 "대화 → handoff 문서" 개념을 factory에 적용하되, 산출물 파일이 이미 handoff 역할을 하므로 별도 문서 생성은 생략.
+
 2. 현황에 따라 실행 모드를 분기한다:
    - **신규 구축**: 에이전트/스킬 디렉토리가 없거나 비어있음 → Phase 1부터 전체 실행
    - **기존 확장**: 기존 하네스가 있고 새 에이전트/스킬 추가 요청 → 아래 매트릭스에 따라 필요한 Phase만 실행
@@ -35,13 +43,6 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 | **baseline 갱신** (코드/의도 재분석) | **필수** | **필수** | 영향 시 | 영향 시 | 영향 시 | 영향 시 | 영향 시 | 필수 |
 
 > baseline 갱신 트리거: (1) 사용자가 "프로젝트 다시 분석", "baseline 갱신" 등 명시 요청, (2) Phase 10이 stack/architecture의 큰 변화를 감지, (3) 마지막 분석 후 일정 기간 경과(권장 3개월).
-
-> **🔄 중단된 factory run 감지 doctrine (mattpocock handoff 흡수, 2026-05-21):** Phase 0 step 1에서 `_workspace/_baseline/` 또는 `_workspace/_critique_phase*_*.md`는 존재하는데 `.claude/agents/`·`.claude/skills/`가 비었거나 불완전하면, 이전 factory 세션이 중간에 멈춘 것이다 (context 한계·세션 종료 등). 이 경우:
-> 1. **재개 지점 판정**: 존재하는 phase 산출물 중 최대 N — `_critique_phase{N}` 최대값, 없으면 `intent_profile.md` 존재 시 Phase 2까지, `project_profile.md`만 존재 시 Phase 1까지 완료로 본다.
-> 2. **사용자 게이트**: "이전 구축이 Phase {N}까지 완료됨 — Phase {N+1}부터 재개할까, 처음부터 다시 할까?"를 제시한다. 신규 구축/기존 확장/운영 분기보다 *우선* 판정.
-> 3. **handoff 문서 불요**: phase 산출물(`_workspace/_baseline/*.md`, `_critique_phase*`)이 구조화된 채 박제돼 있어 그 자체가 handoff다 — 별도 요약 문서를 만들지 않는다. 재개 세션은 해당 파일을 *재read*하여 컨텍스트를 복원한다.
->
-> **이유:** 11-phase factory는 긴 워크플로우 — context 한계로 중간 종료 시 처음부터 재실행은 Phase 1·2 재분석 비용 낭비. 산출물이 이미 파일로 박제돼 있으므로 재개가 정답. mattpocock `handoff` 스킬의 "대화 → handoff 문서" 개념을 factory에 적용하되, 산출물 파일이 이미 handoff 역할을 하므로 별도 문서 생성은 생략.
 
 3. 기존 에이전트/스킬 목록과 CLAUDE.md 기록을 대조하여 불일치(drift)를 감지
 4. 감사 결과를 사용자에게 요약 보고하고, 실행 계획 확인
