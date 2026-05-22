@@ -25,7 +25,7 @@ argument-hint: <피드백 한 문장 또는 단락>
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (피드백 한 문장 또는 단락; 예: "분석이 너무 피상적이야", "보안 검토도 필요해", "검증을 먼저 해야 할 것 같아")
 - **입력**: `$ARGUMENTS` + 기존 하네스 산출물 + (가능 시) 직전 실행의 `_workspace/` 산출물
-- **출력**: 수정된 에이전트/스킬/오케스트레이터 + CLAUDE.md 변경 이력 한 행 (출처: Phase 9)
+- **출력**: 수정된 에이전트/스킬/오케스트레이터 + `_workspace/_baseline/changelog.md` 변경 이력 한 행 (출처: Phase 9)
 
 ## 선조건 검증
 
@@ -85,7 +85,7 @@ argument-hint: <피드백 한 문장 또는 단락>
 
 승인된 변경을 해당 파일에 반영.
 
-### 5. CLAUDE.md 변경 이력 갱신
+### 5. 변경 이력 갱신 (`_workspace/_baseline/changelog.md`)
 
 **출처를 명시하여 Phase 9와 Phase 10을 구분 가능하게**:
 
@@ -99,4 +99,4 @@ argument-hint: <피드백 한 문장 또는 단락>
 
 - 같은 유형 피드백이 2회 이상 반복됨 (직전 변경 이력 확인) → "X 패턴 반복 → 구조적 문제 가능성. `/harness:harness-audit` 권장"
 - 에이전트가 반복 실패하는 패턴 → "사용 drift 가능성. `/harness:harness-adapt`로 telemetry 분석 권장"
-- 사용자가 오케스트레이터 우회 작업 중 → "트리거 매칭 실패 가능. `/harness:harness-audit` Step 3 (CLAUDE.md 변경 이력 의미 정합) 검사 권장"
+- 사용자가 오케스트레이터 우회 작업 중 → "트리거 매칭 실패 가능. `/harness:harness-audit` Step 3 (변경 이력 의미 정합) 검사 권장"

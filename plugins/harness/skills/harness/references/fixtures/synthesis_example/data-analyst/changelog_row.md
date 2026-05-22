@@ -1,6 +1,6 @@
-# §10 Step 5(d) — derived 프로젝트의 `CLAUDE.md` "변경 이력" 표 1행 박제
+# §10 Step 5(d) — derived 프로젝트의 `_workspace/_baseline/changelog.md` "변경 이력" 표 1행 박제
 
-derived 프로젝트의 `CLAUDE.md`에 "변경 이력" 표가 이미 있다는 전제. 그 표 마지막에 다음 행을 그대로 복사한다 (날짜·트리거 사유는 실제 환경에 맞게 치환).
+derived 프로젝트의 `_workspace/_baseline/changelog.md`에 "변경 이력" 표가 이미 있다는 전제. 그 표 마지막에 다음 행을 그대로 복사한다 (날짜·트리거 사유는 실제 환경에 맞게 치환).
 
 ## 행 형식
 
@@ -28,4 +28,4 @@ derived 프로젝트의 `CLAUDE.md`에 "변경 이력" 표가 이미 있다는 �
 
 ## 적용 경계
 
-본 행은 *derived 프로젝트의* `CLAUDE.md`에 추가. plugin host 본 저장소의 `CLAUDE.md`는 host self-host CM 운영 시 진화 기록자라 §10/§11 채택 행은 오지 않음 (§10 분계 박제).
+본 행은 *derived 프로젝트의* `_workspace/_baseline/changelog.md`에 추가. plugin host 본 저장소의 `CHANGELOG.md`는 host self-host CM 운영 시 진화 기록자라 §10/§11 채택 행은 오지 않음 (§10 분계 박제).

@@ -10,7 +10,7 @@
 `dharness`는 다음 두 부분으로 구성된 단일 저장소입니다:
 
 1. **`harness` plugin** (`plugins/harness/`) — 도메인을 입력 받아 에이전트 3~5명 + 스킬 세트를 자동 생성하는 메타 스킬 팩토리. **외부 프로젝트에 install 가능.**
-2. **Context Manager** (root `.claude/` + `_workspace/`) — dharness *자체*의 진화를 기록·영속화하는 self-host 런타임. 결정적 hooks 3종 + `/cm-*` 5 슬래시 커맨드 + `memory-search` 1 스킬. PostToolUse가 dharness 작업 단위(skill/agent/hook/command/manifest 변경)를 자동 분류해 누적하고, SessionEnd가 CLAUDE.md "변경 이력" 표 행 draft를 자동 적재. **dharness 본 폴더에서만 동작** (외부 install 미지원).
+2. **Context Manager** (root `.claude/` + `_workspace/`) — dharness *자체*의 진화를 기록·영속화하는 self-host 런타임. 결정적 hooks 3종 + `/cm-*` 5 슬래시 커맨드 + `memory-search` 1 스킬. PostToolUse가 dharness 작업 단위(skill/agent/hook/command/manifest 변경)를 자동 분류해 누적하고, SessionEnd가 CHANGELOG.md "변경 이력" 표 행 draft를 자동 적재. **dharness 본 폴더에서만 동작** (외부 install 미지원).
 
 다른 단일 에이전트/프롬프트 프레임워크와 달리, harness는 **팀 아키텍처 팩토리** — 6가지 사전 정의된 팀 패턴 중 도메인에 맞는 것을 선택하고 에이전트 협업 프로토콜을 함께 설계합니다.
 
@@ -110,7 +110,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 /cm-status                              # 메모리 통계 + DB 행 수 (dharness_event/pending draft 포함)
 /cm-sessions [--limit N]                # 최근 세션 목록
 /cm-reset                               # 메모리 전체 삭제 (확인 필수)
-/cm-claudemd-apply <sid> [사유...]      # SessionEnd가 만든 draft를 CLAUDE.md "변경 이력" 표에 삽입
+/cm-claudemd-apply <sid> [사유...]      # SessionEnd가 만든 draft를 CHANGELOG.md "변경 이력" 표에 삽입
 /cm-claudemd-discard [sid]              # draft 폐기 (인자 없으면 모두)
 ```
 
@@ -138,7 +138,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 │   ├── _telemetry/            # 라이프사이클 이벤트 append-only JSONL
 │   ├── _memory/               # 세션·클러스터·observations.db (dharness_event 포함)
 │   ├── _tool_outputs/         # PostToolUse 10KB 초과 원본 보존
-│   └── _drafts/               # SessionEnd가 적재한 CLAUDE.md 표 행 draft (apply/discard 게이트)
+│   └── _drafts/               # SessionEnd가 적재한 CHANGELOG.md 표 행 draft (apply/discard 게이트)
 ├── CLAUDE.md
 └── README.md
 ```
@@ -187,7 +187,7 @@ derived 프로젝트 진행 중 신규 MCP가 필요해질 때(예: "playwright�
 |---|------|------|
 | 진입점 | `/harness:harness-mcp-adopt <사유>` | `claude mcp add ...` 직접 |
 | 절차 | discover → probe → confirm → install → reflect (5-step) | 사용자 책임 |
-| 산출물 동시 패치 | ✅ 4 산출물 (`§3 인벤토리`/`agent frontmatter`/`settings.json`/`CLAUDE.md` 변경 이력) | ❌ 사용자가 직접 |
+| 산출물 동시 패치 | ✅ 4 산출물 (`§3 인벤토리`/`agent frontmatter`/`settings.json`/`changelog.md` 변경 이력) | ❌ 사용자가 직접 |
 | 안전 게이트 | 출처 검증·pre-install probe·user confirm·rollback 절차 포함 | 사용자 책임 |
 | 추천 | `/harness:harness-mcp-recommend <agent>`로 3축(E/S/A) 점수 후보 도출 (Phase 5-2 자동 호출 + on-demand) | 사용자 책임 |
 | 진단 | `/harness:harness-mcp-status`로 read-only 점검 | 동일 |
@@ -302,9 +302,9 @@ CM은 **LLM 호출 없는 결정적 데이터 파이프라인**으로 동작합�
 | `.claude/hooks/_schema.py` | DDL 단일 진실 원천 (2 테이블 + FTS5 + observations에 category/artifact_kind 컬럼 — R1 2026-05-14 dead schema 정리) + REPO_ROOT 결정적 계산 + `classify_dharness_event()` 도메인 분류기 + `ensure_migrations()` v0→v2 마이그레이션 (ADD COLUMN + DROP COLUMN/TABLE) |
 | `.claude/hooks/session_start.py` | SessionStart: ID 발급, dangling 세션 finalize, **4 블록 의미적 inject (session_id + 직전 N=3 세션 dharness_event + 미적용 draft + git status --short, 토큰 budget 2000자)** |
 | `.claude/hooks/post_tool_use.py` | PostToolUse: raw.jsonl append + 10KB 초과 시 `_tool_outputs/`에 원본 보존 + **dharness 도메인 분류기 호출 후 매칭 시 `observations.dharness_event`로 자동 INSERT** |
-| `.claude/hooks/session_end.py` | SessionEnd: transcript 평탄화, sessions UPDATE + **이번 세션 dharness_event를 모아 CLAUDE.md "변경 이력" 표 행 draft를 `_workspace/_drafts/{date}_{sid}.md`에 자동 적재** |
+| `.claude/hooks/session_end.py` | SessionEnd: transcript 평탄화, sessions UPDATE + **이번 세션 dharness_event를 모아 CHANGELOG.md "변경 이력" 표 행 draft를 `_workspace/_drafts/{date}_{sid}.md`에 자동 적재** |
 | `.claude/hooks/cm_commands.py` | `/cm-*` 결정적 커맨드 핸들러 (status/sessions/reset/claudemd-list/claudemd-apply/claudemd-discard) |
-| `.claude/skills/memory-search/SKILL.md` | dharness 진화 이력 자연어 검색 — **4 source(observations_fts + dharness_event 필터 + CLAUDE.md "변경 이력" 표 + git log) 3-tool progressive disclosure** (R1 2026-05-14: 5번째 clusters/daily_summaries source 제거) |
+| `.claude/skills/memory-search/SKILL.md` | dharness 진화 이력 자연어 검색 — **4 source(observations_fts + dharness_event 필터 + CHANGELOG.md "변경 이력" 표 + git log) 3-tool progressive disclosure** (R1 2026-05-14: 5번째 clusters/daily_summaries source 제거) |
 
 ### 동작 흐름
 
@@ -315,7 +315,7 @@ SessionStart hook
   → 4 블록 deterministic carry-over를 additionalContext로 inject (≤ 2000자)
       ① session_id
       ② 직전 N=3 세션의 dharness_event category 카운트
-      ③ 미적용 CLAUDE.md draft 목록 (있으면)
+      ③ 미적용 CHANGELOG.md draft 목록 (있으면)
       ④ git status --short (uncommitted/unstaged)
 
 PostToolUse hook
@@ -328,20 +328,20 @@ PostToolUse hook
 SessionEnd hook
   → transcript.md 평탄화
   → sessions.ended_at / duration_min / tools_used UPDATE
-  → 이번 세션 dharness_event 집계 → CLAUDE.md "변경 이력" 표 행 draft를
+  → 이번 세션 dharness_event 집계 → CHANGELOG.md "변경 이력" 표 행 draft를
       _workspace/_drafts/{date}_{sid}.md에 markdown row + 본문으로 자동 적재
       (이벤트 0건이면 skip)
 
 다음 세션에서 사용자 명시 게이트:
-  → /cm-claudemd-apply <sid> [사유...]   CLAUDE.md 표에 draft row 삽입 + applied/로 이동
+  → /cm-claudemd-apply <sid> [사유...]   CHANGELOG.md 표에 draft row 삽입 + applied/로 이동
   → /cm-claudemd-discard [sid]           draft 폐기 → discarded/로 이동
 ```
 
 ---
 
-## CLAUDE.md 변경 이력 자동 회로
+## CHANGELOG.md 변경 이력 자동 회로
 
-dharness의 진화는 [`CLAUDE.md`](./CLAUDE.md) "변경 이력" 표에 사람이 읽는 행으로 기록됩니다. CM이 이 표 행을 **자동으로 draft 적재하고, 사용자가 명시 게이트로 적용**합니다.
+dharness의 진화는 [`CHANGELOG.md`](./CHANGELOG.md) "변경 이력" 표에 사람이 읽는 행으로 기록됩니다. CM이 이 표 행을 **자동으로 draft 적재하고, 사용자가 명시 게이트로 적용**합니다.
 
 ### 회로 4 단계
 
@@ -349,7 +349,7 @@ dharness의 진화는 [`CLAUDE.md`](./CLAUDE.md) "변경 이력" 표에 사람�
 2. **SessionEnd** — 이번 세션의 dharness_event를 집계해 markdown 표 행 draft + 본문(카테고리 카운트 / 변경 대상 / 메타)을 `_workspace/_drafts/{date}_{sid}.md`에 작성 (이벤트 0건이면 skip)
 3. **다음 SessionStart** — 미적용 draft가 있으면 `additionalContext`에 한 블록으로 inject:
    ```
-   [CM] 미적용 CLAUDE.md draft 1건 — apply: /cm-claudemd-apply <sid>, discard: /cm-claudemd-discard
+   [CM] 미적용 CHANGELOG.md draft 1건 — apply: /cm-claudemd-apply <sid>, discard: /cm-claudemd-discard
      · 2026-05-10 abc123
    ```
 4. **사용자 명시 게이트** — `/cm-claudemd-apply <sid> [사유...]` 또는 `/cm-claudemd-discard [sid]`
@@ -358,13 +358,13 @@ dharness의 진화는 [`CLAUDE.md`](./CLAUDE.md) "변경 이력" 표에 사람�
 
 ```text
 # pending 목록 보기
-/cm-status                              # "CLAUDE.md draft: 1 pending" 표시
+/cm-status                              # "CHANGELOG.md draft: 1 pending" 표시
 py .claude/hooks/cm_commands.py claudemd-list
 
 # draft 본문 미리 보기 (apply 전 권장)
 cat _workspace/_drafts/2026-05-10_abc123.md
 
-# CLAUDE.md "변경 이력" 표 마지막 row 다음에 삽입 (사유 즉시 치환)
+# CHANGELOG.md "변경 이력" 표 마지막 row 다음에 삽입 (사유 즉시 치환)
 /cm-claudemd-apply abc123 Phase 9 e2e 검증 후 적용
 
 # 또는 placeholder 그대로 두고 나중 수동 편집
@@ -384,7 +384,7 @@ draft가 자동 생성하는 행의 "사유" 컬럼은 인자 미제공 시 `(ap
 | 위치 | 용도 |
 |------|------|
 | `_workspace/_drafts/{date}_{sid}.md` | pending — 다음 SessionStart가 inject |
-| `_workspace/_drafts/applied/` | apply 후 보관 (CLAUDE.md에 행 추가됨) |
+| `_workspace/_drafts/applied/` | apply 후 보관 (CHANGELOG.md에 행 추가됨) |
 | `_workspace/_drafts/discarded/` | discard 후 보관 (영구 삭제는 수동 또는 `/cm-reset`) |
 
 `.gitignore`에 등록되어 commit에 포함되지 않습니다 (사용자 로컬 데이터).
@@ -426,7 +426,7 @@ findstr /C:"tool_output_captured" _workspace\_telemetry\*.jsonl
 | 훅이 동작하지 않음 | `py --version` 확인 → `.claude/settings.local.json`의 `command`를 `py ...`로 변경 (Microsoft Store 스텁 회피) |
 | `/cm-status`가 빈 결과 | 새 Claude Code 세션을 한 번 열어 SessionStart 훅 발동 확인 |
 | transcript는 있는데 digest가 없음 | digest 자동 생성은 도입되지 않음 — `memory-search` 스킬이 transcript.md / git log / observations FTS를 직접 fallback 조회 |
-| `/cm-claudemd-apply`가 "변경 이력 표를 찾지 못함" | CLAUDE.md의 "변경 이력" heading 또는 strong 직후에 markdown 표가 있어야 — 헤더-구분선 깨졌는지 확인 |
+| `/cm-claudemd-apply`가 "변경 이력 표를 찾지 못함" | CHANGELOG.md의 "변경 이력" heading 또는 strong 직후에 markdown 표가 있어야 — 헤더-구분선 깨졌는지 확인 |
 | SessionStart inject가 잘림 | budget 2000자 — `.claude/hooks/session_start.py:INJECT_BUDGET` 기본값 |
 
 ---

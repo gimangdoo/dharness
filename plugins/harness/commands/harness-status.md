@@ -11,7 +11,7 @@ argument-hint: [--verbose]
 
 - **인자**: `$ARGUMENTS` (선택)
   - `--verbose`: 5섹션 풀 출력 (default는 단축 요약)
-- **입력**: `.claude/agents/`, `.claude/skills/`, `_workspace/_baseline/*.md`, `_workspace/_telemetry/*.jsonl`, `_workspace/_drafts/` (해당 시), CLAUDE.md
+- **입력**: `.claude/agents/`, `.claude/skills/`, `_workspace/_baseline/*.md`, `_workspace/_telemetry/*.jsonl`, `_workspace/_drafts/` (해당 시), `_workspace/_baseline/changelog.md`
 - **출력**: 5섹션 진단 보고 (콘솔 출력만, 파일 산출물 0)
 
 ## 선조건 검증
@@ -83,7 +83,7 @@ argument-hint: [--verbose]
 
 산출 방법:
 - `_workspace/_drafts/*.md` (applied/discarded 제외) 카운팅
-- CLAUDE.md "변경 이력" 표 마지막 row date parse
+- `_workspace/_baseline/changelog.md` "변경 이력" 표 마지막 row date parse
 
 #### §5 권고 행동 (LLM 합성 — advisory)
 

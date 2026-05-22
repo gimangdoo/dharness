@@ -144,9 +144,9 @@ Phase 10  Runtime Adaptation (telemetry drift 자동 감지)
 │           ├── SKILL.md              # 스킬 본문
 │           └── references/           # (선택) 보조 자료
 ├── _workspace/
-│   ├── _baseline/                    # project_profile.md + intent_profile.md
+│   ├── _baseline/                    # project_profile.md + intent_profile.md + changelog.md
 │   └── _telemetry/                   # Phase 10 capture 출력
-└── CLAUDE.md                         # 하네스 포인터 + 변경 이력
+└── CLAUDE.md                         # 하네스 포인터 (운영·구조·규칙)
 ```
 
 ## 호환성·제약

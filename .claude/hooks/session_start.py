@@ -10,7 +10,7 @@
   7. _workspace/_telemetry/{date}.jsonl에 라이프사이클 이벤트 append
   8. 의미적 carry-over inject (4 블록, 모두 deterministic):
      a. 직전 N=3 세션의 dharness_event category 카운트
-     b. 미적용 CLAUDE.md draft 목록
+     b. 미적용 CHANGELOG.md draft 목록
      c. 작업 중단점 (git status --short)
      LLM 호출 없음. 토큰 budget 2000자.
   9. stdout으로 hookSpecificOutput.additionalContext JSON 송출
@@ -216,7 +216,7 @@ def format_inject(
     if pending_drafts:
         chunks = "\n".join(f"  · {d}" for d in pending_drafts)
         parts.append(
-            f"[CM] 미적용 CLAUDE.md draft {len(pending_drafts)}건 — apply: "
+            f"[CM] 미적용 CHANGELOG.md draft {len(pending_drafts)}건 — apply: "
             f"/cm-claudemd-apply <sid>, discard: /cm-claudemd-discard\n{chunks}"
         )
 

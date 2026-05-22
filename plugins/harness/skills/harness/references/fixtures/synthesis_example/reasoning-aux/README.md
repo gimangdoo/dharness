@@ -20,13 +20,13 @@
 | (a) 카탈로그 footnote | (메타) | `plugins/harness/skills/harness/references/permission-profiles.md` §3 sequential-thinking/time 행 | §3-1 매트릭스 `reasoning-aux` 행과 동시 갱신 |
 | (b) 에이전트 정의 | [`multistep-planner.agent.md`](./multistep-planner.agent.md) | `.claude/agents/multistep-planner.md` | inline `mcpServers:` 멀티 패턴 (sequential-thinking npx + time uvx) |
 | (c) 권한 게이트 | [`settings.json`](./settings.json) | `.claude/settings.json` | 3종 모두 allow / ask 0 / deny 0 — 완전 read-only |
-| (d) 변경 이력 1행 | [`CLAUDE_md_row.md`](./CLAUDE_md_row.md) | derived 프로젝트의 `CLAUDE.md` "변경 이력" 표 | 멀티 inline 표기 ("MCP 채택: sequential-thinking + time") |
+| (d) 변경 이력 1행 | [`changelog_row.md`](./changelog_row.md) | derived 프로젝트의 `_workspace/_baseline/changelog.md` "변경 이력" 표 | 멀티 inline 표기 ("MCP 채택: sequential-thinking + time") |
 
 ## 관찰 포인트
 
 1. **완전 read-only profile — destructive 차단 패턴이 불필요한 케이스** — 4 시나리오 중 본 예시가 유일하게 `permissions.deny`가 *비어 있음*. 이는 *깜빡한 누락*이 아니라 *advertise 도구 전체가 read-only*라는 의도 — settings.json `$comment_5`에 명시 박제. 다른 profile(`data-analyst`/`web-research`/`code-test`)은 모두 destructive 도구를 advertise하므로 deny 박제 필수, 본 profile은 그 부담 0.
 
-2. **future drift 가드 — placeholder deny rule 미박제 이유** — time MCP가 향후 `set_local_timezone` 같은 write 도구를 advertise하기 시작했을 때를 가정한 *예방용 placeholder deny*는 의도적으로 두지 않음. 이유: 현재 advertise 0인데 deny rule이 있으면 *false signal* (실제 destructive 있는데 차단 중인 것으로 오인). `CLAUDE_md_row.md`의 "future drift 가드" 섹션에 *그 시점*에 추가할 행을 미리 박제 — 발생 시점에만 add.
+2. **future drift 가드 — placeholder deny rule 미박제 이유** — time MCP가 향후 `set_local_timezone` 같은 write 도구를 advertise하기 시작했을 때를 가정한 *예방용 placeholder deny*는 의도적으로 두지 않음. 이유: 현재 advertise 0인데 deny rule이 있으면 *false signal* (실제 destructive 있는데 차단 중인 것으로 오인). `changelog_row.md`의 "future drift 가드" 섹션에 *그 시점*에 추가할 행을 미리 박제 — 발생 시점에만 add.
 
 3. **uvx + npx 혼합 멀티 inline 패턴 (code-test와 동일)** — sequential-thinking은 npx-기반(placeholder 0), time은 uvx-기반(`<UVX_ABS_PATH>` + `<IANA_TZ>` placeholder 2개). PATH 가용성 차이 박제는 `code-test` 시나리오 README와 동일 — *반복 패턴 박제로 일관성 유지*.
 
@@ -45,7 +45,7 @@
 1. `reasoning-aux/` 디렉토리 전체를 *derived 프로젝트*로 복사 후 다음 매핑:
    - `multistep-planner.agent.md` → `<derived>/.claude/agents/multistep-planner.md`
    - `settings.json` → `<derived>/.claude/settings.json` (기존 키와 deep merge — 덮어쓰지 말 것)
-   - `CLAUDE_md_row.md`의 한 행 → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가
+   - `changelog_row.md`의 한 행 → `<derived>/_workspace/_baseline/changelog.md` "변경 이력" 표 끝에 추가
 2. **placeholder 치환** (`multistep-planner.agent.md` 본문 끝 표 참조):
    - `<UVX_ABS_PATH>` → `uvx` 실행 파일 절대경로 (`where uvx` 또는 `which uvx`로 확인)
    - `<IANA_TZ>` → 팀 default IANA timezone (예: `Asia/Seoul`) — 미박제 시 system tz fallback
@@ -60,6 +60,6 @@
 | `mcp__time__get_current_time` | allow | 시간 read, 부수 효과 0 |
 | `mcp__time__convert_time` | allow | timezone 변환 read, 부수 효과 0 |
 
-> **bucket 변경 시 양면 갱신:** 위 표를 갱신하면 동 디렉토리의 `settings.json` `permissions.{allow,ask,deny}` + `CLAUDE_md_row.md` 비고 컬럼 카운트도 동시 정합. **본 profile은 변경 시점이 *향후 time/sequential-thinking MCP가 write 도구를 advertise할 때*** — 그 시점에 `$comment_5` 가드대로 deny 추가.
+> **bucket 변경 시 양면 갱신:** 위 표를 갱신하면 동 디렉토리의 `settings.json` `permissions.{allow,ask,deny}` + `changelog_row.md` 비고 컬럼 카운트도 동시 정합. **본 profile은 변경 시점이 *향후 time/sequential-thinking MCP가 write 도구를 advertise할 때*** — 그 시점에 `$comment_5` 가드대로 deny 추가.
 
 > 본 파일은 `plugins/harness/skills/harness/references/fixtures/synthesis_example/reasoning-aux/`의 박제 예시. 본 시나리오는 `synthesis_example/README.md` 카탈로그에 *네 번째 행*으로 등재 권고 (다음 통합 박제 시).

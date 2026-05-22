@@ -47,7 +47,7 @@ description: 하네스 LLM 추론 영역 정합성 감사 — 책임 중복·트
 - description의 *적극성* ("pushy") 평가 — 너무 수동적이면 발화 시 미트리거 위험
 - Orphan skill 추론 (validate가 결정적 검출하지만 audit이 *제거 vs 유지* 권고)
 
-### 3. CLAUDE.md 변경 이력 의미 정합
+### 3. 변경 이력 의미 정합
 - 변경 이력 표 row의 *사유 열*이 LLM 추론에 충분한 맥락 제공하는가? (1행 추가 시 다른 세션이 의사결정 추적 가능?)
 - 최근 `.claude/agents/`·`.claude/skills/` 파일 mtime이 변경 이력 마지막 날짜보다 새로움 → *미기록 변경 회상 요청*
 - Phase 9/10 출처 박제 정합 (`Phase 9: 사용자 피드백` vs `Phase 10: drift 감지`)

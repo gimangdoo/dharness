@@ -20,7 +20,7 @@
 | (a) 카탈로그 footnote | (메타) | `plugins/harness/skills/harness/references/permission-profiles.md` §3 sqlite 행 | 본 fixture에는 텍스트만 — 실제 갱신은 §10 적용 시점 |
 | (b) 에이전트 정의 | [`data-analyst.agent.md`](./data-analyst.agent.md) | `.claude/agents/data-analyst.md` | inline `mcpServers:` 패턴 |
 | (c) 권한 게이트 | [`settings.json`](./settings.json) | `.claude/settings.json` | sqlite read 3종 allow / write 3종 deny (8차 사이클 갱신) |
-| (d) 변경 이력 1행 | [`CLAUDE_md_row.md`](./CLAUDE_md_row.md) | derived 프로젝트의 `CLAUDE.md` "변경 이력" 표 | 1행 그대로 복사 가능 |
+| (d) 변경 이력 1행 | [`changelog_row.md`](./changelog_row.md) | derived 프로젝트의 `_workspace/_baseline/changelog.md` "변경 이력" 표 | 1행 그대로 복사 가능 |
 
 ## 관찰 포인트
 
@@ -41,6 +41,6 @@
 1. `synthesis_example/data-analyst/` 디렉토리 전체를 *derived 프로젝트*로 복사 후 다음 매핑:
    - `data-analyst.agent.md` → `<derived>/.claude/agents/data-analyst.md`
    - `settings.json` → `<derived>/.claude/settings.json` (기존 키와 deep merge — 덮어쓰지 말 것)
-   - `CLAUDE_md_row.md`의 한 행 → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가
+   - `changelog_row.md`의 한 행 → `<derived>/_workspace/_baseline/changelog.md` "변경 이력" 표 끝에 추가
 2. derived 프로젝트에서 `claude mcp add sqlite <uvx-abs> -- mcp-server-sqlite --db-path <db-abs>` 실행 (§10 Step 4) — **`--db-path`는 절대경로 필수** (8차 sqlite empirical: 상대경로면 health check `✗ Failed to connect`)
 3. 세션 재시작 후 `Agent` tool로 `subagent_type: "data-analyst"` spawn 검증

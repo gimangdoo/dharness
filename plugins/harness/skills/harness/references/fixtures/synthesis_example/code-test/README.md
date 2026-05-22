@@ -20,7 +20,7 @@
 | (a) 카탈로그 footnote | (메타) | `plugins/harness/skills/harness/references/permission-profiles.md` §3 filesystem/git 행 | §3-1 매트릭스 `code-test` 행과 동시 갱신 |
 | (b) 에이전트 정의 | [`code-explorer.agent.md`](./code-explorer.agent.md) | `.claude/agents/code-explorer.md` | inline `mcpServers:` 멀티 패턴 (filesystem npx + git uvx) |
 | (c) 권한 게이트 | [`settings.json`](./settings.json) | `.claude/settings.json` | filesystem 14종(read 10 allow / write 4 ask) + git 12종(read 7 allow / write 4 ask / git_reset 1 deny) |
-| (d) 변경 이력 1행 | [`CLAUDE_md_row.md`](./CLAUDE_md_row.md) | derived 프로젝트의 `CLAUDE.md` "변경 이력" 표 | 멀티 inline 표기 ("MCP 채택: filesystem + git") |
+| (d) 변경 이력 1행 | [`changelog_row.md`](./changelog_row.md) | derived 프로젝트의 `_workspace/_baseline/changelog.md` "변경 이력" 표 | 멀티 inline 표기 ("MCP 채택: filesystem + git") |
 
 ## 관찰 포인트
 
@@ -45,7 +45,7 @@
 1. `code-test/` 디렉토리 전체를 *derived 프로젝트*로 복사 후 다음 매핑:
    - `code-explorer.agent.md` → `<derived>/.claude/agents/code-explorer.md`
    - `settings.json` → `<derived>/.claude/settings.json` (기존 키와 deep merge — 덮어쓰지 말 것)
-   - `CLAUDE_md_row.md`의 한 행 → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가
+   - `changelog_row.md`의 한 행 → `<derived>/_workspace/_baseline/changelog.md` "변경 이력" 표 끝에 추가
 2. **placeholder 치환** (`code-explorer.agent.md` 본문 끝 표 참조):
    - `<ABS_PROJECT_DIR>` → derived 프로젝트 루트 절대경로 (예: `C:\Users\<user>\myproject`)
    - `<UVX_ABS_PATH>` → `uvx` 실행 파일 절대경로 (`where uvx` 또는 `which uvx`로 확인)
@@ -64,6 +64,6 @@
 | `mcp__git__git_add` / `commit` / `create_branch` / `checkout` (4종) | ask | 작업 트리/스테이지/HEAD 변경 — reflog로 복구 가능하나 사용자 확인 |
 | `mcp__git__git_reset` (1종) | deny | working tree 손실 surface — 실수 ask confirm 시 영구 손실 |
 
-> **bucket 변경 시 양면 갱신:** 위 표를 갱신하면 동 디렉토리의 `settings.json` `permissions.{allow,ask,deny}` + `CLAUDE_md_row.md` 비고 컬럼 카운트도 동시 정합 — drift 시 외부 도입자가 한 세트 복사 후 어긋남.
+> **bucket 변경 시 양면 갱신:** 위 표를 갱신하면 동 디렉토리의 `settings.json` `permissions.{allow,ask,deny}` + `changelog_row.md` 비고 컬럼 카운트도 동시 정합 — drift 시 외부 도입자가 한 세트 복사 후 어긋남.
 
 > 본 파일은 `plugins/harness/skills/harness/references/fixtures/synthesis_example/code-test/`의 박제 예시. 본 시나리오는 `synthesis_example/README.md` 카탈로그에 *세 번째 행*으로 등재 권고 (다음 통합 박제 시).

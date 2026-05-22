@@ -23,10 +23,10 @@ Context Manager 시스템의 현재 상태를 출력한다.
 1. `observations.db` 2개 테이블의 row 수 (R1 2026-05-14: clusters/daily_summaries 제거)
 2. observations 중 `section='dharness_event'` row 수
 3. 최근 7일 세션 수
-4. 미적용 CLAUDE.md draft 수
-5. CLAUDE.md "변경 이력" 표 행 수 + archive 임계 경고
+4. 미적용 changelog draft 수
+5. CHANGELOG.md "변경 이력" 표 행 수 + archive 임계 경고
 
 ## 범위 외 / 후속 명령
 
 - 세션 상세 — `/cm-sessions`
-- 미적용 CLAUDE.md draft 처리 — `/cm-claudemd-apply <sid>` 또는 `/cm-claudemd-discard`
+- 미적용 changelog draft 처리 — `/cm-claudemd-apply <sid>` 또는 `/cm-claudemd-discard`

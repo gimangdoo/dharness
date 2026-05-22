@@ -41,6 +41,7 @@ DRAFTS_APPLIED = DRAFTS_DIR / "applied"
 DRAFTS_DISCARDED = DRAFTS_DIR / "discarded"
 SESSION_ID_FILE = MEMORY_ROOT / ".current_session"
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
+CHANGELOG_MD = REPO_ROOT / "CHANGELOG.md"
 LAST_ADAPT_FILE = TELEMETRY_DIR / "_last_adapt"
 
 # Phase 10 자동 adapt 알림 임계값. invocation/failure 누적이 이 값 도달 시
@@ -61,7 +62,7 @@ def _env_int(name: str, default: int) -> int:
 HARNESS_ADAPT_THRESHOLD_INVOCATIONS = _env_int("CM_ADAPT_THRESHOLD_INVOCATIONS", 10)
 HARNESS_ADAPT_THRESHOLD_FAILURES = _env_int("CM_ADAPT_THRESHOLD_FAILURES", 2)
 
-# CLAUDE.md draft 사유 컬럼 placeholder (session_end.py 생성, cm_commands.py 치환).
+# CHANGELOG.md draft 사유 컬럼 placeholder (session_end.py 생성, cm_commands.py 치환).
 DRAFT_REASON_PLACEHOLDER = "(apply 전 작성 — 사유/맥락)"
 
 DDL = """

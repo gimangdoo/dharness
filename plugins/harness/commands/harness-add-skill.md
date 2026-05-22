@@ -10,7 +10,7 @@ argument-hint: <스킬 이름 또는 스킬 의도 한 줄>
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (스킬 이름 또는 스킬 의도; 예: "보안 취약점 스캔 스킬", "API contract validator")
 - **입력**: 기존 `.claude/agents/`, `.claude/skills/`, 어느 에이전트가 이 스킬을 쓸지(필요 시 사용자에게 확인)
-- **출력**: 새 `.claude/skills/{name}/SKILL.md` (+ `references/`, `scripts/`, `assets/` 선택), 기존 오케스트레이터의 데이터 흐름·트리거 키워드 갱신(필요 시), CLAUDE.md 변경 이력 한 행
+- **출력**: 새 `.claude/skills/{name}/SKILL.md` (+ `references/`, `scripts/`, `assets/` 선택), 기존 오케스트레이터의 데이터 흐름·트리거 키워드 갱신(필요 시), `_workspace/_baseline/changelog.md` 변경 이력 한 행
 
 ## 선조건 검증
 
@@ -41,7 +41,7 @@ argument-hint: <스킬 이름 또는 스킬 의도 한 줄>
 3. **Phase 8 (검증)** — `SKILL.md` Phase 8 sub-step 매핑:
    - **필수**: Phase 8-1 구조 검증, Phase 8-4 트리거 검증 (스킬 description의 should-trigger / should-NOT-trigger 8~10개씩)
    - **권장**: Phase 8-3 실행 테스트 (스킬에 2~3개 현실적 테스트 프롬프트, with-skill vs without-skill 비교)
-4. **CLAUDE.md 변경 이력 갱신**:
+4. **변경 이력 갱신** (`_workspace/_baseline/changelog.md`):
    ```
    | {YYYY-MM-DD} | 스킬 추가: {이름} | .claude/skills/ + (영향 시) 오케스트레이터 | {사유} |
    ```

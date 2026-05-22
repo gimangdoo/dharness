@@ -1,5 +1,5 @@
 ---
-description: "미적용 CLAUDE.md draft를 폐기 (보관: _workspace/_drafts/discarded/)"
+description: "미적용 changelog draft를 폐기 (보관: _workspace/_drafts/discarded/)"
 argument-hint: "[<session_id>] (생략 시 모두 폐기)"
 ---
 

@@ -376,6 +376,18 @@ printf '{"ts":"%s","type":"harness_invocation","session_id":"%s","trigger_keywor
 
 오케스트레이터 LLM이 이 체크리스트를 워크플로우 종료 직전 *자체 검증* 후 보고에 "telemetry: N events appended" 1줄 명시.
 
+### Phase 10 주기 점검 — drift alert
+
+telemetry append **직후**, 마지막 Adapt 이후 누적 `harness_invocation` 수를 센다 — 오케스트레이터가 방금 카운터를 갱신했으므로 가장 정확한 시점이다 (CLAUDE.md 세션시작 자율 스캔보다 결정적·정확).
+
+1. 마지막 Adapt 기준점 = `_workspace/_telemetry/_last_adapt` 파일 내용(ts). 없으면 `_delta_*.md`·`_rollback/{ts}/` 중 최신 mtime, 그것도 없으면 telemetry 첫 이벤트 ts.
+2. `ts ≥ 기준점`인 `harness_invocation` 수 N + `agent_failure` 수 F를 센다 (방금 append한 이번 실행분 포함).
+3. **N ≥ 10 또는 F ≥ 2**이면 최종 사용자 보고에 1줄 추가:
+   `⚠️ 마지막 점검 이후 하네스 {N}회 실행 — /harness:harness-adapt로 drift 점검 권장.`
+4. 임계 미만이면 침묵.
+
+매 워크플로우 종료마다 실행 — 사용자가 `/harness:harness-adapt`로 `_last_adapt`를 리셋할 때까지 매 실행 재알림(카운트는 Adapt 전까지 리셋 안 됨). Phase 10 주기 트리거(SKILL.md 10-2)의 derived 하네스 구현체.
+
 ### 범위 분리 (혼동 방지)
 
 - **derived 프로젝트 (hook 없음)** = 본 템플릿이 정의하는 LLM-기반 telemetry append (위 명령). 오케스트레이터 LLM이 직접 append 책임.

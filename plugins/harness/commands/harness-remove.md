@@ -13,7 +13,7 @@ argument-hint: <agent|skill> <이름>
   - 첫 토큰: `agent` | `skill`
   - 두 번째 토큰: 대상 이름 (frontmatter `name:` 기준)
 - **입력**: 기존 `.claude/agents/{name}.md` 또는 `.claude/skills/{name}/SKILL.md`, 오케스트레이터 스킬, CLAUDE.md
-- **출력**: 대상 파일 삭제 + 오케스트레이터/agents/skills cross-reference 갱신 + CLAUDE.md 변경 이력 1행
+- **출력**: 대상 파일 삭제 + 오케스트레이터/agents/skills cross-reference 갱신 + `_workspace/_baseline/changelog.md` 변경 이력 1행
 
 ## 선조건 검증 (먼저 실행)
 
@@ -97,7 +97,7 @@ argument-hint: <agent|skill> <이름>
 
 검증 실패 시 사용자에게 보고 + 수동 cleanup 안내 (자동 rollback은 본 명령 범위 외 — git 활용 권장).
 
-### Step 5: CLAUDE.md 변경 이력 갱신
+### Step 5: 변경 이력 갱신 (`_workspace/_baseline/changelog.md`)
 
 Phase 7-4 템플릿 형식으로 한 행 추가:
 
@@ -112,7 +112,7 @@ Phase 7-4 템플릿 형식으로 한 행 추가:
   - .claude/{agents|skills}/{name}{/.md|/} 삭제
   - 오케스트레이터 cross-reference N건 정리
   - 다른 에이전트 cross-reference M건 정리
-  - CLAUDE.md 변경 이력 1행 추가
+  - _workspace/_baseline/changelog.md 변경 이력 1행 추가
 
 ⚠️ Orphan 산출물 (해당 시):
   - {orphan-skill-x}: 이 에이전트만 사용. 별도 `/harness:harness-remove skill {x}` 권고.

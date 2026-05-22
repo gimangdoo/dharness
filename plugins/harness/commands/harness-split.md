@@ -14,7 +14,7 @@ argument-hint: <agent|skill> <원본 이름> <분할 결과 이름 2개 이상, 
   - 두 번째: 원본 이름
   - 세 번째 이후: 분할 결과 이름 2개 이상
 - **입력**: 기존 `.claude/agents/{원본}.md` 또는 `.claude/skills/{원본}/SKILL.md`, 오케스트레이터, baseline
-- **출력**: 신규 N개 정의 파일 + 원본 삭제 + cross-reference 갱신 + CLAUDE.md 변경 이력 1행
+- **출력**: 신규 N개 정의 파일 + 원본 삭제 + cross-reference 갱신 + `_workspace/_baseline/changelog.md` 변경 이력 1행
 
 ## 선조건 검증
 
@@ -94,7 +94,7 @@ argument-hint: <agent|skill> <원본 이름> <분할 결과 이름 2개 이상, 
 3. **트리거 충돌 검증** (스킬 분할 시): 결과 스킬 description 매칭 발화 cross-check
 4. **(가용 시) `/harness:harness-validate` 호출**: deterministic 검증
 
-### Step 6: CLAUDE.md 변경 이력
+### Step 6: 변경 이력 (`_workspace/_baseline/changelog.md`)
 
 ```
 | {YYYY-MM-DD} | {agent|skill} 분할: {원본} → {결과1}, {결과2}, ... | 오케스트레이터 + .claude/{agents|skills}/ | {사유: 4축 판정 + 분할 동기} |
@@ -107,7 +107,7 @@ argument-hint: <agent|skill> <원본 이름> <분할 결과 이름 2개 이상, 
   - 원본 .claude/{agents|skills}/{원본} 삭제
   - 신규 N개 생성: {결과1}, {결과2}, ...
   - 오케스트레이터 cross-reference 분산: N→M
-  - CLAUDE.md 변경 이력 1행 추가
+  - _workspace/_baseline/changelog.md 변경 이력 1행 추가
 
 📋 다음 권고:
   - `/harness:harness-audit` — LLM 추론 영역 일관성 검토

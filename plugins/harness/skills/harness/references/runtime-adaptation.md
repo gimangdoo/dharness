@@ -182,7 +182,7 @@ Phase 9는 사용자가 발화한 피드백을, Phase 10은 시스템이 감지�
 
 **자동 alert 회로 (host 측 self-host CM 운영 시 한정 — 옵션):** host가 `.claude/hooks/session_start.py` 류의 SessionStart hook을 운영 중이면, 매 SessionStart마다 `_workspace/_telemetry/_last_adapt` 이후 누적 이벤트를 카운트하고 임계값 도달 시 inject에 권장 블록을 추가한다. 임계값은 환경 변수로 오버라이드 가능 — `CM_ADAPT_THRESHOLD_INVOCATIONS`(기본 10) / `CM_ADAPT_THRESHOLD_FAILURES`(기본 2). 둘 다 host의 `.claude/settings.local.json`의 `env` 필드 또는 shell env로 설정. 외부 install 환경(plugin user)은 hook 부재 — alert 발생 안 함, 수동 트리거만 가능.
 
-**derived 프로젝트:** hook 없음. 오케스트레이터-template의 [§Phase 10 Telemetry 강제 블록](orchestrator-template.md#phase-10-telemetry-강제-블록) 따라 LLM이 매 워크플로우 종료 시 telemetry JSONL 직접 append. `/harness:harness-adapt`는 양쪽 모두 동일 명령으로 호출 (harness plugin command).
+**derived 프로젝트:** hook 없음. 오케스트레이터-template의 [§Phase 10 Telemetry 강제 블록](orchestrator-template.md#phase-10-telemetry-강제-블록) 따라 LLM이 매 워크플로우 종료 시 telemetry JSONL 직접 append + **Phase 10 주기 점검**(append 직후 마지막 Adapt 이후 `harness_invocation` ≥ 10이면 adapt 권장 1줄을 최종 보고에 추가). `/harness:harness-adapt`는 양쪽 모두 동일 명령으로 호출 (harness plugin command).
 
 ### Drift 감지 룰
 
@@ -309,19 +309,19 @@ inferred_field_weight =
 
 | 1차 변경 | 부수 갱신 chain |
 |---|---|
-| 에이전트 추가 | 오케스트레이터 팀 구성 + 오케스트레이터 description 트리거 키워드 + 다른 에이전트의 협업 프로토콜(`SendMessage` 대상 추가) + Phase 8-6 테스트 시나리오 + CLAUDE.md 변경 이력 |
-| 에이전트 제거 | 오케스트레이터 팀 구성에서 제거 + 다른 에이전트의 `SendMessage` 대상에서 제거 + 오케스트레이터 description 트리거 키워드 정리 + `_baseline/intent_profile.md` 도메인 매핑 갱신 + CLAUDE.md 변경 이력 |
+| 에이전트 추가 | 오케스트레이터 팀 구성 + 오케스트레이터 description 트리거 키워드 + 다른 에이전트의 협업 프로토콜(`SendMessage` 대상 추가) + Phase 8-6 테스트 시나리오 + changelog.md 변경 이력 |
+| 에이전트 제거 | 오케스트레이터 팀 구성에서 제거 + 다른 에이전트의 `SendMessage` 대상에서 제거 + 오케스트레이터 description 트리거 키워드 정리 + `_baseline/intent_profile.md` 도메인 매핑 갱신 + changelog.md 변경 이력 |
 | 에이전트 머지 | 위 "추가"와 "제거" chain의 합집합 + 역할 충돌 해소 (협업 프로토콜의 메시지 라우팅 재정의) + 머지 전 두 에이전트의 테스트 시나리오 통합 |
-| 에이전트 정의 수정 | (`핵심 역할` 변경) 오케스트레이터 작업 할당 재검토 / (`입출력 프로토콜` 변경) 데이터 흐름에서 영향 받는 다른 에이전트 갱신 / CLAUDE.md 변경 이력 |
-| 새 의존성 (프레임워크) | `_baseline/project_profile.md` stack.frameworks + `_baseline/intent_profile.md` constraints.tech_stack.locked_in + 영향 받는 스킬 본문 (관용구 섹션) + 영향 받는 스킬 description 트리거 키워드 + CLAUDE.md 변경 이력 |
+| 에이전트 정의 수정 | (`핵심 역할` 변경) 오케스트레이터 작업 할당 재검토 / (`입출력 프로토콜` 변경) 데이터 흐름에서 영향 받는 다른 에이전트 갱신 / changelog.md 변경 이력 |
+| 새 의존성 (프레임워크) | `_baseline/project_profile.md` stack.frameworks + `_baseline/intent_profile.md` constraints.tech_stack.locked_in + 영향 받는 스킬 본문 (관용구 섹션) + 영향 받는 스킬 description 트리거 키워드 + changelog.md 변경 이력 |
 | 의존성 제거 | 위 chain의 대칭 + 영향 받는 스킬 본문에서 해당 프레임워크 섹션 제거 (사용자 확인 후) |
-| 보안 취약점 | `_baseline/project_profile.md` maturity.dependency_health + `_baseline/project_profile.md` pain_points.deprecated_usages + `_baseline/intent_profile.md` scope.must_have (패치 작업 추가) + CLAUDE.md 변경 이력 (즉시) |
-| 새 디렉토리 (50+ files) | `_baseline/project_profile.md` architecture.key_directories + module_boundaries 후보 평가 + (신규 모듈이 새 도메인이면) 새 에이전트 후보 평가 + CLAUDE.md 변경 이력 |
+| 보안 취약점 | `_baseline/project_profile.md` maturity.dependency_health + `_baseline/project_profile.md` pain_points.deprecated_usages + `_baseline/intent_profile.md` scope.must_have (패치 작업 추가) + changelog.md 변경 이력 (즉시) |
+| 새 디렉토리 (50+ files) | `_baseline/project_profile.md` architecture.key_directories + module_boundaries 후보 평가 + (신규 모듈이 새 도메인이면) 새 에이전트 후보 평가 + changelog.md 변경 이력 |
 | 디렉토리 삭제 | 위 대칭 + 해당 디렉토리에 묶인 에이전트가 있다면 사문화 후보로 등록 |
-| 커버리지 ±15pp | `_baseline/intent_profile.md` quality.test_rigor + QA 에이전트 정의(검증 강도) + Phase 8-3 테스트 강도 + CLAUDE.md 변경 이력 |
+| 커버리지 ±15pp | `_baseline/intent_profile.md` quality.test_rigor + QA 에이전트 정의(검증 강도) + Phase 8-3 테스트 강도 + changelog.md 변경 이력 |
 | 사문화 에이전트 (10+ session 0회) | "에이전트 제거" chain과 동일 |
-| 에이전트 실패율 30%+ | 에이전트 정의 프롬프트 보강 또는 분할 + (분할 시) "에이전트 추가" chain 적용 + 오케스트레이터 폴백 전략 + CLAUDE.md 변경 이력 |
-| 사용자 우회 누적 (3+) | 오케스트레이터 단순화 + (필요 시) 신규 스킬 추가 또는 기존 스킬 description 확장 + 트리거 키워드 갱신 + CLAUDE.md 변경 이력 |
+| 에이전트 실패율 30%+ | 에이전트 정의 프롬프트 보강 또는 분할 + (분할 시) "에이전트 추가" chain 적용 + 오케스트레이터 폴백 전략 + changelog.md 변경 이력 |
+| 사용자 우회 누적 (3+) | 오케스트레이터 단순화 + (필요 시) 신규 스킬 추가 또는 기존 스킬 description 확장 + 트리거 키워드 갱신 + changelog.md 변경 이력 |
 | Phase 9 반복 피드백 (2+) | 피드백 카테고리에 매칭되는 위 행의 chain 적용 |
 
 #### Chain 적용 룰
@@ -339,7 +339,7 @@ inferred_field_weight =
 | **에이전트 정의 수정** | `.claude/agents/{name}.md` | 항상 사용자 승인 필요 |
 | **스킬 본문 수정** | `.claude/skills/{name}/SKILL.md` | 항상 사용자 승인 필요 |
 | **에이전트 추가/제거** | `.claude/agents/`, 오케스트레이터 | 항상 사용자 승인 필요 |
-| **CLAUDE.md 변경 이력 추가** | `CLAUDE.md` | 자동 (모든 적용 변경 기록) |
+| **changelog.md 변경 이력 추가** | `_workspace/_baseline/changelog.md` | 자동 (모든 적용 변경 기록) |
 
 ### 한 세션 변경 수 상한
 
@@ -434,7 +434,7 @@ _workspace/_telemetry/_rollback/2026-05-09T11-30-00Z/
 #### Rollback 절차
 
 1. `manifest.json`의 `applied_files` 목록을 역순으로 복원
-2. CLAUDE.md 변경 이력에 rollback 항목 추가 — `사유` 컬럼은 `Phase 10 rollback: {원인}` 형식
+2. changelog.md 변경 이력에 rollback 항목 추가 — `사유` 컬럼은 `Phase 10 rollback: {원인}` 형식
 3. telemetry에 `rollback` 이벤트 추가 (다음 Diagnostic이 같은 drift를 다시 surface하지 않도록 거부 학습 룰 적용 — §7 거부의 학습 참조)
 4. rollback 자체도 변경의 일종이므로 `manifest.post_adapt_validation` 필드를 `rolled_back`으로 갱신 후 manifest 보존
 
@@ -475,7 +475,7 @@ _workspace/_telemetry/_rollback/2026-05-09T11-30-00Z/
 |------------|----------|
 | `_baseline/project_profile.md` | baseline drift 적용 시 항상 |
 | `_baseline/intent_profile.md` | locked_in / test_rigor / deployment_target 등 의도 영향 시 |
-| `CLAUDE.md` 변경 이력 | 모든 Adapt 적용 시 |
+| `_workspace/_baseline/changelog.md` | 모든 Adapt 적용 시 |
 
 ### 갱신 방법
 
@@ -492,7 +492,7 @@ _workspace/_telemetry/_rollback/2026-05-09T11-30-00Z/
 
 ### 변경 이력 기록 형식
 
-`CLAUDE.md`의 변경 이력 테이블에 다음 형식으로 추가:
+`_workspace/_baseline/changelog.md`의 변경 이력 테이블에 다음 형식으로 추가:
 
 ```markdown
 | 2026-05-09 | tRPC v10.45 도입 — stack.frameworks 갱신, API 에이전트 스킬에 tRPC 관용구 추가 | _baseline + .claude/skills/api/ | Phase 10: drift 감지 (new_dependency) |
@@ -507,7 +507,7 @@ _workspace/_telemetry/_rollback/2026-05-09T11-30-00Z/
 
 ### 변경 이력 아카이브
 
-CLAUDE.md 변경 이력 테이블이 무한 성장하지 않도록 주기적으로 압축한다. 포인터 원칙(§7-4 SKILL.md)을 장기적으로 유지하기 위한 위생 룰.
+changelog.md 변경 이력 테이블이 무한 성장하지 않도록 주기적으로 압축한다. 포인터 원칙(§7-4 SKILL.md)을 장기적으로 유지하기 위한 위생 룰.
 
 #### 트리거
 
@@ -515,13 +515,13 @@ CLAUDE.md 변경 이력 테이블이 무한 성장하지 않도록 주기적으�
 |------|------|
 | 분기 경계 | 매 분기 종료 시(3·6·9·12월 말) 직전 분기 항목들을 아카이브 |
 | 항목 수 임계 | 변경 이력 행 수 ≥ 50 시 가장 오래된 분기부터 아카이브 |
-| 수동 | 사용자 요청 ("CLAUDE.md 변경 이력 정리", `/harness:harness-audit --compact-changelog`) |
+| 수동 | 사용자 요청 ("changelog.md 변경 이력 정리", `/harness:harness-audit --compact-changelog`) |
 
 #### 아카이브 방법
 
 1. 분기 단위로 항목들을 `_baseline/changelog_archive_{YYYY-Q}.md`로 이동 (예: `changelog_archive_2026-Q1.md`)
-2. CLAUDE.md 변경 이력에는 직전 분기 + 현재 분기 행만 유지
-3. 아카이브된 분기는 CLAUDE.md에 1줄 요약 행으로 대체:
+2. changelog.md 변경 이력에는 직전 분기 + 현재 분기 행만 유지
+3. 아카이브된 분기는 `changelog.md`에 1줄 요약 행으로 대체:
 
 ```markdown
 | 2026-01-01 ~ 2026-03-31 | 2026-Q1 변경 16건 압축 | _baseline/changelog_archive_2026-Q1.md | Phase 9: 5건 / Phase 10 baseline: 8건 / Phase 10 usage: 3건 |
@@ -534,7 +534,7 @@ CLAUDE.md 변경 이력 테이블이 무한 성장하지 않도록 주기적으�
 ```markdown
 # 변경 이력 아카이브 — 2026-Q1
 
-원본: CLAUDE.md (2026-04-01 압축됨)
+원본: _workspace/_baseline/changelog.md (2026-04-01 압축됨)
 
 ## 통계
 
@@ -556,7 +556,7 @@ CLAUDE.md 변경 이력 테이블이 무한 성장하지 않도록 주기적으�
 - 아카이브 파일은 삭제 금지. 사후 분석에서 "이 변경이 언제 들어왔지?", "이 패턴이 반복되는가?" 추적의 유일한 출처.
 - 아카이브 자체는 git에 커밋(`.gitignore` 미적용) — 변경 이력은 프로젝트 자산.
 - 압축 시 row 정합성 검증: 압축 전 항목 수 = 아카이브 후 항목 수. 압축 ≠ 삭제.
-- 압축 동작도 CLAUDE.md 변경 이력에 메타 항목으로 1줄 기록 (`사유` 컬럼: `meta: 변경 이력 분기 압축`).
+- 압축 동작도 changelog.md 변경 이력에 메타 항목으로 1줄 기록 (`사유` 컬럼: `meta: 변경 이력 분기 압축`).
 
 ### 다음 Diagnostic의 anchor 갱신
 
@@ -610,7 +610,7 @@ Adapt 적용 후 baseline이 갱신됐으므로, 다음 Diagnostic은 **갱신�
 | 오케스트레이터 수정 | 8-2 + 8-5 + 8-6 | 실행 모드 명시, 드라이런 dead link 없음, 테스트 시나리오 갱신 |
 | `_baseline/project_profile.md` 갱신 | 8-1 (schema) | frontmatter + body 형식, 5축(또는 quick scan 3축) 누락 없음, source 필드 갱신됨 |
 | `_baseline/intent_profile.md` 갱신 | 8-1 (schema) | 필수 5필드 보존, meta.user_confirmed_fields 갱신 반영 |
-| CLAUDE.md 변경 이력 추가 | 형식 점검 | 4컬럼(날짜/내용/대상/사유), 사유 출처(Phase 9 / Phase 10) 명시, 포인터 섹션 본문이 비대해지지 않았는지 |
+| changelog.md 변경 이력 추가 | 형식 점검 | 4컬럼(날짜/내용/대상/사유), 사유 출처(Phase 9 / Phase 10) 명시, CLAUDE.md의 변경 이력 포인터 1줄 정합 |
 
 #### 검증 실패 처리
 

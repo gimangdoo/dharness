@@ -1,4 +1,4 @@
-"""SessionEnd hook — transcript.md 생성 + sessions UPDATE + CLAUDE.md draft 적재.
+"""SessionEnd hook — transcript.md 생성 + sessions UPDATE + changelog draft 적재.
 
 session_id는 _memory/.current_session 파일에서 읽는다.
 
@@ -7,7 +7,7 @@ SessionStart 사이의 짧은 인터벌에 PostToolUse 훅이 발동되면 파�
 session_id="unknown"으로 도구 출력이 떨어지는 누수가 발생하기 때문. 다음 SessionStart의
 write_session_id()가 새 ID로 덮어쓰는 것에 의존한다.
 
-단계 D: 이번 세션의 dharness_event를 모아 CLAUDE.md "변경 이력" 표 행 draft를
+단계 D: 이번 세션의 dharness_event를 모아 CHANGELOG.md "변경 이력" 표 행 draft를
 `_workspace/_drafts/{date}_{sid}.md`에 적재한다. 자동 적용은 하지 않으며, 사용자가
 다음 세션에서 `/cm-claudemd-apply <sid>` 또는 `/cm-claudemd-discard`로 게이트한다.
 """
@@ -108,11 +108,11 @@ status: pending
 total_events: {summary['total']}
 ---
 
-# CLAUDE.md 변경 이력 draft — 세션 `{session_id}`
+# 변경 이력 draft — 세션 `{session_id}`
 
 자동 생성된 행 (apply 전 사유/맥락을 채워주세요).
 
-## 표 행 (apply 시 CLAUDE.md "변경 이력" 표에 삽입됨)
+## 표 행 (apply 시 CHANGELOG.md "변경 이력" 표에 삽입됨)
 
 ```
 {row}
@@ -139,7 +139,7 @@ total_events: {summary['total']}
 
 ## 적용 / 폐기
 
-- `/cm-claudemd-apply {session_id}` — 위 행을 CLAUDE.md "변경 이력" 표에 추가 (사유 placeholder 유지)
+- `/cm-claudemd-apply {session_id}` — 위 행을 CHANGELOG.md "변경 이력" 표에 추가 (사유 placeholder 유지)
 - `/cm-claudemd-apply {session_id} 사유 한 줄` — 사유 인자를 즉시 치환 (markdown table 안전 처리 내장 — `\\|` escape, 줄바꿈 → 공백)
 - `/cm-claudemd-discard {session_id}` — 이 draft 폐기 (보관: `_workspace/_drafts/discarded/`)
 """

@@ -66,7 +66,7 @@ drift 리포트를 기반으로 사용자에게 권고:
 | 사용 패턴까지 보려면 | `/harness:harness-adapt` (telemetry 결합) |
 | 정합성만 확인 | `/harness:harness-audit` |
 
-### 6. CLAUDE.md 변경 이력 갱신
+### 6. 변경 이력 갱신 (`_workspace/_baseline/changelog.md`)
 ```
 | {YYYY-MM-DD} | baseline 갱신 — Phase 1·2 재실행 | _workspace/_baseline/ | {사유} |
 ```

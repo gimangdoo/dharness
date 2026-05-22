@@ -4,7 +4,7 @@ description: |
   dharness 진화 이력을 자연어로 검색하는 규칙. "이전에 단계 X에서 뭐 했어?",
   "최근 schema 변경 이유는?", "지난번에 hook을 어떻게 단순화했지?", "phase 5 산출물
   관련 메모리" 같은 dharness 개발/유지보수 회고 질문 시 본 스킬의 절차를 따른다.
-  검색은 5 source(observations / dharness_event / CLAUDE.md 변경 이력 / git log /
+  검색은 5 source(observations / dharness_event / CHANGELOG.md 변경 이력 / git log /
   skill 본문)를 progressive disclosure로 조회하며, 별도 에이전트 호출 없이 LLM이 직접
   SQL·git·Read·Grep을 호출한다.
 ---
@@ -19,7 +19,7 @@ dharness self-host CM의 자연어 검색 규칙. 검색 대상은 **dharness �
 |----------|--------|------|------|
 | 1 | `observations_fts` (FTS5) | 가장 빠른 전문 검색 (모든 section) | SQL |
 | 2 | `observations` WHERE `section='dharness_event'` | category/artifact_kind 필터 — "어떤 hook 편집됐어?", "최근 schema 변경" | SQL |
-| 3 | `CLAUDE.md` "변경 이력" 표 + `archive/full-history` branch (commit `951b444` 이전 사이클 박제 동결) | 사람이 큐레이션한 narrative + 사유 (가장 신호 좋은 source). 최근 활동은 CLAUDE.md, *어떻게 여기까지 왔는가* 회고는 archive branch (`git log archive/full-history -- CLAUDE.md` 또는 `git show archive/full-history:CLAUDE.md`). | Read + git |
+| 3 | `CHANGELOG.md` "변경 이력" 표 + `archive/full-history` branch (commit `951b444` 이전 사이클 박제 동결) | 사람이 큐레이션한 narrative + 사유 (가장 신호 좋은 source). 최근 활동은 `CHANGELOG.md`, *어떻게 여기까지 왔는가* 회고는 archive branch (`git log archive/full-history -- CLAUDE.md` 또는 `git show archive/full-history:CLAUDE.md` — 동결 시점 changelog는 당시 CLAUDE.md에 존재). | Read + git |
 | 4 | `git log` / `git show` | commit message + diff (코드 단위 변경 history) | Bash |
 
 > **R1 정리 (2026-05-14):** 이전 5번째 source `clusters` / `daily_summaries`는 R1 schema amputation으로 **테이블 자체 제거**. 도메인 정의·skill 본문은 4번째 git log 또는 직접 `.claude/skills/`, `plugins/harness/` Read로 접근.
@@ -63,13 +63,13 @@ artifact_kind 카탈로그 (현행): `skill`, `agent`, `command`, `hook`, `schem
 
 > **레거시 카테고리** (DB에는 historic data로 잔존, 신규 적재 없음): `cm_worker_edit`, `cm_worker_static_edit`, `cm_doc_edit`, `cm_deps_edit` — dashboard worker 폐기 후 분류 룰 제거됨. 회고 검색 시에도 매칭됨 (조회 가능).
 
-#### 1c. "단계 X / Phase Y / 사유" → `CLAUDE.md` "변경 이력" 표
+#### 1c. "단계 X / Phase Y / 사유" → `CHANGELOG.md` "변경 이력" 표
 
-CLAUDE.md를 Read하고 grep:
+CHANGELOG.md를 Read하고 grep:
 
 ```bash
-grep -n "단계 [A-E]" CLAUDE.md
-grep -n "Phase [0-9]" CLAUDE.md
+grep -n "단계 [A-E]" CHANGELOG.md
+grep -n "Phase [0-9]" CHANGELOG.md
 ```
 
 또는 markdown table 직접 read해 사용자 쿼리와 매칭.
@@ -81,7 +81,7 @@ grep -n "Phase [0-9]" CLAUDE.md
 | 날짜 | 카테고리 | 내용 | source |
 |------|----------|------|--------|
 | 2026-05-10 | cm_schema_edit | Edit .claude/hooks/_schema.py | dharness_event |
-| 2026-05-10 | (단계 A) | cm-harness plugin 폐지 + dharness self-host로 강등 | CLAUDE.md |
+| 2026-05-10 | (단계 A) | cm-harness plugin 폐지 + dharness self-host로 강등 | CHANGELOG.md |
 
 더 보려면 "타임라인 보기" 또는 날짜/세션 ID/단계명을 언급하세요.
 ```
@@ -104,18 +104,18 @@ WHERE s.session_id IN (?)
 GROUP BY s.session_id;
 ```
 
-#### 2b. 단계/커밋 단위 — `git log` + CLAUDE.md cross-reference
+#### 2b. 단계/커밋 단위 — `git log` + CHANGELOG.md cross-reference
 
 ```bash
 git log --oneline --grep="단계 [A-E]"
 git show <commit-sha> --stat
 ```
 
-CLAUDE.md "변경 이력" 표의 row와 git commit을 매핑해서 코드 변화 범위까지 포함 응답.
+CHANGELOG.md "변경 이력" 표의 row와 git commit을 매핑해서 코드 변화 범위까지 포함 응답.
 
 #### 2c. ~~클러스터/요약 단위~~ (R1 2026-05-14 제거됨)
 
-> **제거 사유:** `clusters` / `daily_summaries` 테이블은 R1 schema amputation으로 DROP — historic data 더 이상 SQL 조회 불가. 도메인 정의·반복 패턴 회고는 git log + CLAUDE.md "변경 이력" 표(2b)로 대체.
+> **제거 사유:** `clusters` / `daily_summaries` 테이블은 R1 schema amputation으로 DROP — historic data 더 이상 SQL 조회 불가. 도메인 정의·반복 패턴 회고는 git log + CHANGELOG.md "변경 이력" 표(2b)로 대체.
 
 **반환 형식:**
 ```markdown
@@ -142,7 +142,7 @@ CLAUDE.md "변경 이력" 표의 row와 git commit을 매핑해서 코드 변화
 
 | 명시 | 대상 |
 |------|------|
-| "단계 X 전체" | CLAUDE.md "변경 이력" 표의 해당 row + 관련 git log/show |
+| "단계 X 전체" | CHANGELOG.md "변경 이력" 표의 해당 row + 관련 git log/show |
 | "commit X" | `git show X` (full diff) |
 | "session X 전체" | `_workspace/_memory/sessions/{X}/digest.md` 또는 `transcript.md` |
 | "skill X 본문" | `.claude/skills/{X}/SKILL.md` 또는 `plugins/harness/skills/harness/SKILL.md` |
@@ -157,8 +157,8 @@ CLAUDE.md "변경 이력" 표의 row와 git commit을 매핑해서 코드 변화
 |----------------|------------|------|
 | "이전에 {X}했던 거" | observations_fts | X 키워드 추출 |
 | "최근 {category} 변경" | dharness_event 필터 | category LIKE 매칭 |
-| "단계 X / Phase Y" | CLAUDE.md + git log | "단계 [A-E]" / "Phase [0-9]" grep |
-| "사유 / 왜 / 이유" | CLAUDE.md 변경 이력 | 사유 컬럼 + commit message |
+| "단계 X / Phase Y" | CHANGELOG.md + git log | "단계 [A-E]" / "Phase [0-9]" grep |
+| "사유 / 왜 / 이유" | CHANGELOG.md 변경 이력 | 사유 컬럼 + commit message |
 | "어떤 파일 / 무엇이 바뀜" | dharness_event content + git diff | artifact_kind 그룹화 |
 | "{날짜} 작업" | dharness_event + git log | date 필터 (R1: daily_summaries 제거됨) |
 | "skill / agent / command 정의" | skill 본문 Read | `.claude/skills/`, `plugins/harness/` |
@@ -171,7 +171,7 @@ CLAUDE.md "변경 이력" 표의 row와 git commit을 매핑해서 코드 변화
 |------|------|
 | FTS5 결과 없음 | LIKE 기반 fallback (`content LIKE '%' \|\| ? \|\| '%'`) |
 | dharness_event 결과 없음 | observations_fts로 확대 검색 |
-| CLAUDE.md 표 매칭 없음 | git log --grep으로 fallback |
+| CHANGELOG.md 표 매칭 없음 | git log --grep으로 fallback |
 | observations.db 없음 | "메모리 DB 없음 — 새 Claude Code 세션을 한 번 열면 SessionStart 훅이 자동 생성" 안내 |
 | 모든 source 결과 없음 | "관련 메모리 없음. 이 주제의 첫 작업일 수 있습니다." |
 

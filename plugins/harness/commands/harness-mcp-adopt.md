@@ -12,7 +12,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (예: "playwright로 e2e 테스트 자동화 필요", "github MCP로 PR 메타데이터 조회", "tavily로 외부 리서치")
 - **입력**: 기존 derived 프로젝트 (`.claude/agents/`, `CLAUDE.md`, 선택적 `.claude/settings.json`·`.mcp.json` 또는 `~/.claude.json`)
-- **출력**: §10 Step 5 4 산출물 — `permission-profiles.md` §3 footnote / `.claude/agents/<name>.md` frontmatter 갱신 / `.claude/settings.json` permissions / `CLAUDE.md` 변경 이력 1행
+- **출력**: §10 Step 5 4 산출물 — `permission-profiles.md` §3 footnote / `.claude/agents/<name>.md` frontmatter 갱신 / `.claude/settings.json` permissions / `_workspace/_baseline/changelog.md` 변경 이력 1행
 
 ## 선조건 검증 (먼저 실행)
 
@@ -74,7 +74,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 | (a) | `permission-profiles.md` §3 sqlite/playwright/... 행 | 도구 enumeration 채움 + install 명령 footnote (Step 2 결과 그대로) |
 | (b) | `<derived>/.claude/agents/<agent-name>.md` frontmatter | `tools:` allowlist에 신규 `mcp__<server>__*` 추가 — Step 3 user confirm 결과만 |
 | (c) | `<derived>/.claude/settings.json` | `permissions.allow` / `permissions.ask` 갱신 (deep merge — 기존 키 보존) |
-| (d) | `<derived>/CLAUDE.md` 변경 이력 표 | 1행 추가. 형식은 `references/fixtures/synthesis_example/<scenario>/CLAUDE_md_row.md` 참조 (`web-research` / `data-analyst` / `code-test` / `reasoning-aux`) |
+| (d) | `<derived>/_workspace/_baseline/changelog.md` 변경 이력 표 | 1행 추가. 형식은 `references/fixtures/synthesis_example/<scenario>/changelog_row.md` 참조 (`web-research` / `data-analyst` / `code-test` / `reasoning-aux`) |
 
 `references/fixtures/synthesis_example/`이 sqlite 시나리오의 (b)·(c)·(d) 박제 예시.
 
@@ -87,7 +87,7 @@ Step 4 완료 직후 다음 사실을 사용자에게 *반드시* 명시 (LLM이
   - claude mcp add <server> ... ✓ Connected
   - 영향 받는 agent N개 frontmatter `tools:` 갱신
   - .claude/settings.json permissions 갱신 (allow / ask / deny 카운트)
-  - CLAUDE.md 변경 이력 1행 추가
+  - _workspace/_baseline/changelog.md 변경 이력 1행 추가
 
 ⚠️ 다음 세션부터 사용 가능 — mid-session `claude mcp add`는 본 세션 도구 풀에 미적재 (empirical 4차 사이클 — 양면 검증). 새 도구가 LLM에 노출되려면 세션 재시작 필수. 합성 시점에 install된 신규 MCP도 동일.
 
@@ -103,7 +103,7 @@ Step 4 완료 직후 다음 사실을 사용자에게 *반드시* 명시 (LLM이
 1. `claude mcp remove <server>` — 등록 해제
 2. (b) frontmatter `tools:`에서 해당 `mcp__<server>__*` 제거
 3. (c) `settings.json` `permissions`에서 해당 패턴 제거
-4. (d) `CLAUDE.md` 변경 이력 1행은 *삭제 대신* "rollback {date}" 라벨 추가 (append-only)
+4. (d) `_workspace/_baseline/changelog.md` 변경 이력 1행은 *삭제 대신* "rollback {date}" 라벨 추가 (append-only)
 
 ## 범위 외
 

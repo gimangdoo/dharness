@@ -12,7 +12,7 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (에이전트 역할 한 줄; 예: "보안 리뷰어", "DB 마이그레이션 검증자")
 - **입력**: 기존 `.claude/agents/`, `.claude/skills/`, `_workspace/_baseline/*.md`, 기존 오케스트레이터 스킬
-- **출력**: 새 `.claude/agents/{name}.md` + 기존 오케스트레이터 수정 + CLAUDE.md 변경 이력 한 행
+- **출력**: 새 `.claude/agents/{name}.md` + 기존 오케스트레이터 수정 + `_workspace/_baseline/changelog.md` 변경 이력 한 행
 
 ## 선조건 검증 (먼저 실행)
 
@@ -60,7 +60,7 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
 4. **Phase 8 (검증, 부분)** — `SKILL.md` Phase 8 sub-step 매핑:
    - **필수**: Phase 8-1 구조 검증, Phase 8-2 실행 모드 검증, Phase 8-4 트리거 검증
    - **변경 영향 시**: Phase 8-3 실행 테스트, Phase 8-5 드라이런
-5. **CLAUDE.md 변경 이력 갱신**: Phase 7-4 템플릿 형식으로 한 행 추가.
+5. **변경 이력 갱신**: `_workspace/_baseline/changelog.md`에 Phase 7-4 템플릿 형식으로 한 행 추가.
    ```
    | {YYYY-MM-DD} | 에이전트 추가: {이름} | 오케스트레이터 + .claude/agents/ | {사유} |
    ```
@@ -71,7 +71,7 @@ argument-hint: <새 에이전트 역할 한 줄 설명>
    ✅ 합성 완료
      - .claude/agents/<name>.md 생성
      - .claude/settings.json permissions 갱신 (allow N종 / ask M종 / deny K종)
-     - CLAUDE.md 변경 이력 1행 추가
+     - _workspace/_baseline/changelog.md 변경 이력 1행 추가
      - 신규 MCP install: <server-name> ✓ Connected
 
    ⚠️ 다음 세션부터 사용 가능 — mid-session에 install된 MCP는 본 세션 도구 풀과 기 spawn된 subagent inherit pool에 미적재 (§5-1 cycle 4 empirical 확정).

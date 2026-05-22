@@ -374,7 +374,7 @@ Phase 5에서 에이전트 명세를 받았을 때:
    - 에이전트 .md frontmatter `tools:` + inline `mcpServers:` (default)
    - 프로젝트 .claude/settings.json `permissions.allow/ask/deny`
    - 프로젝트 .mcp.json mcpServers (§5-2 예외 조건 시에만)
-   - CLAUDE.md 변경 이력 1행 (Phase 7-4)
+   - _workspace/_baseline/changelog.md 변경 이력 1행 (Phase 7-4)
 ```
 
 ---
@@ -648,7 +648,7 @@ Phase 5-2: 도구·MCP 합성 (이 문서 적용 지점)
      - 미지원 MCP는 §5-1-a (Layer B 단독)
      - parent 직접 호출 필연성 확인되면 §5-2 (anti-pattern, 예외 조건 명시)
   d. 산출물 합성 (§4의 default 패치 4종)
-  e. 변경 사항을 CLAUDE.md 변경 이력에 1줄로 기록
+  e. 변경 사항을 _workspace/_baseline/changelog.md 변경 이력에 1줄로 기록
   f. 사후 정합 점검: `/harness:harness-mcp-status` (parent 적재 비용 ⚠️ 항목 확인)
 ```
 
@@ -781,7 +781,7 @@ Step 5. Reflect — 4 산출물 동시 패치 (atomicity 분계 주의)
        ⚠️ *atomicity 범위 외* — 본 행은 plugin host 본 저장소(`plugins/harness/skills/harness/references/permission-profiles.md`) 편집이라 외부 install 도입자에게는 *읽기 전용*. PR 또는 plugin host 본 저장소 직접 편집 권한이 있는 도입자만 적용 가능. 권한이 없는 도입자는 본 (a)를 *권고로 보고*만 출력 (변경 이력에 "§3 인벤토리 갱신은 plugin host 본 저장소 PR 필요" 표기).
   b. **에이전트 frontmatter `tools:`** — 영향 받는 .claude/agents/*.md에 `mcp__<name>__<tool>` 추가 (subagent-only면 §5-1 inline `mcpServers:` 권장)
   c. **`.claude/settings.json` `permissions.{allow,ask,deny}`** — Tier 정책 반영 (T0=allow / T1·T2=ask / 민감 도구=deny)
-  d. **CLAUDE.md 변경 이력** — Phase 7-4 형식 1행: `| {date} | MCP 채택: {name} | {tier}/{category} | {trigger 사유} |`
+  d. **변경 이력** (`_workspace/_baseline/changelog.md`) — Phase 7-4 형식 1행: `| {date} | MCP 채택: {name} | {tier}/{category} | {trigger 사유} |`
 
   **atomic 적용 범위:** (b)·(c)·(d) 3개만 atomic 묶음. 셋 중 하나라도 실패하면 전부 rollback (§10-4 절차로). (a)는 plugin host 본 저장소 편집이라 별도 트랙 — atomic 그룹에 포함되지 않음. 도입자 권한 부재 시 (a) 권고 메시지만 남기고 (b)(c)(d) atomic 진행.
 ```
@@ -807,7 +807,7 @@ Step 5. Reflect — 4 산출물 동시 패치 (atomicity 분계 주의)
 2. 영향 받는 에이전트 frontmatter `tools:`에서 해당 mcp__<name>__* 제거
 3. .claude/settings.json `permissions.{allow,ask,deny}` 정리
 4. §3 인벤토리는 KEEP (PoC 결과는 미래 재채택 자료) — 행 끝에 "(2026-MM-DD rolled back: 사유)" 부기
-5. CLAUDE.md 변경 이력 1행: `| {date} | MCP 회수: {name} | {원래 채택일} | {회수 사유} |`
+5. _workspace/_baseline/changelog.md 변경 이력 1행: `| {date} | MCP 회수: {name} | {원래 채택일} | {회수 사유} |`
 ```
 
 ### 10-5. inline 정의 갱신 절차 (rollback 아님)
@@ -846,7 +846,7 @@ Step 4. Apply — 영향 받는 N개 agent.md 모두 동시 갱신 (atomic)
   - parent의 `~/.claude.json` projects.{cwd}.mcpServers는 *별도 출처* — `claude mcp remove <name>` + `claude mcp add ...`로 정합 갱신 (inline-only 패턴이면 parent 등록 자체가 없으므로 skip)
 
 Step 5. Reflect — 갱신 사실 박제
-  a. CLAUDE.md 변경 이력 1행: `| {date} | MCP 정의 갱신: {server} | inline 정의 (N개 agent) | {U1~U5 사유 + before/after 요약} |`
+  a. _workspace/_baseline/changelog.md 변경 이력 1행: `| {date} | MCP 정의 갱신: {server} | inline 정의 (N개 agent) | {U1~U5 사유 + before/after 요약} |`
   b. §3 인벤토리 행은 변경 사항이 *인벤토리 차원*인 경우(예: install 명령 footnote)에만 갱신 — agent별 inline 변경은 인벤토리 무관
   c. **mid-session 미전파 — 다음 세션부터 갱신 정의 적용** (§5-1 cycle 4 사실, install·update 동일)
 ```
@@ -858,7 +858,7 @@ Step 5. Reflect — 갱신 사실 박제
 | 채택 자체 | 회수 (`claude mcp remove`) | 유지 |
 | agent `tools:` allowlist | 해당 `mcp__<name>__*` 제거 | 변경 없음 (U3이면 추가 가능) |
 | settings.json permissions | 정리 | 변경 없음 (U3 toolset 확장 시 부분 갱신 가능) |
-| CLAUDE.md 변경 이력 | "MCP 회수" | "MCP 정의 갱신" |
+| 변경 이력 (`changelog.md`) | "MCP 회수" | "MCP 정의 갱신" |
 | 인벤토리 §3 | "(rolled back)" 부기 | 변경 없음 (footnote만) |
 
 **자동화 한계:** Step 1·2는 자동(grep·probe), Step 3·4는 사용자 게이트. Step 5는 자동 작성 후 사용자 확인.
@@ -1058,7 +1058,7 @@ Step 5. Reflect — 갱신 사실 박제
          "allow": ["mcp__sqlite__read_query", "mcp__sqlite__list_tables", "mcp__sqlite__describe_table"],
          "ask":   ["mcp__sqlite__write_query", "mcp__sqlite__append_insight"]
        }
-  d. CLAUDE.md 변경 이력 1행:
+  d. _workspace/_baseline/changelog.md 변경 이력 1행:
        | {date} | MCP 채택: sqlite | T0/external-integration | data-analyst가 ./data/app.db 분석 필요 (T2 트리거) |
 ```
 

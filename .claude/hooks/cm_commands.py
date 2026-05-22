@@ -24,7 +24,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from _schema import (
-    CLAUDE_MD,
+    CHANGELOG_MD,
     DB_PATH,
     DDL,
     DRAFT_REASON_PLACEHOLDER,
@@ -37,7 +37,7 @@ from _schema import (
 )
 
 COUNT_TABLES = ("observations", "sessions")
-CLAUDE_MD_ROW_WARN_THRESHOLD = 40
+CHANGELOG_ROW_WARN_THRESHOLD = 40
 
 DRAFT_ROW_RE = re.compile(r"^```\s*\n(\| .*?\|)\s*\n```", re.MULTILINE)
 ROW_LINE_RE = re.compile(r"^\s*\|.+\|\s*$")
@@ -92,24 +92,24 @@ def cmd_status() -> int:
         ).fetchone()[0]
         dh_events = conn.execute("SELECT COUNT(*) FROM observations WHERE section='dharness_event'").fetchone()[0]
     pending_drafts = list(DRAFTS_DIR.glob("*.md")) if DRAFTS_DIR.exists() else []
-    history_rows = _count_claudemd_history_rows()
+    history_rows = _count_changelog_rows()
 
     print(f"📊 CM 상태 ({REPO_ROOT.name})")
     print(f"  observations:        {counts['observations']} (dharness_event {dh_events})")
     print(f"  sessions:            {counts['sessions']} (최근 7일: {recent})")
-    print(f"  CLAUDE.md draft:     {len(pending_drafts)} pending")
+    print(f"  changelog draft:     {len(pending_drafts)} pending")
     if history_rows is not None:
-        warn = "  ⚠ 표가 길어졌습니다 — archive 검토 권장" if history_rows >= CLAUDE_MD_ROW_WARN_THRESHOLD else ""
-        print(f"  CLAUDE.md 변경 이력: {history_rows} rows{warn}")
+        warn = "  ⚠ 표가 길어졌습니다 — archive 검토 권장" if history_rows >= CHANGELOG_ROW_WARN_THRESHOLD else ""
+        print(f"  CHANGELOG.md:        {history_rows} rows{warn}")
     return 0
 
 
-def _count_claudemd_history_rows() -> int | None:
-    """CLAUDE.md '변경 이력' 표의 데이터 row 수. 표 미발견 시 None."""
-    if not CLAUDE_MD.exists():
+def _count_changelog_rows() -> int | None:
+    """CHANGELOG.md '변경 이력' 표의 데이터 row 수. 표 미발견 시 None."""
+    if not CHANGELOG_MD.exists():
         return None
     try:
-        lines = CLAUDE_MD.read_text(encoding="utf-8").splitlines()
+        lines = CHANGELOG_MD.read_text(encoding="utf-8").splitlines()
     except OSError:
         return None
     span = _find_change_history_table(lines)
@@ -150,7 +150,7 @@ def cmd_reset(confirmed: bool) -> int:
     return 0
 
 
-# ---------------------------- CLAUDE.md draft ----------------------------
+# ---------------------------- CHANGELOG.md draft ----------------------------
 
 def _find_pending_drafts() -> list[Path]:
     if not DRAFTS_DIR.exists():
@@ -174,7 +174,7 @@ def _extract_draft_row(text: str) -> str | None:
 
 
 def _find_change_history_table(lines: list[str]) -> tuple[int, int] | None:
-    """CLAUDE.md의 "변경 이력:" 섹션 표 범위 (header_idx, last_row_idx) 반환.
+    """changelog 파일의 "변경 이력" 섹션 표 범위 (header_idx, last_row_idx) 반환.
 
     "변경 이력" 키워드를 포함한 heading/strong 다음에 등장하는 첫 markdown 표를 찾는다.
     """
@@ -207,9 +207,9 @@ def _find_change_history_table(lines: list[str]) -> tuple[int, int] | None:
 def cmd_claudemd_list() -> int:
     drafts = _find_pending_drafts()
     if not drafts:
-        print("📝 미적용 CLAUDE.md draft 0건.")
+        print("📝 미적용 CHANGELOG.md draft 0건.")
         return 0
-    print(f"📝 미적용 CLAUDE.md draft {len(drafts)}건:")
+    print(f"📝 미적용 CHANGELOG.md draft {len(drafts)}건:")
     for p in drafts:
         # filename: {date}_{sid}.md
         stem = p.stem
@@ -246,8 +246,8 @@ def cmd_claudemd_apply(session_id: str, reason_parts: list[str]) -> int:
     if not row:
         print(f"⚠️  draft에서 표 행을 찾지 못함: {draft.relative_to(REPO_ROOT)}")
         return 1
-    if not CLAUDE_MD.exists():
-        print(f"⚠️  CLAUDE.md 없음: {CLAUDE_MD.relative_to(REPO_ROOT)}")
+    if not CHANGELOG_MD.exists():
+        print(f"⚠️  CHANGELOG.md 없음: {CHANGELOG_MD.relative_to(REPO_ROOT)}")
         return 1
 
     reason = _sanitize_reason(reason_parts)
@@ -259,24 +259,24 @@ def cmd_claudemd_apply(session_id: str, reason_parts: list[str]) -> int:
         else:
             print(f"⚠️  draft row에 placeholder가 없어 사유 인자 무시 (사용자 직접 편집 필요)")
 
-    cm_text = CLAUDE_MD.read_text(encoding="utf-8")
-    lines = cm_text.splitlines()
+    changelog_text = CHANGELOG_MD.read_text(encoding="utf-8")
+    lines = changelog_text.splitlines()
     span = _find_change_history_table(lines)
     if not span:
-        print("⚠️  CLAUDE.md에서 '변경 이력' 표를 찾지 못함.")
+        print("⚠️  CHANGELOG.md에서 '변경 이력' 표를 찾지 못함.")
         return 1
     _, last_row_idx = span
     new_lines = lines[: last_row_idx + 1] + [row] + lines[last_row_idx + 1 :]
     new_text = "\n".join(new_lines)
-    if cm_text.endswith("\n"):
+    if changelog_text.endswith("\n"):
         new_text += "\n"
-    CLAUDE_MD.write_text(new_text, encoding="utf-8")
+    CHANGELOG_MD.write_text(new_text, encoding="utf-8")
 
     DRAFTS_APPLIED.mkdir(parents=True, exist_ok=True)
     dest = DRAFTS_APPLIED / draft.name
     draft.replace(dest)
 
-    print(f"✅ CLAUDE.md '변경 이력' 표에 행 추가됨.")
+    print(f"✅ CHANGELOG.md '변경 이력' 표에 행 추가됨.")
     print(f"   삽입 위치: line {last_row_idx + 2}")
     print(f"   row: {row[:120]}{'…' if len(row) > 120 else ''}")
     print(f"   draft 이동: {dest.relative_to(REPO_ROOT)}")
@@ -284,7 +284,7 @@ def cmd_claudemd_apply(session_id: str, reason_parts: list[str]) -> int:
     if reason_applied:
         print(f"✅ 사유 컬럼이 인자로 치환됐습니다: {reason[:80]}{'…' if len(reason) > 80 else ''}")
     else:
-        print("⚠️  사유 컬럼이 placeholder인 채로 추가됐습니다 — CLAUDE.md를 직접 편집해 사유를 채우거나,")
+        print("⚠️  사유 컬럼이 placeholder인 채로 추가됐습니다 — CHANGELOG.md를 직접 편집해 사유를 채우거나,")
         print("    다음 apply 때 '/cm-claudemd-apply <sid> <사유 텍스트>' 형식으로 인자를 넘기세요.")
     return 0
 

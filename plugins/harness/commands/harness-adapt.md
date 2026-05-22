@@ -86,12 +86,13 @@ drift 신호별로 매핑된 변경안을 사용자에게 제시. **한 세션 �
 해당하는 위치에 반영:
 - `.claude/agents/{name}.md` — 에이전트 역할/프로토콜 갱신
 - `.claude/skills/{name}/` — 스킬 description/본문 갱신
-- `CLAUDE.md` — 트리거 규칙 갱신, 변경 이력 추가
+- `CLAUDE.md` — 트리거 규칙 갱신
+- `_workspace/_baseline/changelog.md` — 변경 이력 추가
 - `_workspace/_baseline/*.md` — baseline 갱신 (다음 Diagnostic의 anchor)
 
 ### 7. 변경 이력 기록
 
-CLAUDE.md 변경 이력 테이블(Phase 7-4 템플릿)에 출처 명시:
+`_workspace/_baseline/changelog.md` 변경 이력 테이블(Phase 7-4 템플릿)에 출처 명시:
 
 ```
 | {YYYY-MM-DD} | Phase 10: drift 감지 ({drift 이름}) — {요약} | {대상} | {사유} |

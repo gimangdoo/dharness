@@ -1,6 +1,6 @@
 # Phase 5-2 + §10 합성 산출물 구체 예시 — 시나리오 인덱스
 
-§5 합성 템플릿이 §10 Step 5의 4 산출물(에이전트 정의 / settings.json / CLAUDE.md 1행 / §3 인벤토리 footnote)로 결합되는 *형태 참고*. 외부 도입자가 자신의 도메인으로 매핑할 때 출발점.
+§5 합성 템플릿이 §10 Step 5의 4 산출물(에이전트 정의 / settings.json / changelog.md 1행 / §3 인벤토리 footnote)로 결합되는 *형태 참고*. 외부 도입자가 자신의 도메인으로 매핑할 때 출발점.
 
 각 시나리오는 [§3-1 매트릭스](../../permission-profiles.md#3-1-검증-완료-t0-mcp--capability-profile-매트릭스-14차-사이클-p2-1차-종합-보고)의 capability profile 1개를 *전형 사례*로 박제. **16차 사이클 누적으로 4 capability profile *완전 박제 매트릭스 달성*** — 외부 도입자는 자신의 도메인에 가장 가까운 예시 1종을 출발점으로 그대로 복사.
 
@@ -15,11 +15,11 @@
 
 ## 사용 흐름 (공통)
 
-각 시나리오 폴더 안에 4 파일 (`README.md` + `<agent-name>.agent.md` + `settings.json` + `CLAUDE_md_row.md`)이 동일 구조로 박제. 다음 매핑으로 복사:
+각 시나리오 폴더 안에 4 파일 (`README.md` + `<agent-name>.agent.md` + `settings.json` + `changelog_row.md`)이 동일 구조로 박제. 다음 매핑으로 복사:
 
 1. **에이전트 정의 파일** → `<derived>/.claude/agents/<agent-name>.md`
 2. **`settings.json`** → `<derived>/.claude/settings.json` (기존 키와 *deep merge* — 덮어쓰지 말 것)
-3. **`CLAUDE_md_row.md`의 행** → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가
+3. **`changelog_row.md`의 행** → `<derived>/_workspace/_baseline/changelog.md` "변경 이력" 표 끝에 추가
 4. (a) §3 인벤토리 footnote + §3-1 매트릭스 행은 *plugin host 본 저장소* PR 영역 (§10 Step 5 atomic 분계 — 외부 install 도입자는 권고만 보고). 새 MCP가 PoC enumeration 통과 후 §3-1 매트릭스 closure 기준(`tier·profile·도구 카운트·default permissions·Layer 결합` 5컬럼)을 충족하면 *§3과 §3-1 동시* 갱신.
 
 복사 후 §10 Step 4의 `claude mcp add ...` 실행은 *생략* — inline `mcpServers:` 패턴은 parent 컨텍스트에 적재하지 않으므로 등록 자체가 불요 (§5-1 권고). 단 inline 정의의 `command:` / `args:`는 OS·환경별 placeholder 치환 필수 (각 시나리오 README의 "placeholder 치환 표" 참조).

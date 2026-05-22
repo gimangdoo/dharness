@@ -10,7 +10,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 **핵심 원칙:**
 1. 에이전트 정의(`.claude/agents/`)와 스킬(`.claude/skills/`)을 생성한다.
 2. **에이전트 팀을 기본 실행 모드로 사용한다.**
-3. **CLAUDE.md에 하네스 포인터를 등록한다.** — 새 세션에서 오케스트레이터 스킬이 트리거되도록 최소한의 포인터(트리거 규칙 + 변경 이력)만 기록한다.
+3. **CLAUDE.md에 하네스 섹션을 등록한다.** — 새 세션에서 오케스트레이터 스킬이 트리거되도록 운영·구조·규칙만 기록한다 (Claude Code CLAUDE.md litmus — 매 세션 로딩, 목표 < 200줄). 변경 이력은 별도 파일.
 4. **하네스는 고정물이 아니라 진화하는 시스템이다.** — 매 실행 후 피드백을 반영하고, 에이전트·스킬·CLAUDE.md를 지속 갱신한다.
 
 ## 워크플로우
@@ -286,24 +286,41 @@ skill-name/
 
 소규모(5~10작업) 2~3명, 중규모(10~20) 3~5명, 대규모(20+) 5~7명. **3명 집중 팀이 5명 산만 팀보다 낫다.**
 
-#### 7-4. CLAUDE.md 하네스 포인터 등록
+#### 7-4. CLAUDE.md 하네스 섹션
 
-새 세션마다 로딩되므로 **포인터(트리거 규칙) + 변경 이력**만 기록. 에이전트/스킬 목록·디렉토리 구조·실행 룰 상세는 넣지 않음(중복).
+CLAUDE.md는 매 세션 컨텍스트에 로딩된다 — 줄마다 "제거 시 Claude가 실수하나? 아니면 잘라라"를 통과하는 것만 박제. `/init`가 코드베이스에서 명령·구조를 추출하듯, 본 단계는 *합성된 하네스*에서 운영·구조·규칙을 추출한다. 변경 이력(자주 바뀜)·전체 명령 목록(참조 자료)은 CLAUDE.md에서 제외하고 포인터만.
 
 ````markdown
-## 하네스: {도메인명}
+# 하네스: {도메인명}
 
-**목표:** {핵심 목표 한 줄}
+{한 줄 — 이 하네스가 수행/생성하는 것}
 
-**트리거:** {도메인} 관련 작업 요청 시 `{orchestrator-skill-name}` 스킬을 사용하라. 또는 `/harness:harness-*` slash command로 명시적 호출 — 카탈로그: `harness-new`/`harness-add-agent`/`harness-add-skill`/`harness-baseline`/`harness-audit`/`harness-evolve`/`harness-adapt`/`harness-mcp-recommend`/`harness-mcp-adopt`/`harness-mcp-status`/`harness-mcp`/`harness-merge`/`harness-remove`/`harness-split`/`harness-status`/`harness-validate`/`harness-grill`. 단순 질문은 직접 응답 가능.
+## 운영
+- {도메인} 작업·후속 요청(수정·재실행·보완) → `{orchestrator-skill}` 스킬. 단순 질문은 직접 응답.
+- 검증 `/harness:harness-validate` · 진화 `/harness:harness-evolve` · drift 점검 `/harness:harness-adapt`
+- 전체 `/harness:*` 카탈로그 → `{orchestrator-skill}` SKILL.md 헤더
 
-**Phase 10 자동 알림:** 세션 시작 시 `_workspace/_telemetry/`의 최신 `.jsonl` 파일을 확인하라. 마지막 Adapt 시각(= `_workspace/_telemetry/_delta_*.md` 또는 `_workspace/_telemetry/_rollback/{ts}/` 중 가장 최근 mtime, 둘 다 없으면 telemetry 첫 이벤트의 ts) 이후 `"type":"harness_invocation"` 이벤트 수가 10회 이상이면, 사용자에게 알린다: "하네스가 {N}회 실행되었습니다. `/harness:harness-adapt`로 drift 점검을 권장합니다." — telemetry 파일이 없거나 읽기 비용이 클 경우 건너뛴다.
+## 구조
+실행 모드: {팀 | 서브 | 하이브리드} · 오케스트레이터 `{orchestrator-skill}`
 
-**변경 이력:**
-| 날짜 | 변경 내용 | 대상 | 사유 |
-|------|----------|------|------|
-| {YYYY-MM-DD} | 초기 구성 | 전체 | - |
+에이전트:
+- `{agent-1}` — {역할 ≤ 5단어}
+- `{agent-2}` — {역할 ≤ 5단어}
+
+스킬: `{skill-1}`({용도}) · `{skill-2}`({용도})
+산출물: `_workspace/` — `00_input/` 입력 · `_baseline/` 프로파일·변경이력 · `_telemetry/` 관측 · 최종 `{경로}`
+상세 워크플로우·데이터 흐름 → `{orchestrator-skill}` SKILL.md
+
+## 규칙
+- 도메인 작업은 오케스트레이터 경유 — 우회 후 산출물 직접 편집 금지 (drift 추적 끊김)
+- `_workspace/_baseline/*`(Phase 1·2 baseline) 수동 편집 금지 — `/harness:harness-baseline` 경유
+- {자문성 도메인 한정 — 면책 고지: 본 산출물은 [전문가] 자문을 대체하지 않음}
+
+---
+변경 이력 → `_workspace/_baseline/changelog.md`
 ````
+
+> **CLAUDE.md litmus (Claude Code 공식 — `code.claude.com/docs` memory.md / best-practices.md):** 매 세션 로딩 → 목표 < 200줄, 줄마다 "제거 시 실수 유발? 아니면 컷". **제외**: 자주 바뀌는 정보(변경 이력), 참조 자료(전체 명령 목록 → 포인터), 코드/파일에서 알 수 있는 것. **포함**: 운영 명령, 아키텍처, gotcha·경계. 에이전트 로스터는 ≤ 5단어 역할 태그 — Claude가 팀 역량을 즉시 인식해 작업 라우팅·부분 재실행 정확도가 오른다(file-by-file 설명 아님 = 팀 구성 = 아키텍처). 코드 도메인이면 7-4.5 HOW(스택) 섹션을 `## 규칙` 다음에 추가.
 
 #### 7-4.5. CLAUDE.md HOW 본문 draft (Q3 doctrine, 2026-05-16)
 
@@ -339,14 +356,14 @@ skill-name/
    ````
 
 3. **사용자 게이트** — `/cm-claudemd-apply` 패턴 재사용 또는 사용자에게 inline confirm:
-   - `Y` → CLAUDE.md "변경 이력" 표 *직전*에 HOW 섹션 삽입
+   - `Y` → CLAUDE.md `## 규칙` 섹션 다음(변경 이력 포인터 `---` 직전)에 HOW 섹션 삽입
    - `N` → `_workspace/_drafts/discarded/`로 이동
 4. **재생성 트리거** — Phase 10 baseline drift 감지 시(`stack` 변경 등) 사용자에게 "HOW 섹션 재draft?" 제안
 
 **제약:**
 
 - 추출값은 *제안*. anti-premature-judgment doctrine 정합 — 사용자 confirm 없이 박제 금지
-- 7-4 템플릿의 트리거+변경 이력은 *항상* 박제. 본 7-4.5는 *옵션*.
+- 7-4 템플릿의 운영·구조·규칙은 *항상* 박제. 본 7-4.5 HOW(스택)는 코드 프로젝트에서 권장(= `/init` 동급 콘텐츠), 비코드 도메인은 생략.
 - 본 단계 skip 가능 — derived 프로젝트가 이미 풍부한 본문을 가진 경우(brownfield) 사용자 판단
 
 #### 7-5. 후속 작업 지원
@@ -412,7 +429,7 @@ skill-name/
 
 #### 9-3. 변경 이력
 
-모든 변경은 CLAUDE.md 변경 이력 테이블(Phase 7-4 템플릿)에 기록. 출처를 명시하여 Phase 9 변경과 Phase 10 자동 감지를 구분 — `Phase 9: 사용자 피드백 — {요약}` vs `Phase 10: drift 감지 ({drift 이름})`.
+모든 변경은 `_workspace/_baseline/changelog.md` 변경 이력 테이블에 기록 (CLAUDE.md엔 포인터만 — 변경 이력은 자주 바뀌어 매 세션 로딩되는 CLAUDE.md에서 제외). 출처를 명시하여 Phase 9 변경과 Phase 10 자동 감지를 구분 — `Phase 9: 사용자 피드백 — {요약}` vs `Phase 10: drift 감지 ({drift 이름})`.
 
 #### 9-4. 진화 트리거
 
@@ -427,7 +444,7 @@ Phase 0에서 "운영/유지보수"로 분기 시 진입. 명시적 진입점은
 
 1. **현황 감사** — `.claude/agents/` ↔ 오케스트레이터 에이전트 구성 비교, `.claude/skills/` ↔ 스킬 구성 비교 → 불일치 보고 (`/harness:harness-audit`이 자동 수행)
 2. **점진적 추가/수정** — 한 번에 하나씩, 각 변경 후 즉시 동기화(Step 3)
-3. **CLAUDE.md 변경 이력 갱신** — 날짜·내용·대상·사유
+3. **변경 이력 갱신** — `_workspace/_baseline/changelog.md`에 날짜·내용·대상·사유
 4. **변경 검증** — 구조(8-1), 트리거 영향 시 트리거(8-4), 대규모 변경(아키텍처 변경, 에이전트 3+ 추가/삭제) 시 실행 테스트(8-3) + 드라이런(8-5)
 
 ### Phase 10: Runtime Adaptation
@@ -469,7 +486,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 | 입력 | 사용자 발화 | telemetry + baseline |
 | 변경 범위 | 사용자가 지목한 부분 | 시스템이 감지한 모든 drift |
 
-두 Phase는 동일한 변경 이력 테이블(Phase 7-4 템플릿)을 공유한다.
+두 Phase는 동일한 변경 이력 테이블(`_workspace/_baseline/changelog.md`)을 공유한다.
 
 #### 10-6. 안전 메커니즘 (적용·검증·복원)
 
@@ -497,7 +514,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 - [ ] **스킬 + 오케스트레이터** — `프로젝트/.claude/skills/{name}/SKILL.md` + 오케스트레이터 1개 (데이터 흐름·에러 핸들링·테스트 시나리오 포함). 각 `SKILL.md`는 frontmatter만 있는 빈 파일이 아니라 본문(트리거·워크플로우·입출력·예시)까지 박제 — 빈 파일/디렉토리만 산출 금지 (Phase 6 빈 스킬 금지 invariant)
 - [ ] **실행 모드 명시** — 팀 / 서브 / 하이브리드 (하이브리드면 Phase별 모드 기재)
 - [ ] **사용자 `.claude/commands/`에 미생성** — harness 플러그인 본체 `commands/`는 L1 진입점으로 별개
-- [ ] **CLAUDE.md 하네스 포인터 등록** — 트리거 규칙 + 변경 이력 (Phase 7-4 템플릿)
+- [ ] **CLAUDE.md 하네스 섹션** — 운영·구조·규칙 + 변경 이력 포인터 (Phase 7-4 템플릿, litmus 통과·< 200줄)
 - [ ] **오케스트레이터 Phase 1에 컨텍스트 확인 단계** — 초기/후속/부분 재실행 판별
 - [ ] **Phase 10 capture 인프라** — `_workspace/_telemetry/` + `_telemetry/_rollback/` 디렉토리 + 오케스트레이터 telemetry capture 훅 + description에 Phase 10 트리거 키워드("점검"·"drift"·"적응"·"baseline 갱신"). 비코드 도메인은 사용 신호 캡처는 박제하고 baseline drift는 CLAUDE.md에 future scope 명시(10-7) — silent 생략 금지
 
@@ -510,8 +527,8 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 - [ ] **SKILL.md 본문 500줄 이내** — 초과 시 references/ 분리
 - [ ] **테스트 프롬프트 2~3개 실행 검증**
 - [ ] **트리거 검증** — should-trigger + should-NOT-trigger
-- [ ] **CLAUDE.md 변경 이력 갱신** — 에이전트/스킬 추가/삭제/수정 기록
-- [ ] **Phase 10 자동 알림 지침** — CLAUDE.md에 세션 시작 시 telemetry 카운터 확인 + 10회 누적 시 `/harness:harness-adapt` 알림 (Phase 7-4 템플릿 준수)
+- [ ] **변경 이력 갱신** — `_workspace/_baseline/changelog.md`에 에이전트/스킬 추가/삭제/수정 기록
+- [ ] **Phase 10 주기 점검** — 오케스트레이터가 telemetry append 직후 마지막 Adapt 후 `harness_invocation` 카운트, ≥ 10이면 최종 보고에 `/harness:harness-adapt` 권장 1줄 (orchestrator-template "Phase 10 주기 점검")
 
 ## 참고
 

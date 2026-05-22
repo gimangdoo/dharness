@@ -20,7 +20,7 @@
 | (a) 카탈로그 footnote | (메타) | `plugins/harness/skills/harness/references/permission-profiles.md` §3 fetch/memory 행 | §3-1 매트릭스 `web-research` 행과 동시 갱신 |
 | (b) 에이전트 정의 | [`web-research.agent.md`](./web-research.agent.md) | `.claude/agents/web-research.md` | inline `mcpServers:` 멀티 패턴 (fetch + memory) |
 | (c) 권한 게이트 | [`settings.json`](./settings.json) | `.claude/settings.json` | fetch 4종 allow + memory 7종(read 3 allow / create+add 3 ask / delete 3 deny) |
-| (d) 변경 이력 1행 | [`CLAUDE_md_row.md`](./CLAUDE_md_row.md) | derived 프로젝트의 `CLAUDE.md` "변경 이력" 표 | 멀티 inline 패턴 표기 ("MCP 채택: fetch + memory") |
+| (d) 변경 이력 1행 | [`changelog_row.md`](./changelog_row.md) | derived 프로젝트의 `_workspace/_baseline/changelog.md` "변경 이력" 표 | 멀티 inline 패턴 표기 ("MCP 채택: fetch + memory") |
 
 ## 관찰 포인트
 
@@ -45,7 +45,7 @@
 1. `web-research/` 디렉토리 전체를 *derived 프로젝트*로 복사 후 다음 매핑:
    - `web-research.agent.md` → `<derived>/.claude/agents/web-research.md`
    - `settings.json` → `<derived>/.claude/settings.json` (기존 키와 deep merge — 덮어쓰지 말 것)
-   - `CLAUDE_md_row.md`의 한 행 → `<derived>/CLAUDE.md` "변경 이력" 표 끝에 추가
+   - `changelog_row.md`의 한 행 → `<derived>/_workspace/_baseline/changelog.md` "변경 이력" 표 끝에 추가
 2. **`claude mcp add`는 생략 가능** — inline `mcpServers:` 패턴은 spawn 시 connect되므로 parent 등록 불요 (§5-1 권장). 단 npx PATH 미통과 환경이면 `web-research.agent.md` 본문 끝의 "placeholder 치환 표"에 따라 `command:`를 절대경로로 치환.
 3. 세션 재시작 후 `Agent` tool로 `subagent_type: "web-research"` spawn 검증. 첫 spawn 시 subagent의 도구 풀에 `mcp__fetch__*` 4종 + `mcp__memory__*` 9종 노출 확인 (parent ToolSearch에는 미노출 = 10차 cycle P0 양면 검증과 동일).
 
@@ -67,4 +67,4 @@
 | `mcp__memory__delete_observations` | deny | KG destructive — 영구 삭제 |
 | `mcp__memory__delete_relations` | deny | KG destructive — 영구 삭제 |
 
-> **bucket 변경 시 양면 갱신:** 위 표를 갱신하면 동 디렉토리의 `settings.json` `permissions.{allow,ask,deny}` + `CLAUDE_md_row.md` 비고 컬럼 카운트도 동시 정합 — drift 시 외부 도입자가 한 세트 복사 후 어긋남.
+> **bucket 변경 시 양면 갱신:** 위 표를 갱신하면 동 디렉토리의 `settings.json` `permissions.{allow,ask,deny}` + `changelog_row.md` 비고 컬럼 카운트도 동시 정합 — drift 시 외부 도입자가 한 세트 복사 후 어긋남.
