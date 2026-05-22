@@ -203,7 +203,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 **팀 재구성:** 세션당 한 팀만 활성. Phase 간 팀 해체/재구성 가능. 이전 팀 산출물을 파일로 저장 후 새 팀 생성.
 
-**필수 섹션:** 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업. 팀 모드에선 `## 팀 통신 프로토콜` 섹션 추가 (메시지 수신/발신 대상, 작업 요청 범위 명시).
+**필수 섹션:** 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업, 예시(입출력 사례 ≥ 1). 팀 모드에선 `## 팀 통신 프로토콜` 섹션 추가 (메시지 수신/발신 대상, 작업 요청 범위 명시). frontmatter `tools:`에 외부 입력·부작용 도구(`Bash`/`Write`/`Edit`/`WebFetch`/`WebSearch`/`PowerShell`)를 보유하는 에이전트는 `## 입력 신뢰 경계`(프롬프트 인젝션 방어) 섹션도 필수 — 표준 가드 절은 `references/agent-design-patterns.md` "입력 신뢰 경계" 참조. `harness-validate`가 도구 보유 ↔ 가드 절 정합을 결정적으로 검출한다.
 
 **QA 에이전트 포함 시 필수:**
 - 타입은 `general-purpose` (`Explore`는 읽기 전용이라 검증 스크립트 실행 불가)
@@ -239,7 +239,10 @@ skill-name/
 └── (선택) scripts/  references/  assets/
 ```
 
+> **🚫 빈 스킬 금지 invariant (P0, 2026-05-22):** 스킬 디렉토리를 만들면 *같은 동작에서* `SKILL.md`를 **본문까지 채워** 박제한다. 디렉토리만 만들고 `SKILL.md`를 누락하거나 frontmatter만 남기면, 오케스트레이터·에이전트의 스킬 참조가 dangling이 되어 하네스가 즉시 실행 불가다. 빈 `SKILL.md`·디렉토리만 있는 스킬을 산출물로 남기지 않는다. 최소 본문 골격(트리거 + 워크플로우 + 입출력 + 예시 ≥ 1)은 `references/skill-writing-guide.md` "최소 본문 골격" 참조. `harness-validate`가 빈 스킬 디렉토리·본문 부재를 결정적으로 검출한다.
+
 **핵심 룰:**
+- **파일명 `SKILL.md` (대문자 고정)** — 스킬 파일은 정확히 `SKILL.md`. `skill.md`·`Skill.md` 등 대소문자 변종 금지 — Claude Code 스킬 로딩이 대문자 `SKILL.md`를 표준으로 인식하며, 변종은 케이스 민감 파일시스템에서 미로딩된다. CLAUDE.md는 프로젝트 루트(`프로젝트/CLAUDE.md`)에 둔다 — `.claude/CLAUDE.md` 금지.
 - **Description은 적극적("pushy")** — description은 유일한 트리거 메커니즘. 스킬이 하는 일 + 구체적 트리거 상황 모두 기술, 유사하지만 트리거하면 안 되는 경우와 구분
 - **Why를 설명하라** — "ALWAYS/NEVER" 강압 대신 이유 전달, 엣지 케이스에서도 올바른 판단 가능
 - **Lean하게** — SKILL.md 본문 ≤500줄, 초과 시 references/ 분리 + 본문에 "언제 읽으라" 포인터
@@ -474,6 +477,15 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 
 > 5종 메커니즘(Cross-artifact chain·패치 미리보기·사전 스냅샷·Post-Adapt 회귀 검증·자동 rollback) 상세, telemetry schema, capture 신호 7종, diagnostic·adapt 룰, 승인 UX는 `references/runtime-adaptation.md` §6 단일 출처.
 
+#### 10-7. 비코드 도메인 telemetry 적응
+
+`_workspace/_telemetry/` 인프라와 **사용 신호**(`harness_invocation`·`agent_invocation`·`agent_failure`) 캡처는 도메인 무관 — 모든 하네스가 박제한다. Adapt 트리거(N회 누적)·미사용 에이전트 감지는 코드 여부와 무관하게 작동한다. 반면 **baseline drift 신호**(`project_signal` — 새 의존성·커버리지·LOC 변화)는 코드 프로젝트 전제다.
+
+비코드 도메인(재무·교육·생활·문서·기획 등)은:
+- 사용 신호 캡처 + `_telemetry/` 인프라는 **그대로 박제** — 차단 항목이다.
+- `project_signal`은 도메인 신호로 치환(예: 입력 데이터 스키마 변경, 산출물 카테고리 추가)하거나, 도메인상 의미가 없으면 CLAUDE.md에 "Phase 10: 사용 신호만 캡처, baseline drift는 향후 범위" 한 줄로 **명시**한다.
+- silent 생략 금지 — 합성 회귀 평가에서 telemetry 인프라 미박제가 반복 결함으로 누적됐다. 명시적 future scope 선언은 graceful, 침묵은 결함이다.
+
 ## 산출물 체크리스트
 
 생성 완료 후 확인. **차단(must)**은 빠지면 하네스 작동 실패, **권장(should)**은 품질 보장.
@@ -482,12 +494,12 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 
 - [ ] **Baseline 산출** — `_workspace/_baseline/project_profile.md` (Phase 1) + `intent_profile.md` (Phase 2, schema 준수)
 - [ ] **에이전트 정의 파일** — `프로젝트/.claude/agents/{name}.md` 빌트인 타입(`general-purpose`/`Explore`/`Plan`) 포함 필수
-- [ ] **스킬 + 오케스트레이터** — `프로젝트/.claude/skills/{name}/SKILL.md` + 오케스트레이터 1개 (데이터 흐름·에러 핸들링·테스트 시나리오 포함)
+- [ ] **스킬 + 오케스트레이터** — `프로젝트/.claude/skills/{name}/SKILL.md` + 오케스트레이터 1개 (데이터 흐름·에러 핸들링·테스트 시나리오 포함). 각 `SKILL.md`는 frontmatter만 있는 빈 파일이 아니라 본문(트리거·워크플로우·입출력·예시)까지 박제 — 빈 파일/디렉토리만 산출 금지 (Phase 6 빈 스킬 금지 invariant)
 - [ ] **실행 모드 명시** — 팀 / 서브 / 하이브리드 (하이브리드면 Phase별 모드 기재)
 - [ ] **사용자 `.claude/commands/`에 미생성** — harness 플러그인 본체 `commands/`는 L1 진입점으로 별개
 - [ ] **CLAUDE.md 하네스 포인터 등록** — 트리거 규칙 + 변경 이력 (Phase 7-4 템플릿)
 - [ ] **오케스트레이터 Phase 1에 컨텍스트 확인 단계** — 초기/후속/부분 재실행 판별
-- [ ] **Phase 10 capture 인프라** — `_workspace/_telemetry/` + `_telemetry/_rollback/` 디렉토리 + 오케스트레이터 telemetry capture 훅 + description에 Phase 10 트리거 키워드("점검"·"drift"·"적응"·"baseline 갱신")
+- [ ] **Phase 10 capture 인프라** — `_workspace/_telemetry/` + `_telemetry/_rollback/` 디렉토리 + 오케스트레이터 telemetry capture 훅 + description에 Phase 10 트리거 키워드("점검"·"drift"·"적응"·"baseline 갱신"). 비코드 도메인은 사용 신호 캡처는 박제하고 baseline drift는 CLAUDE.md에 future scope 명시(10-7) — silent 생략 금지
 
 ### 권장 (should) — 9개
 

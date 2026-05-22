@@ -37,6 +37,7 @@ py plugins/harness/scripts/validate/structure.py [--json]
 검증 항목:
 - 모든 agent `.md` frontmatter `name:` + 본문 필수 섹션 존재 (핵심 역할 / 작업 원칙 / 입력·출력 프로토콜 / 에러 핸들링 / 협업 / 팀 통신 프로토콜)
 - 모든 skill `SKILL.md` frontmatter `name:` + `description:` 필드 + 본문 워크플로우 섹션 존재
+- **빈 스킬 디렉토리 + 파일명 검출** — skill 디렉토리에 `SKILL.md` 미존재(디렉토리만 존재) / frontmatter만 있고 본문 부재 / `skill.md`·`Skill.md` 등 대소문자 변종 시 fail (빈 스킬 금지 invariant + `SKILL.md` 대문자 고정 — dangling·미로딩 차단)
 - 오케스트레이터 스킬 식별 가능 (CLAUDE.md 포인터 또는 `.claude/skills/*-orchestrator/`)
 - YAML frontmatter 파싱 오류 0
 
@@ -61,6 +62,7 @@ py plugins/harness/scripts/validate/chain.py [--json]
 검증 항목:
 - 오케스트레이터 본문의 agent/skill 인용이 실제 파일과 1:1 매핑 (dangling reference 0)
 - agent의 `tools:` allowlist의 MCP 인용이 `.claude/settings*.json` permissions 또는 inline `mcpServers:`와 정합
+- **인젝션 가드 정합** — 외부 입력·부작용 도구(`Bash`/`Write`/`Edit`/`WebFetch`/`WebSearch`/`PowerShell`, 또는 `tools:` 필드 부재로 전체 도구 상속) 보유 에이전트 ↔ 본문 `입력 신뢰 경계` 절 존재 (N-C-1 doctrine — `agent-design-patterns.md` "입력 신뢰 경계")
 - references/ 인용 link가 존재 (orphan reference 0, phantom reference 0)
 - telemetry capture 호출 — orchestrator 본문이 `_workspace/_telemetry/{date}.jsonl` append 명령 보유 (lines 박제 검증)
 - runtime-adaptation.md §6 chain 표 기준 dangling 0

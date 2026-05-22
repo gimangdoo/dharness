@@ -104,11 +104,46 @@ def check_skill_file(path: Path) -> list[str]:
 
     m = FRONTMATTER_RE.match(text)
     body = text[m.end():] if m else text
+    if not body.strip():
+        errors.append(
+            f"{path.relative_to(SKILLS_DIR)}: SKILL.md 본문 부재 — frontmatter만 존재 (빈 스킬, dangling 참조 유발)"
+        )
+        return errors
     for section_re in SKILL_REQUIRED_SECTIONS:
         if not re.search(section_re, body, re.IGNORECASE):
             errors.append(f"{path.relative_to(SKILLS_DIR)}: 필수 섹션 누락 (pattern: `{section_re}`)")
 
     return errors
+
+
+def check_skills_dir() -> tuple[int, list[str]]:
+    """skill 디렉토리 순회 — SKILL.md 미존재(빈 디렉토리) 검출 + 파일별 본문 검증.
+
+    `SKILLS_DIR.glob("*/SKILL.md")`는 SKILL.md 없는 디렉토리를 통째로 누락한다.
+    빈 스킬 디렉토리는 오케스트레이터 스킬 참조의 dangling 원인이므로 디렉토리 단위로 순회한다.
+    """
+    errors: list[str] = []
+    count = 0
+    if not SKILLS_DIR.exists():
+        return count, errors
+    for skill_dir in sorted(p for p in SKILLS_DIR.iterdir() if p.is_dir()):
+        # host-agnostic: 케이스 민감 FS에서도 변종 검출하려면 .exists() 대신 실제 파일명 비교
+        skill_files = [
+            p for p in skill_dir.iterdir() if p.is_file() and p.name.lower() == "skill.md"
+        ]
+        if not skill_files:
+            errors.append(
+                f"{skill_dir.name}/: SKILL.md 미존재 — 빈 스킬 디렉토리 (dangling 스킬 참조 유발)"
+            )
+            continue
+        actual = next((p for p in skill_files if p.name == "SKILL.md"), skill_files[0])
+        if actual.name != "SKILL.md":
+            errors.append(
+                f"{skill_dir.name}/{actual.name}: 파일명 대소문자 위반 — `SKILL.md` (대문자) 필수"
+            )
+        count += 1
+        errors.extend(check_skill_file(actual))
+    return count, errors
 
 
 def find_orchestrator() -> Path | None:
@@ -152,10 +187,8 @@ def main(argv: list[str]) -> int:
             agents_count += 1
             errors.extend(check_agent_file(agent_path))
 
-    if SKILLS_DIR.exists():
-        for skill_md in SKILLS_DIR.glob("*/SKILL.md"):
-            skills_count += 1
-            errors.extend(check_skill_file(skill_md))
+    skills_count, skill_errors = check_skills_dir()
+    errors.extend(skill_errors)
 
     orch = find_orchestrator()
     if orch is None and skills_count > 0:

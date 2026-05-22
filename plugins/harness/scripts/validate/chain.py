@@ -90,7 +90,14 @@ def collect_agents() -> set[str]:
 def collect_skills() -> set[str]:
     if not SKILLS_DIR.exists():
         return set()
-    return {p.name for p in SKILLS_DIR.iterdir() if p.is_dir() and (p / "SKILL.md").exists()}
+    names: set[str] = set()
+    for p in SKILLS_DIR.iterdir():
+        if not p.is_dir():
+            continue
+        # SKILL.md 대소문자 변종도 스킬 존재로 인정 (변종 자체는 structure.py가 별도 플래그)
+        if any(f.is_file() and f.name.lower() == "skill.md" for f in p.iterdir()):
+            names.add(p.name)
+    return names
 
 
 def collect_settings_permissions() -> set[str]:
@@ -495,6 +502,52 @@ def check_agent_model_field() -> list[str]:
     return errors
 
 
+EXTERNAL_INPUT_TOOLS = {"bash", "write", "edit", "webfetch", "websearch", "powershell"}
+INJECTION_GUARD_PATTERN = re.compile(
+    r"입력\s*신뢰\s*경계|프롬프트\s*인젝션|인젝션\s*방어|injection\s*guard|untrusted\s*input|prompt\s*injection",
+    re.IGNORECASE,
+)
+
+
+def check_agent_injection_guard() -> list[str]:
+    """외부 입력·부작용 도구 보유 에이전트 ↔ 본문 인젝션 방어 절 정합 (N-C-1 doctrine).
+
+    Bash/Write/Edit/WebFetch/WebSearch/PowerShell 보유 OR `tools:` 필드 부재(전체 도구 상속)면
+    인젝션 표면이 존재 — 본문에 '입력 신뢰 경계' 절 박제 필수.
+    agent-design-patterns.md "입력 신뢰 경계" doctrine.
+    """
+    errors: list[str] = []
+    if not AGENTS_DIR.exists():
+        return errors
+    for path in AGENTS_DIR.glob("*.md"):
+        rel = str(path.relative_to(REPO_ROOT))
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        fm = _extract_frontmatter_block(text)
+        if not fm:
+            continue
+        if TOOLS_LINE_PATTERN.search(fm):
+            tools = _extract_tools_list(fm)
+            held = sorted(
+                {t for t in tools if t.split("__", 1)[0].strip().lower() in EXTERNAL_INPUT_TOOLS}
+            )
+            if not held:
+                continue
+            surface = ", ".join(held)
+        else:
+            # `tools:` 필드 부재 = 전체 도구 상속 (Bash/Write 포함) — 인젝션 표면 존재
+            surface = "tools: 필드 부재 → 전체 도구 상속"
+        body = text.split("---", 2)[-1] if text.lstrip().startswith("---") else text
+        if not INJECTION_GUARD_PATTERN.search(body):
+            errors.append(
+                f"{rel}: 외부 입력·부작용 도구 보유({surface})하나 본문 인젝션 방어 절 부재 "
+                f"— '입력 신뢰 경계' 섹션 박제 필수 (N-C-1 doctrine)"
+            )
+    return errors
+
+
 def _tokenize_description(desc: str) -> set[str]:
     """description에서 trigger 키워드 후보 토큰화 — 한글/영문 단어 단위."""
     # 한글 음절 연속 + 영문 단어 + 숫자 — 기호·공백 분리
@@ -809,6 +862,7 @@ def main(argv: list[str]) -> int:
     errors.extend(check_plugin_internal_references())
     errors.extend(check_agent_tools_mcp_consistency())
     errors.extend(check_agent_model_field())
+    errors.extend(check_agent_injection_guard())
     errors.extend(check_skill_description_overlap())
     errors.extend(check_skill_signal_coverage())
     errors.extend(check_intent_profile_grilling_log())
