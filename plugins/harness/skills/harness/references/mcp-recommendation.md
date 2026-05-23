@@ -2,7 +2,13 @@
 
 > **Read at phase:** Phase 5-2 (MCP·도구 자동 할당). 10 signal (S1~S10) 추출 + 3축 점수 + 후보 풀 cascade. permission-profiles.md와 동반 read.
 
-> **Cross-doc 인용 규약 (M3 단일 출처 — 2026-05-14):** 본 문서의 bare `§N`은 `permission-profiles.md §N`을 가리킨다 (본 doc은 permission-profiles의 §3·§3-1·§4·§10에 *합성 매핑·채택 절차*를 위임하기 때문에 cross-doc 비중 우세). 본 문서 *자체* 섹션 자기 인용은 `본 §1`·`본 §3` 형식으로 명시 또는 *섹션 헤더 인근*에서만 bare 사용. 예외(다른 doc 참조)는 인라인 명시.
+> **Cross-doc 인용 규약 (M3 단일 출처 — 2026-05-14, P7 분리 갱신 2026-05-23):** 본 문서의 bare `§N`은 permission-profiles 군 (main + inventory + synthesis + dynamic-adoption) §N을 가리킨다. P7 분리 후 매핑:
+> - `§3`·`§3-0`·`§3-1` → `permission-profiles-inventory.md` 진입
+> - `§5-1`·`§5-1-a`·`§5-1-b`·`§5-1-c` → `permission-profiles-synthesis.md` 진입
+> - `§10`·`§10-1`~`§10-7` → `permission-profiles-dynamic-adoption.md` 진입
+> - 그 외 `§N` (§1·§2·§4·§5-2·§5-3·§6·§7·§8·§9·§11) → `permission-profiles.md` main 진입
+>
+> 본 문서 *자체* 섹션 자기 인용은 `본 §1`·`본 §3` 형식으로 명시 또는 *섹션 헤더 인근*에서만 bare 사용. 예외(다른 doc 참조)는 인라인 명시.
 
 > **휴리스틱 임계값 catalog + tuning 가이드 (P2-4 — 2026-05-14):** 본 doc의 임계값은 *deterministic* 아닌 휴리스틱. 도메인별 조정 권장.
 >

@@ -45,14 +45,14 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 |---|---|---|---|---|
 | S1 | Sub-agent 격리 (P6-3) — Phase 1/5/6/8 합성을 N sub-agent 병렬, parent는 통합·합성만 담당 | `SKILL.md:§Phase 1·5·6·8` 박스 (4 hit) | 2026-05-14 P6-3 | LLM 행동 |
 | S2 | Q1 Orchestrator agent coverage — 모든 agent는 오케스트레이터에서 1회 이상 참조 (dead agent FAIL) | `orchestrator-template.md:§Q1 doctrine` | 2026-05-15 Q1 | `chain.py:check_orchestrator_agent_coverage` |
-| S3 | Q2 모델 선택 by role — frontmatter `model:` 필드는 *role 축*으로 결정 (`opus` 기본, read-only는 `sonnet`) | `permission-profiles.md:§5-1-c` | 2026-05-16 Q2 | `chain.py:check_agent_model_field` |
+| S3 | Q2 모델 선택 by role — frontmatter `model:` 필드는 *role 축*으로 결정 (`opus` 기본, read-only는 `sonnet`) | `permission-profiles-synthesis.md:§5-1-c` (P7 분리, 2026-05-23) | 2026-05-16 Q2 | `chain.py:check_agent_model_field` |
 | S4 | Q3 CLAUDE.md HOW 본문 draft (코드 도메인 한정 권장, `project_profile.md`에서 추출 + 사용자 게이트) | `orchestrator-template.md:§CLAUDE.md HOW 본문 draft` | 2026-05-16 Q3 | manual (사용자 confirm gate) |
 | S5 | A7 writes path 충돌 (agents/*.md `writes:` 경로 per-agent exclusivity) | `chain.py:_check_writes_exclusivity` | 2026-05-15 A7 | `chain.py:_check_writes_exclusivity` |
 | S6 | N-C-1 입력 신뢰 경계 (외부 입력·부작용 도구 보유 agent ↔ 본문 `입력 신뢰 경계` 절 존재) | `agent-design-patterns.md:§입력 신뢰 경계`, `SKILL.md:§Phase 5` | 2026-05-14 N-C-1 | `chain.py:check_injection_guard` |
 | S7 | P6-4 inferred_fields source 인용 (모든 `inferred_fields` 항목 `source` 필드 보유 — 인용 0이면 schema 위반) | `intent-profile-schema.md`, `schema.py:_validate_inferred_fields` | 2026-05-14 P6-4 | `schema.py` |
 | S8 | 8 profile 분류 (P6-11) — 범용 4종(§2-1~§2-4 PoC 완료) + 도메인 4종(§2-5~§2-8 PoC 진행) | `permission-profiles.md:§2` | 2026-05-14 P6-11 | manual (분류 합성) |
 | S9 | 도메인 4 신호 (P6-11) — ml-pipeline / devops-infra / mobile-native / data-eng signal 매핑 | `mcp-recommendation.md:§1 P6-11`, `trigger-keyword-catalog.md` | 2026-05-14 P6-11 | manual (signal 추출) |
-| S10 | 합성 default 풀 (P6-9) — Phase 5-2 inline `mcpServers:` 자동 합성 시 ✓ 외 status는 금지 | `permission-profiles.md:§5-1 P6-9` | 2026-05-14 P6-9 | manual (R-7 confirm gate) |
+| S10 | 합성 default 풀 (P6-9) — Phase 5-2 inline `mcpServers:` 자동 합성 시 ✓ 외 status는 금지 | `permission-profiles-inventory.md:§3-0 P6-9` (P7 분리, 2026-05-23) | 2026-05-14 P6-9 | manual (R-7 confirm gate) |
 | S11 | catalog 확장 (trigger-keyword) — 새 signal·키워드 박제 시 `trigger-keyword-catalog.md`가 단일 출처 | `trigger-keyword-catalog.md:§5` | 2026-05-14 P6-8 | manual |
 | S12 | P0-2 빈 스킬 금지 — 스킬 디렉토리 생성 = `SKILL.md` 본문까지 채워 박제 (디렉토리만/frontmatter만 금지) | `SKILL.md:§Phase 6`, `skill-writing-guide.md:§최소 본문 골격` | 2026-05-22 P0 | `chain.py:check_empty_skill` |
 
@@ -65,7 +65,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | P1 | default 권한 (per-profile) — dataset read `allow`, model write `ask`, 외부 hub fetch `ask`; production 변경 `ask`/`deny`; mobile signing/upload `ask`; db drop/truncate dry-run+confirm 2단 | `permission-profiles.md:§2-5/2-6/2-7/2-8` | 2026-05-14 P6-11 | manual (Phase 5-2 합성) |
 | P2 | 회수 불가 명령 — `kubectl delete` / `terraform destroy` / `drop`·`truncate`·`delete` 등 비가역은 사전 dry-run gate 필수 (rollback 회수 불가) | `permission-profiles.md:§2-6, §2-8` | 2026-05-14 P6-11 | manual |
 | P3 | mcp 출처 verify gate (R2) — 모든 MCP 후보 npm Author + GitHub org cross-check 필수 | `mcp-recommendation.md:§2 R2 doctrine`, `permission-profiles.md:§8-3` | 2026-05-14 P6-9 | manual (Phase 5-2 R-7 gate) |
-| P4 | multi-writer 운영 (§11) — CM 자체 세션 병렬 시 단일 writer 강제 (host self-host 한정, 외부 install user는 단일 writer 권장만) | `permission-profiles.md:§11` | 2026-05-14 13차 cycle | manual |
+| P4 | multi-writer 운영 (§10-7) — CM 자체 세션 병렬 시 단일 writer 강제 (host self-host 한정, 외부 install user는 단일 writer 권장만) | `permission-profiles-dynamic-adoption.md:§10-7` (P7 분리, 2026-05-23) | 2026-05-14 13차 cycle | manual |
 | P5 | 자동 install 금지 — T0(무키·로컬) 한정으로 `allow` 자동 승급 가능, 외 T1+ 사용자 명시 confirm | `permission-profiles.md:§6 자동 install 금지 doctrine` | 2026-05-14 | manual |
 
 ## §5. 인프라·meta doctrine (CM·관측·refit 회로)
@@ -93,7 +93,10 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 |---|---|
 | `SKILL.md` | W1·W2·W3·W4·W6·S1·S12 (포인터·박스) |
 | `phase-entry-gates.md` | W1·W2·W3·W4·W5·W7 (본문) |
-| `permission-profiles.md` | S3·S8·S10·P1·P2·P4·P5 |
+| `permission-profiles.md` (main) | S8·P1·P2·P5 |
+| `permission-profiles-inventory.md` (P7 분리) | S10 (§3-0 합성 default 풀) |
+| `permission-profiles-synthesis.md` (P7 분리) | S3 (§5-1-c Q2 model by role) |
+| `permission-profiles-dynamic-adoption.md` (P7 분리) | P4 (§10-7 multi-writer) |
 | `orchestrator-template.md` | S2·S4 |
 | `agent-design-patterns.md` | S6 |
 | `qa-agent-guide.md` | I6·I7 |

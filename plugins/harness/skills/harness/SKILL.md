@@ -160,7 +160,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 > **Sub-agent 격리 doctrine (P6-3, 2026-05-14)**: 에이전트 N개 정의 파일 작성을 N sub-agent 병렬 호출(`Agent` tool, `general-purpose` + `model: opus`). 각 sub-agent에 단일 에이전트 정의 책임 위임 — parent는 frontmatter `tools:` allowlist 합성 + 통신 프로토콜 매트릭스 통합만 담당. parent 컨텍스트 격리, N개 동시 작성 시간 단축.
 
-**모델 설정 (Q2 doctrine, 2026-05-16):** frontmatter `model:` 필드는 *agent role 축*으로 결정 — `permission-profiles.md` §5-1-c 단일 출처. 기본 `opus` (synthesis/review/write), read-only 탐색·요약 전용 sub-agent는 `sonnet` 가능 (비용 ~7배 ↓). Agent 호출 시 frontmatter `model:` 값과 일치하는 파라미터 명시 필수. 일괄 `opus` 강제는 폐기 — capability profile × role 매트릭스로 합성.
+**모델 설정 (Q2 doctrine, 2026-05-16):** frontmatter `model:` 필드는 *agent role 축*으로 결정 — `permission-profiles-synthesis.md` §5-1-c 단일 출처 (P7 분리, 2026-05-23). 기본 `opus` (synthesis/review/write), read-only 탐색·요약 전용 sub-agent는 `sonnet` 가능 (비용 ~7배 ↓). Agent 호출 시 frontmatter `model:` 값과 일치하는 파라미터 명시 필수. 일괄 `opus` 강제는 폐기 — capability profile × role 매트릭스로 합성.
 
 **팀 재구성:** 세션당 한 팀만 활성. Phase 간 팀 해체/재구성 가능. 이전 팀 산출물을 파일로 저장 후 새 팀 생성.
 
@@ -173,7 +173,13 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 > 정의 템플릿과 실제 파일 전문은 `references/agent-design-patterns.md` + `references/team-examples.md`. QA 상세 가이드는 `references/qa-agent-guide.md`.
 
-**도구·MCP 자동 할당 (Phase 5-2):** 에이전트 `tools:` allowlist + `.claude/settings.json`·`.mcp.json` 합성은 *제안 후 사용자 confirm*. capability profile 카탈로그, 3-layer 권한 모델(A: 서버 toolset 필터 / B: subagent inline `mcpServers:` parent isolation / C: `permissions.allow/ask/deny`), 결정 트리(§4 profile 매핑), default 합성 패턴(§5-1 inline parent 미적재, toolset 지원 MCP는 §5-1-b A+B 결합형), `.mcp.json` 등록 예외(§5-2 anti-pattern 3 조건), inline schema 룰(list-of-dicts + `type: stdio`), 런타임 채택(§10 + `/harness:harness-mcp-adopt`), 운영 함의(mid-session 미전파·uvx 절대경로·자동 install 금지·plugin-bundled 무력화·`tools:` allowlist는 inline 도구 카운트 무력)는 `references/permission-profiles.md` 단일 출처. 합성 직전 *후보 간 자동 점수화*(3축: 효율성·확장성·정확도) + top-K + R-7 confirm gate + §10 인계는 `references/mcp-recommendation.md`. 자동 install·`allow` 승급은 T0(무키·로컬) 한정. 진단(인벤토리·매트릭스·정합)은 `/harness:harness-mcp-status` (read-only). 도구 API 실 schema는 `references/team-tools-api.md` (TeamCreate / SendMessage / TaskCreate / TaskUpdate / TaskGet / TaskOutput 6 도구).
+**도구·MCP 자동 할당 (Phase 5-2):** 에이전트 `tools:` allowlist + `.claude/settings.json`·`.mcp.json` 합성은 *제안 후 사용자 confirm*. 단일 출처는 `references/permission-profiles*.md` 4 파일 (P7 분리, 2026-05-23):
+- `permission-profiles.md` main — §1 3-layer 모델 / §2 8 capability profile / §4 결정 트리 / §5-2 anti-pattern / §5-3 permissions deny / §6 안전 정책
+- `permission-profiles-inventory.md` — §3 MCP 후보 인벤토리 + §3-0 verification_status + §3-1 검증 완료 T0 매트릭스
+- `permission-profiles-synthesis.md` — §5-1 에이전트 frontmatter (a/b/c — Layer B / Layer A+B / 모델 by role Q2 doctrine)
+- `permission-profiles-dynamic-adoption.md` — §10 dynamic adoption 5-step + 10-4 rollback + 10-7 병렬 세션
+
+운영 함의(mid-session 미전파·uvx 절대경로·자동 install 금지·`tools:` allowlist는 inline 도구 카운트 무력)는 위 4 파일에 분산. 합성 직전 *후보 간 자동 점수화*(3축: 효율성·확장성·정확도) + top-K + R-7 confirm gate + §10 인계는 `references/mcp-recommendation.md`. 자동 install·`allow` 승급은 T0(무키·로컬) 한정. 진단(인벤토리·매트릭스·정합)은 `/harness:harness-mcp-status` (read-only). 도구 API 실 schema는 `references/team-tools-api.md` (TeamCreate / SendMessage / TaskCreate / TaskUpdate / TaskGet / TaskOutput 6 도구).
 
 ### Phase 5.5: Self-Critique on Agent Definitions
 

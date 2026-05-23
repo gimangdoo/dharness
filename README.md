@@ -336,10 +336,10 @@ node plugins\harness\skills\harness\references\fixtures\probe_sqlite.js
 
 | 주제 | 위치 |
 |------|------|
-| Tier별 MCP 인벤토리 (도구 enumeration·install 명령) | [`permission-profiles.md` §3](./plugins/harness/skills/harness/references/permission-profiles.md#3-mcp-후보-인벤토리-tier-분류) |
-| 검증 완료 T0 MCP × capability profile 매트릭스 | [`permission-profiles.md` §3-1](./plugins/harness/skills/harness/references/permission-profiles.md#3-1-검증-완료-t0-mcp--capability-profile-매트릭스) |
-| 5-step 채택 절차 (Discover→Probe→Confirm→Install→Reflect) | [`permission-profiles.md` §10-2](./plugins/harness/skills/harness/references/permission-profiles.md#10-2-5-step-채택-절차-모든-트리거-공통) |
-| Rollback / inline 정의 갱신 | [`permission-profiles.md` §10-4·§10-5](./plugins/harness/skills/harness/references/permission-profiles.md#10-4-rollback-절차) |
+| Tier별 MCP 인벤토리 (도구 enumeration·install 명령) | [`permission-profiles-inventory.md` §3](./plugins/harness/skills/harness/references/permission-profiles-inventory.md) (P7 분리, 2026-05-23) |
+| 검증 완료 T0 MCP × capability profile 매트릭스 | [`permission-profiles-inventory.md` §3-1](./plugins/harness/skills/harness/references/permission-profiles-inventory.md#3-1-검증-완료-t0-mcp--capability-profile-매트릭스) |
+| 5-step 채택 절차 (Discover→Probe→Confirm→Install→Reflect) | [`permission-profiles-dynamic-adoption.md` §10-2](./plugins/harness/skills/harness/references/permission-profiles-dynamic-adoption.md#10-2-5-step-채택-절차-모든-트리거-공통) (P7 분리, 2026-05-23) |
+| Rollback / inline 정의 갱신 | [`permission-profiles-dynamic-adoption.md` §10-4·§10-5](./plugins/harness/skills/harness/references/permission-profiles-dynamic-adoption.md#10-4-rollback-절차) |
 | 합성 결과 예시 (4 산출물 1세트) | [`fixtures/synthesis_example/`](./plugins/harness/skills/harness/references/fixtures/synthesis_example/) |
 
 ---
@@ -495,6 +495,6 @@ findstr /C:"tool_output_captured" _workspace\_telemetry\*.jsonl
 | 문서 | 용도 |
 |------|------|
 | [`plugins/harness/skills/harness/SKILL.md`](./plugins/harness/skills/harness/SKILL.md) | 메타 스킬 정의 (11 Phase 워크플로우) |
-| [`plugins/harness/skills/harness/references/permission-profiles.md`](./plugins/harness/skills/harness/references/permission-profiles.md) | MCP·도구 권한 카탈로그 (Tier 분류 / §3 인벤토리 / §10 dynamic adoption) |
+| [`plugins/harness/skills/harness/references/permission-profiles.md`](./plugins/harness/skills/harness/references/permission-profiles.md) | MCP·도구 권한 카탈로그 main — §1 3-layer / §2 8 profile / §4 결정 트리 / §5-2·§5-3 합성 (P7 분리: §3 → permission-profiles-inventory.md / §5-1 → -synthesis.md / §10 → -dynamic-adoption.md) |
 | [`.claude/skills/memory-search/SKILL.md`](./.claude/skills/memory-search/SKILL.md) | 과거 메모리 LLM 검색 규칙 (3-tool progressive disclosure) |
 | [`CLAUDE.md`](./CLAUDE.md) | 저장소 구성 + CM 포인터 + In-session 가드라인 |
