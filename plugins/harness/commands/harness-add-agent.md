@@ -1,6 +1,6 @@
 ---
-description: 기존 하네스에 에이전트 1명 추가. Phase 1·2·3 SKIP, baseline 재분석 비용 회피하고 비용 최소로 확장.
-argument-hint: <새 에이전트 역할 한 줄 설명>
+description: 에이전트 1명 추가 — baseline 재분석 없이 기존 하네스에 새 역할 박제 (Phase 1·2·3 SKIP).
+argument-hint: <새 에이전트 역할 한 줄>
 ---
 
 # Harness — Add Agent

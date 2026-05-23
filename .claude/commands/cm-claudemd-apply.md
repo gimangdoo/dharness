@@ -1,6 +1,6 @@
 ---
-description: "SessionEnd가 자동 생성한 CHANGELOG.md '변경 이력' 표 행 draft를 실제 CHANGELOG.md에 추가 (사유 인자 선택)"
-argument-hint: "<session_id> [사유...]"
+description: "변경 이력 draft 적용 — 세션 종료 시 자동 생성된 CHANGELOG.md 표 행을 실제 파일에 박제"
+argument-hint: "<세션 ID> [사유 설명...]"
 ---
 
 # /cm-claudemd-apply

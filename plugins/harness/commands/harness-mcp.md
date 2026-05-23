@@ -1,6 +1,6 @@
 ---
-description: MCP 통합 진입점. 첫 인자 subcommand (recommend|adopt|status)로 분기. 기존 3 명령(`harness-mcp-recommend`/`-adopt`/`-status`)을 단일 명령에 라우팅 — UX 단순화. 기존 3 명령도 그대로 유지 (back-compat).
-argument-hint: <recommend|adopt|status> [subcommand 인자...]
+description: MCP 통합 진입점 — 추천·채택·상태 3가지 작업을 단일 명령으로 라우팅 (기존 3 명령도 그대로 사용 가능).
+argument-hint: <recommend|adopt|status> [세부 인자...]
 ---
 
 # Harness — MCP (unified)

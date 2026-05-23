@@ -1,6 +1,6 @@
 ---
-description: "미적용 changelog draft를 폐기 (보관: _workspace/_drafts/discarded/)"
-argument-hint: "[<session_id>] (생략 시 모두 폐기)"
+description: "변경 이력 draft 폐기 — 적용하지 않을 행을 휴지통(_workspace/_drafts/discarded/)으로 이동"
+argument-hint: "[<세션 ID>] (생략 시 전체 폐기)"
 ---
 
 # /cm-claudemd-discard

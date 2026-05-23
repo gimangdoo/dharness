@@ -1,5 +1,5 @@
 ---
-description: 기존 하네스에서 에이전트 또는 스킬 1개를 명시적으로 제거. dangling reference 결정적 cleanup 포함.
+description: 에이전트·스킬 1개 제거 — 잔여 참조(dangling reference) 자동 정리 포함.
 argument-hint: <agent|skill> <이름>
 ---
 

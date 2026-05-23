@@ -1,5 +1,5 @@
 ---
-description: "Context Manager 상태 출력 — _memory/ 디렉토리 통계, observations.db 행 수, 최근 세션 수, draft pending"
+description: "메모리 상태 보기 — 누적 세션·관측 행 수·미적용 changelog draft 통계 한눈에"
 ---
 
 # /cm-status

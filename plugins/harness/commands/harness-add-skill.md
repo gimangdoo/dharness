@@ -1,6 +1,6 @@
 ---
-description: 기존 하네스에 스킬 1개 추가/수정. Phase 1·2·3·4·5 SKIP, baseline·에이전트 정의 그대로 두고 스킬만 추가.
-argument-hint: <스킬 이름 또는 스킬 의도 한 줄>
+description: 스킬 1개 추가/수정 — baseline·에이전트 정의 유지하고 스킬만 갱신 (Phase 1·2·3·4·5 SKIP).
+argument-hint: <스킬 이름 또는 의도 한 줄>
 ---
 
 # Harness — Add Skill

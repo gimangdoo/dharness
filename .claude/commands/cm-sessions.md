@@ -1,6 +1,6 @@
 ---
-description: "최근 세션 목록 출력 — session_id, 날짜, duration, tools 사용"
-argument-hint: "[--limit N] (기본 30)"
+description: "최근 세션 목록 보기 — 세션 ID·날짜·소요 시간·사용 도구 한 줄씩"
+argument-hint: "[--limit 개수] (기본 30개)"
 ---
 
 # /cm-sessions

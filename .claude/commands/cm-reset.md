@@ -1,5 +1,5 @@
 ---
-description: "CM 메모리를 완전히 초기화 — 모든 세션·observations 삭제 (사용자 확인 필수)"
+description: "메모리 전체 삭제 — 누적된 모든 세션·관측 기록 초기화 (확인 절차 필수)"
 ---
 
 # /cm-reset

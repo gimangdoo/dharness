@@ -1,6 +1,6 @@
 ---
-description: 기존 에이전트 또는 스킬 1개를 책임별로 2개 이상으로 분할. 분리 기준 4축 cross-check 후 cross-reference 갱신.
-argument-hint: <agent|skill> <원본 이름> <분할 결과 이름 2개 이상, 공백 구분>
+description: 에이전트·스킬 분할 — 1개를 책임별 2개 이상으로 나누고 분리 기준 4축 검증 + 참조 갱신.
+argument-hint: <agent|skill> <원본 이름> <분할 결과 2개 이상, 공백 구분>
 ---
 
 # Harness — Split Agent or Skill

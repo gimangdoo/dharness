@@ -1,6 +1,6 @@
 ---
-description: 신규 도메인/프로젝트에 하네스를 처음 구축. Phase 0-8 전체 + Phase 10 인프라(telemetry 디렉토리, 자동 알림 포인터, 트리거 키워드)까지 실행. 단일 프로젝트 모드 + derived install 모드 양쪽 1급 시민.
-argument-hint: <도메인 한 문장 설명> [--mode=single|derived]
+description: 하네스 신규 구축 — 도메인 한 문장에서 에이전트 팀·스킬·CLAUDE.md·관측 인프라까지 일괄 생성 (Phase 0-8 + Phase 10). single/derived 모드 양쪽 지원.
+argument-hint: <도메인 한 문장> [--mode=single|derived]
 ---
 
 # Harness — New
@@ -59,11 +59,12 @@ argument-hint: <도메인 한 문장 설명> [--mode=single|derived]
 
 ## 완료 후 체크
 
-`plugins/harness/skills/harness/SKILL.md` §산출물 체크리스트의 24개 항목을 확인한다. 특히 다음 3개는 Phase 10 작동의 전제조건이므로 반드시 확인:
+`plugins/harness/skills/harness/SKILL.md` §산출물 체크리스트의 24개 항목을 확인한다. 특히 다음 4개는 Phase 10 작동 및 후속 명령 append 전제조건이므로 반드시 확인:
 
 - [ ] `_workspace/_telemetry/` 디렉토리 사전 생성됨
 - [ ] 오케스트레이터에 telemetry capture 훅 삽입됨 (매 실행 시 `_telemetry/{date}.jsonl` append)
 - [ ] Phase 10 트리거 키워드("점검", "drift", "적응", "baseline 갱신")가 오케스트레이터 description에 포함됨
+- [ ] `_workspace/_baseline/changelog.md` skeleton 박제됨 (Phase 7-4.1, 후속 `/harness:harness-add-agent`·`harness-mcp-adopt`·`harness-evolve` append 대상)
 
 ## 후속 명령어
 

@@ -1,6 +1,6 @@
 ---
-description: grilling 모드 명시 진입점 — 1q-at-a-time + LLM recommended answer로 Phase 0.5/2/5/9-1의 모호 답안 확정. mattpocock grill-me 흡수 (2026-05-19, Phase C).
-argument-hint: "<phase> [field]"
+description: 추궁(grilling) 모드 진입 — 모호 답안을 한 문항씩 추천 답 제시 후 사용자 확정 (Phase 0.5/2/5/9 진입점).
+argument-hint: "<phase 번호 0.5|2|5|9> [필드명 옵션]"
 ---
 
 # Harness — Grilling Mode 진입
@@ -24,7 +24,7 @@ argument-hint: "<phase> [field]"
 
 | Phase | 필요 산출물 |
 |---|---|
-| `0.5` | `$ARGUMENTS` (도메인 한 문장) — 명시 거부 시 hard fail |
+| `0.5` | *상위 `/harness:harness-new` 흐름의* `$ARGUMENTS` (도메인 한 문장) — 본 slash command 자체의 `$ARGUMENTS`(`"0.5"`)가 아니라 부모 호출의 도메인 문장 참조 (SKILL.md Phase 0.5). 단독 호출 시 도메인 문장 누락이면 hard fail |
 | `2` | `_workspace/_baseline/project_profile.md` 존재 (Phase 1 완료) |
 | `5` | Phase 4 팀 패턴 결정 완료 + cardinality 표 임시 산출 |
 | `9` | 사용자 피드백 raw 발화 1건 이상 |
@@ -35,11 +35,18 @@ argument-hint: "<phase> [field]"
 
 1. **진입 조건 검증** — phase별 선조건 검사 (위 표). 미충족 시 hard fail.
 2. **대상 항목 수집**:
-   - phase=0.5: `$ARGUMENTS` 4항목 (작업 유형/입력 source/출력 target/사용자 숙련도) 중 empty 항목
+   - phase=0.5: *상위 `/harness:harness-new` 흐름의* `$ARGUMENTS` 4항목 (작업 유형/입력 source/출력 target/사용자 숙련도) 중 empty 항목 — SKILL.md Phase 0.5 게이트 입력
    - phase=2: `intent_profile.md` 미존재 시 brownfield 단계 1·2 진행 — `meta.confidence_low` 항목 + 필수 5필드 미답 항목
    - phase=5: cardinality 표에서 `inline 대안 검토 = 모호` 후보
    - phase=9: 사용자 피드백 어휘 모호 분류 — §9-2 표 5행 중 어느 진화 대상인지
-3. **Cap 적용** — 대상 항목 >5 시 우선순위 룰(`grilling-loop.md` §5) 후 상위 5개만 grilling, 나머지 batch fallback.
+3. **Cap 적용** — 대상 항목이 phase별 cap 초과 시 우선순위 룰(`grilling-loop.md` §5) 후 상위 N개만 grilling, 나머지 batch fallback. cap N은 phase별 override:
+
+   | phase | cap | 출처 |
+   |---|---|---|
+   | 0.5 | 5 | `grilling-loop.md` §5 default |
+   | 2   | 5 | `grilling-loop.md` §5 default |
+   | 5   | 2 | SKILL.md Phase 5 entry gate (모호 후보 cap 2 — 합성 시간 폭증 방지) |
+   | 9   | 5 | `grilling-loop.md` §5 default |
 4. **Grilling Loop** — 항목별 순차 1q:
    - 표시 형태: `{필드}: ? / recommended: {값} / 근거: {source} / → 맞음 / 수정 / 모르겠음 / 코드 봐`
    - recommendation 출처는 `project_profile.md` signals ≥2 또는 §3-1 직접 매핑만 허용 (anti-premature-judgment doctrine)

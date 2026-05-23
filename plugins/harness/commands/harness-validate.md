@@ -1,6 +1,6 @@
 ---
-description: 하네스 구조·schema·chain 결정적 검증. LLM 호출 0. plugin scripts 번들 — host-agnostic.
-argument-hint: [--json] [--strict]
+description: 결정적 검증 — 하네스 구조·스키마·체인(chain) 일관성을 LLM 없이 스크립트로 점검 (host 무관).
+argument-hint: [--json 옵션] [--strict 옵션]
 ---
 
 # Harness — Validate
@@ -62,7 +62,7 @@ py plugins/harness/scripts/validate/chain.py [--json]
 검증 항목:
 - 오케스트레이터 본문의 agent/skill 인용이 실제 파일과 1:1 매핑 (dangling reference 0)
 - agent의 `tools:` allowlist의 MCP 인용이 `.claude/settings*.json` permissions 또는 inline `mcpServers:`와 정합
-- **인젝션 가드 정합** — 외부 입력·부작용 도구(`Bash`/`Write`/`Edit`/`WebFetch`/`WebSearch`/`PowerShell`, 또는 `tools:` 필드 부재로 전체 도구 상속) 보유 에이전트 ↔ 본문 `입력 신뢰 경계` 절 존재 (N-C-1 doctrine — `agent-design-patterns.md` "입력 신뢰 경계")
+- **인젝션 가드 정합** — 외부 입력·부작용 도구(`Bash`/`Write`/`Edit`/`MultiEdit`/`NotebookEdit`/`WebFetch`/`WebSearch`/`PowerShell`, 또는 `tools:` 필드 부재로 전체 도구 상속) 보유 에이전트 ↔ 본문 `입력 신뢰 경계` 절 존재 (N-C-1 doctrine — `agent-design-patterns.md` "입력 신뢰 경계")
 - references/ 인용 link가 존재 (orphan reference 0, phantom reference 0)
 - telemetry capture 호출 — orchestrator 본문이 `_workspace/_telemetry/{date}.jsonl` append 명령 보유 (lines 박제 검증)
 - runtime-adaptation.md §6 chain 표 기준 dangling 0

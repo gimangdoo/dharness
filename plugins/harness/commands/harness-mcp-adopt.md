@@ -1,5 +1,5 @@
 ---
-description: 프로젝트 진행 중 신규 MCP 채택 (런타임 시점). permission-profiles §10 dynamic adoption 전용 진입점 — discover → probe → confirm → install → reflect 5-step.
+description: MCP 신규 채택 — 발견→탐침→확인→설치→반영 5단계 (프로젝트 진행 중 런타임 채택 진입점, permission-profiles §10).
 argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 ---
 

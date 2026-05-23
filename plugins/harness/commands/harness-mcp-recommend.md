@@ -1,5 +1,5 @@
 ---
-description: 합성 시점 또는 합성 후 추가 에이전트에 대해 MCP 후보를 3축(효율성·확장성·정확도) 점수로 추천. 채택은 인계 — `/harness:harness-mcp-adopt`가 처리. 읽기 전용 + 외부 검색 가능.
+description: MCP 후보 추천 — 효율성·확장성·정확도 3축 점수로 후보 정렬 (읽기 전용 + 외부 검색 가능, 실제 채택은 `/harness:harness-mcp-adopt`).
 argument-hint: <에이전트명 또는 역할 한 문장> [--refresh] [--cascade=R0|R1|R2] [--weights=E,S,A]
 ---
 

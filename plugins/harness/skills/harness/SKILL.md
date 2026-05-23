@@ -322,6 +322,24 @@ CLAUDE.md는 매 세션 컨텍스트에 로딩된다 — 줄마다 "제거 시 C
 
 > **CLAUDE.md litmus (Claude Code 공식 — `code.claude.com/docs` memory.md / best-practices.md):** 매 세션 로딩 → 목표 < 200줄, 줄마다 "제거 시 실수 유발? 아니면 컷". **제외**: 자주 바뀌는 정보(변경 이력), 참조 자료(전체 명령 목록 → 포인터), 코드/파일에서 알 수 있는 것. **포함**: 운영 명령, 아키텍처, gotcha·경계. 에이전트 로스터는 ≤ 5단어 역할 태그 — Claude가 팀 역량을 즉시 인식해 작업 라우팅·부분 재실행 정확도가 오른다(file-by-file 설명 아님 = 팀 구성 = 아키텍처). 코드 도메인이면 7-4.5 HOW(스택) 섹션을 `## 규칙` 다음에 추가.
 
+#### 7-4.1. `_workspace/_baseline/changelog.md` 부트스트랩 (필수, bug_002 2026-05-23)
+
+CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태로 생성한다. 미생성 시 `/harness:harness-add-agent`·`harness-mcp-adopt`·`harness-evolve` 등 9+ 명령이 append 가정으로 실패(silent no-op 또는 ad-hoc 포맷).
+
+skeleton template (`{도메인}`/`{YYYY-MM-DD}` 치환):
+
+````markdown
+# {도메인} 변경 이력
+
+derived 프로젝트의 진화 기록 정본. 오케스트레이터·`/harness:harness-*` 명령이 본 표에 1행을 누적한다. CLAUDE.md는 매 세션 컨텍스트에 로딩되므로 자주 바뀌는 변경 이력은 본 파일로 분리한다 — Claude Code CLAUDE.md litmus (`code.claude.com/docs` memory.md / best-practices.md).
+
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|------|----------|------|------|
+| {YYYY-MM-DD} | 초기 구성 | 전체 | `/harness:harness-new` |
+````
+
+본 파일 *없으면* Phase 8 검증에서 차단(must) 미충족. 후속 `/harness:harness-*`는 본 표 4열 행 1개 append.
+
 #### 7-4.5. CLAUDE.md HOW 본문 draft (Q3 doctrine, 2026-05-16)
 
 포인터만 박제된 CLAUDE.md는 *빈집* — 새 세션마다 stack/build/entry point 재탐색이 토큰 손해. Phase 1 `project_profile.md`의 객관 데이터를 HOW 섹션 *draft*로 변환하여 사용자 게이트 후 박제.
@@ -507,9 +525,9 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 
 생성 완료 후 확인. **차단(must)**은 빠지면 하네스 작동 실패, **권장(should)**은 품질 보장.
 
-### 차단 (must) — 8개
+### 차단 (must) — 9개
 
-- [ ] **Baseline 산출** — `_workspace/_baseline/project_profile.md` (Phase 1) + `intent_profile.md` (Phase 2, schema 준수)
+- [ ] **Baseline 산출** — `_workspace/_baseline/project_profile.md` (Phase 1) + `intent_profile.md` (Phase 2, schema 준수) + `changelog.md` skeleton (Phase 7-4.1, 후속 `/harness:harness-*` append 대상)
 - [ ] **에이전트 정의 파일** — `프로젝트/.claude/agents/{name}.md` 빌트인 타입(`general-purpose`/`Explore`/`Plan`) 포함 필수
 - [ ] **스킬 + 오케스트레이터** — `프로젝트/.claude/skills/{name}/SKILL.md` + 오케스트레이터 1개 (데이터 흐름·에러 핸들링·테스트 시나리오 포함). 각 `SKILL.md`는 frontmatter만 있는 빈 파일이 아니라 본문(트리거·워크플로우·입출력·예시)까지 박제 — 빈 파일/디렉토리만 산출 금지 (Phase 6 빈 스킬 금지 invariant)
 - [ ] **실행 모드 명시** — 팀 / 서브 / 하이브리드 (하이브리드면 Phase별 모드 기재)

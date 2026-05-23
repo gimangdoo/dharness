@@ -1,6 +1,6 @@
 ---
-description: 현재 derived 프로젝트의 MCP 상태 진단 — 등록 MCP·에이전트 도구 매트릭스·토큰 비용 추정·permission-profiles §3 인벤토리 정합·permission-profiles §10 trigger 신호 자동 감지. 읽기 전용.
-argument-hint: (없음 또는 --verbose)
+description: MCP 상태 진단 — 등록 MCP·에이전트 도구 매트릭스·토큰 비용·인벤토리 정합·trigger 신호 한눈에 (읽기 전용).
+argument-hint: [--verbose 옵션]
 ---
 
 # Harness — MCP Status

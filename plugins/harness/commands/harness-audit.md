@@ -1,5 +1,5 @@
 ---
-description: 하네스 LLM 추론 영역 정합성 감사 — 책임 중복·트리거 정합·통신 프로토콜 의미·workflow 일관성. 결정적 검증은 별도(`/harness:harness-validate`). 자동 수정 없음.
+description: 추론 영역 감사 — 책임 중복·트리거·통신 프로토콜·워크플로우 일관성 LLM 점검 (결정적 검증은 `/harness:harness-validate`, 자동 수정 없음).
 ---
 
 # Harness — Audit (LLM 추론 영역)

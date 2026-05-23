@@ -94,8 +94,11 @@ def collect_skills() -> set[str]:
     for p in SKILLS_DIR.iterdir():
         if not p.is_dir():
             continue
-        # SKILL.md 대소문자 변종도 스킬 존재로 인정 (변종 자체는 structure.py가 별도 플래그)
-        if any(f.is_file() and f.name.lower() == "skill.md" for f in p.iterdir()):
+        # SKILL.md 대문자 고정 (Anthropic 명세). 변종(skill.md/Skill.md)은 structure.py가
+        # 별도 FAIL로 알린다 — chain.py 5 downstream(name_uniqueness, description_overlap,
+        # signal_coverage, reference_links, find_orchestrator)은 모두 case-sensitive glob
+        # 사용 중이므로 본 함수도 case-sensitive 유지해 partial validation 회피.
+        if (p / "SKILL.md").is_file():
             names.add(p.name)
     return names
 
@@ -502,7 +505,16 @@ def check_agent_model_field() -> list[str]:
     return errors
 
 
-EXTERNAL_INPUT_TOOLS = {"bash", "write", "edit", "webfetch", "websearch", "powershell"}
+EXTERNAL_INPUT_TOOLS = {
+    "bash",
+    "write",
+    "edit",
+    "multiedit",
+    "notebookedit",
+    "webfetch",
+    "websearch",
+    "powershell",
+}
 INJECTION_GUARD_PATTERN = re.compile(
     r"입력\s*신뢰\s*경계|프롬프트\s*인젝션|인젝션\s*방어|injection\s*guard|untrusted\s*input|prompt\s*injection",
     re.IGNORECASE,
@@ -512,8 +524,8 @@ INJECTION_GUARD_PATTERN = re.compile(
 def check_agent_injection_guard() -> list[str]:
     """외부 입력·부작용 도구 보유 에이전트 ↔ 본문 인젝션 방어 절 정합 (N-C-1 doctrine).
 
-    Bash/Write/Edit/WebFetch/WebSearch/PowerShell 보유 OR `tools:` 필드 부재(전체 도구 상속)면
-    인젝션 표면이 존재 — 본문에 '입력 신뢰 경계' 절 박제 필수.
+    Bash/Write/Edit/MultiEdit/NotebookEdit/WebFetch/WebSearch/PowerShell 보유 OR `tools:` 필드
+    부재(전체 도구 상속)면 인젝션 표면이 존재 — 본문에 '입력 신뢰 경계' 절 박제 필수.
     agent-design-patterns.md "입력 신뢰 경계" doctrine.
     """
     errors: list[str] = []
@@ -708,6 +720,12 @@ def _extract_grilling_log_block(yaml_body: str) -> str | None:
                 log_indent = indent
             continue
         if in_log:
+            # YAML compact block sequence form: list item at parent indent
+            # (e.g. `grilling_log:` indent=2, `- phase` indent=2). Treat as
+            # first list item rather than as a sibling key.
+            if stripped.startswith("- ") and indent == log_indent:
+                collected.append(raw)
+                continue
             if indent <= log_indent and stripped:
                 break
             collected.append(raw)
