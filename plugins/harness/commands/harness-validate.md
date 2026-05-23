@@ -66,6 +66,7 @@ py plugins/harness/scripts/validate/chain.py [--json]
 - references/ 인용 link가 존재 (orphan reference 0, phantom reference 0)
 - telemetry capture 호출 — orchestrator 본문이 `_workspace/_telemetry/{date}.jsonl` append 명령 보유 (lines 박제 검증)
 - runtime-adaptation.md §6 chain 표 기준 dangling 0
+- **dharness plugin version drift 알림** (info 1줄) — baseline `intent_profile.md` `meta.dharness_version` ↔ 현 `plugin.json` `version` 비교. mismatch 시 doctrine refit 권고 출력 (schema 위반 아님 — chain status에 영향 없음, ℹ️ info 라인만 추가)
 
 ### Step 4: 출력 보고
 

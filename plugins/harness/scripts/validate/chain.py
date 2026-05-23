@@ -27,6 +27,11 @@ SETTINGS_FILES = [
     REPO_ROOT / ".claude" / "settings.json",
     REPO_ROOT / ".claude" / "settings.local.json",
 ]
+# plugin.json은 chain.py 기준 상대경로 — derived install 시 plugin 외부 위치에서도 안전.
+PLUGIN_JSON_FROM_SCRIPT = (
+    Path(__file__).resolve().parent.parent.parent / ".claude-plugin" / "plugin.json"
+)
+INTENT_PROFILE = REPO_ROOT / "_workspace" / "_baseline" / "intent_profile.md"
 
 # Plugin-internal check (self-host doctrine). harness plugin 단일 구조 가정.
 PLUGIN_SKILL_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
@@ -692,6 +697,52 @@ def check_intent_profile_grilling_log() -> list[str]:
     return errors
 
 
+def _extract_dharness_version_from_baseline() -> str | None:
+    if not INTENT_PROFILE.exists():
+        return None
+    try:
+        text = INTENT_PROFILE.read_text(encoding="utf-8-sig")
+    except OSError:
+        return None
+    fm = _extract_frontmatter_block(text)
+    if not fm:
+        return None
+    m = re.search(
+        r"^\s*dharness_version\s*:\s*['\"]?([^'\"\n]+?)['\"]?\s*$",
+        fm,
+        re.MULTILINE,
+    )
+    return m.group(1).strip() if m else None
+
+
+def _read_current_plugin_version() -> str | None:
+    try:
+        data = json.loads(PLUGIN_JSON_FROM_SCRIPT.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    v = data.get("version") if isinstance(data, dict) else None
+    return v if isinstance(v, str) else None
+
+
+def check_dharness_version_drift() -> dict[str, str | None]:
+    """baseline `intent_profile.md` `meta.dharness_version` vs 현 plugin.json `version` 비교.
+
+    schema 위반 아님 (옵션 필드) — *warning/info* 영역. doctrine drift refit 권고 1줄.
+    `harness-validate`/`harness-status`가 본 결과를 사용자에게 노출.
+    (2026-05-23 doctrine drift refit 인프라.)
+    """
+    baseline_v = _extract_dharness_version_from_baseline()
+    current_v = _read_current_plugin_version()
+    if baseline_v is None or current_v is None or baseline_v == current_v:
+        return {"baseline": baseline_v, "current": current_v, "message": None}
+    msg = (
+        f"dharness plugin upgrade 감지 — baseline `{baseline_v}` → 현 `{current_v}`. "
+        f"doctrine refit 권고: `/harness:harness-audit` + `/harness:harness-validate` "
+        f"진단 후 발견 항목별 `/harness:harness-evolve`·`-add-skill`·`-remove`로 수정."
+    )
+    return {"baseline": baseline_v, "current": current_v, "message": msg}
+
+
 def _extract_grilling_log_block(yaml_body: str) -> str | None:
     lines = yaml_body.splitlines()
     in_meta = False
@@ -885,6 +936,8 @@ def main(argv: list[str]) -> int:
     errors.extend(check_skill_signal_coverage())
     errors.extend(check_intent_profile_grilling_log())
 
+    version_drift = check_dharness_version_drift()
+
     status = "PASS" if not errors else "FAIL"
     report = {
         "section": "chain",
@@ -893,6 +946,7 @@ def main(argv: list[str]) -> int:
         "skills_count": len(valid_skills),
         "orchestrator": str(orch.relative_to(REPO_ROOT)) if orch else None,
         "errors": errors,
+        "version_drift": version_drift,
     }
 
     if as_json:
@@ -902,6 +956,8 @@ def main(argv: list[str]) -> int:
         print(f"{icon} §3 chain: {status} (dangling 0 check across {len(valid_agents)} agents / {len(valid_skills)} skills, {len(errors)} errors)")
         for e in errors:
             print(f"  - {e}")
+        if version_drift["message"]:
+            print(f"ℹ️  {version_drift['message']}")
 
     return 1 if (strict and errors) else 0
 

@@ -49,10 +49,12 @@ argument-hint: [--verbose 옵션]
 🕐 Baseline 신선도
   project_profile.md: {age_days}일 전 (확신: {high|medium|low})
   intent_profile.md: {age_days}일 전 (확신: {...})
+  dharness plugin version: baseline `{baseline_version}` ↔ 현 `{current_version}` {(match|MISMATCH)}
   ⚠️ {age_days}일 ≥ 30 → `/harness:harness-baseline` 재실행 권고
+  ℹ️ version MISMATCH 시 → doctrine refit 권고 (`/harness:harness-audit` + `/harness:harness-validate` 진단 후 항목별 `/harness:harness-evolve`·`-add-skill`·`-remove`로 수정)
 ```
 
-산출 방법: 파일 mtime + frontmatter `confidence` 필드.
+산출 방법: 파일 mtime + frontmatter `confidence` 필드 + `intent_profile.md` `meta.dharness_version` ↔ `plugins/harness/.claude-plugin/plugin.json` `version` 비교 (chain.py `check_dharness_version_drift()` 재사용).
 
 #### §3 drift 점수 (결정적 + LLM 추론 분리)
 

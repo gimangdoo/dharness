@@ -126,6 +126,8 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 **필수 5개 (스킵 불가):** `constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor`. 그 외는 스킵 가능, 스킵 시 `meta.open_questions`에 등록.
 
+**`meta.dharness_version` 박제 (필수, 2026-05-23 doctrine drift refit 인프라):** `plugins/harness/.claude-plugin/plugin.json` `version` 필드를 read 후 frontmatter `meta.dharness_version: "<현 plugin version>"`로 저장. 합성 시점 plugin doctrine 시점의 anchor. `harness-validate`/`harness-status`가 현 plugin version과 비교해 upgrade 발생 시 doctrine refit 권고 1줄 출력.
+
 > 채우기 전략 상세, 자동 추론 매핑, 코드 grounded 질문 패턴(13종), 섹션별 질문 카탈로그는 `references/project-inquiry.md`. 풀 schema와 인스턴스 예시는 `references/intent-profile-schema.md`. Low confidence 추론 또는 필수 5필드 1차 거부 시 1q-at-a-time + LLM 추천 답안 패턴은 `references/grilling-loop.md` (mattpocock grill-me 흡수, 2026-05-19).
 
 ### Phase 3: 도메인 분석

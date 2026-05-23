@@ -37,10 +37,13 @@ class _ChainTestBase(unittest.TestCase):
             "REPO_ROOT": chain.REPO_ROOT,
             "AGENTS_DIR": chain.AGENTS_DIR,
             "SKILLS_DIR": chain.SKILLS_DIR,
+            "INTENT_PROFILE": chain.INTENT_PROFILE,
+            "PLUGIN_JSON_FROM_SCRIPT": chain.PLUGIN_JSON_FROM_SCRIPT,
         }
         chain.REPO_ROOT = self.root
         chain.AGENTS_DIR = self.root / ".claude" / "agents"
         chain.SKILLS_DIR = self.root / ".claude" / "skills"
+        chain.INTENT_PROFILE = self.root / "_workspace" / "_baseline" / "intent_profile.md"
 
     def tearDown(self):
         for k, v in self._saved.items():
@@ -355,6 +358,57 @@ class CheckAgentInjectionGuard(_ChainTestBase):
         fm = "name: a1\ndescription: desc\nmodel: opus\ntools:\n  - Read\n  - MultiEdit\n"
         self._write_agent("a1", fm, body=self.GUARD)
         self.assertEqual(chain.check_agent_injection_guard(), [])
+
+
+class CheckDharnessVersionDrift(_ChainTestBase):
+    def _write_intent_profile(self, frontmatter_body: str) -> None:
+        baseline = self.root / "_workspace" / "_baseline"
+        baseline.mkdir(parents=True, exist_ok=True)
+        (baseline / "intent_profile.md").write_text(
+            f"---\n{frontmatter_body}\n---\n", encoding="utf-8"
+        )
+
+    def _write_plugin_json(self, version: str) -> None:
+        plugin_dir = self.root / ".claude-plugin"
+        plugin_dir.mkdir(parents=True, exist_ok=True)
+        (plugin_dir / "plugin.json").write_text(
+            '{"name": "harness", "version": "' + version + '"}', encoding="utf-8"
+        )
+        chain.PLUGIN_JSON_FROM_SCRIPT = plugin_dir / "plugin.json"
+
+    def test_no_intent_profile_returns_no_drift(self):
+        self._write_plugin_json("0.10.0")
+        result = chain.check_dharness_version_drift()
+        self.assertIsNone(result["baseline"])
+        self.assertEqual(result["current"], "0.10.0")
+        self.assertIsNone(result["message"])
+
+    def test_matching_versions_no_drift(self):
+        self._write_intent_profile('meta:\n  dharness_version: "0.10.0"\n')
+        self._write_plugin_json("0.10.0")
+        result = chain.check_dharness_version_drift()
+        self.assertEqual(result["baseline"], "0.10.0")
+        self.assertEqual(result["current"], "0.10.0")
+        self.assertIsNone(result["message"])
+
+    def test_version_mismatch_reports_drift(self):
+        self._write_intent_profile('meta:\n  dharness_version: "0.9.0"\n')
+        self._write_plugin_json("0.10.0")
+        result = chain.check_dharness_version_drift()
+        self.assertEqual(result["baseline"], "0.9.0")
+        self.assertEqual(result["current"], "0.10.0")
+        self.assertIsNotNone(result["message"])
+        self.assertIn("0.9.0", result["message"])
+        self.assertIn("0.10.0", result["message"])
+        self.assertIn("doctrine refit", result["message"])
+
+    def test_unquoted_version_parsed(self):
+        self._write_intent_profile("meta:\n  dharness_version: 0.10.0\n")
+        self._write_plugin_json("0.11.0")
+        result = chain.check_dharness_version_drift()
+        self.assertEqual(result["baseline"], "0.10.0")
+        self.assertEqual(result["current"], "0.11.0")
+        self.assertIsNotNone(result["message"])
 
 
 if __name__ == "__main__":

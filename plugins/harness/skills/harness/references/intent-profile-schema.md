@@ -93,6 +93,7 @@ meta:
   confidence_low: [string]              # P6-6 신규 (2026-05-14) — confidence 낮은 필드 dot-path. Phase 10 drift 가중치 0.7 이하 룰 활성
   source: { string: string }            # P6-4 신규 (2026-05-14) — inferred_fields 항목별 source 인용. dot-path → manifest 경로 매핑. 인용 0이면 schema 위반 → Phase 1 재합성 트리거.
   grilling_log: [grilling_entry]        # 옵션 (2026-05-19, grill-me 흡수 Phase B). grilling 진입 시에만 박제. 미박제 시 schema 위반 아님 — 정합 검사 silent skip.
+  dharness_version: string              # 합성 시점 plugin `version` (`plugins/harness/.claude-plugin/plugin.json` `version` 값). harness-new·harness-baseline이 박제. doctrine drift 진단의 기준점 — `harness-validate`/`harness-status`가 현 plugin version과 비교해 upgrade 여부 1줄 보고 (2026-05-23, doctrine drift refit 인프라).
 
 # grilling_entry 구조 (meta.grilling_log[] 원소)
 grilling_entry:
@@ -222,6 +223,7 @@ constraints:
 | `inferred_fields` | brownfield 자동 추론 직후 | "신뢰도 낮음" 표시 |
 | `user_confirmed_fields` | 사용자가 추론 결과를 확인/수정 시 | "신뢰도 높음" 표시 |
 | `grilling_log` | grilling 모드 진입 시 question별 1 entry 박제 (2026-05-19, `grilling-loop.md`) | Phase 10 사용 drift 분석 — 같은 필드 반복 grilling 시 baseline 갱신 시그널. 미박제 시 검사 silent skip. |
+| `dharness_version` | `harness-new`·`harness-baseline` 합성·갱신 시점 | `harness-validate`/`harness-status`가 현 plugin version과 비교 → upgrade 발생 시 사용자에게 doctrine refit 권고 1줄 (audit + validate 조합 → 발견 항목별 evolve/add-*/remove로 수정). |
 
 ### 신뢰도 차집합
 

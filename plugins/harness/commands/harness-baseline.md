@@ -48,6 +48,7 @@ Phase 0 매트릭스의 "baseline 갱신" 행 트리거:
 - 사용자가 "전부 다시" 선택 시 7섹션 풀 inquiry
 - 자동 추론 가능한 필드는 새 코드 기준으로 갱신 (brownfield 4단계 적용)
 - 새 `_workspace/_baseline/intent_profile.md` 생성
+- **`meta.dharness_version` 박제** — `plugins/harness/.claude-plugin/plugin.json` `version` 필드를 read 후 frontmatter `meta.dharness_version: "<현 plugin version>"`로 저장. doctrine drift 진단의 새 기준점 (`intent-profile-schema.md` §5).
 
 ### 4. Drift 리포트 생성
 
