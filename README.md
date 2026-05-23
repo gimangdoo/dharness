@@ -85,33 +85,34 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 | **자연어 트리거** | "하네스 구성해줘" 등 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화, 일반 사용 |
 | **Slash command** | `/harness:harness-new`, `/cm-status` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-### Slash command 카탈로그 (`harness` 16개 + CM 5개 = 21개)
+### Slash command 카탈로그 (`harness` 17개 + CM 5개 = 22개)
 
 ```
 # harness plugin (메타 스킬 팩토리, 외부 install 가능)
-/harness:harness-new <도메인>          # Phase 0~8 전체 (신규 구축)
-/harness:harness-add-agent <역할>      # Phase 4·5·7·8 (1·2·3 skip)
-/harness:harness-add-skill <스킬>      # Phase 6·7·8 (1~5 skip)
-/harness:harness-baseline              # Phase 1·2 재실행 + drift 분석
-/harness:harness-audit                 # 정합성 감사 (read-only)
-/harness:harness-validate [--json]     # 결정적 구조·schema·chain 검증 (LLM 0)
-/harness:harness-status [--verbose]    # 진행 상태 통합 출력 (read-only)
-/harness:harness-evolve <피드백>       # Phase 9 수동 진화
-/harness:harness-adapt                 # Phase 10 telemetry drift 점검
-/harness:harness-remove <agent|skill> <이름>            # 격리된 제거 + dangling ref cleanup
-/harness:harness-split  <agent|skill> <원본> <결과...>  # 책임별 분할 (4축 기준)
-/harness:harness-merge  <agent|skill> <결과> <원본...>  # 통합 + cross-ref 갱신
-/harness:harness-mcp <recommend|adopt|status> [...]     # MCP 통합 진입점 (라우터)
-/harness:harness-mcp-recommend <agent> # 3축 점수 추천 (효율성·확장성·정확도) — Phase 5-2 자동 + on-demand
-/harness:harness-mcp-adopt <사유>      # 런타임 시점 신규 MCP 채택 (§10 dynamic adoption)
-/harness:harness-mcp-status            # MCP 상태 진단 — 인벤토리·매트릭스·정합·trigger 자동 감지 (read-only)
+/harness:harness-new <도메인>          # 하네스 신규 구축 (Phase 0-8 + Phase 10 인프라)
+/harness:harness-add-agent <역할>      # 에이전트 1명 추가 (Phase 4·5·7·8)
+/harness:harness-add-skill <스킬>      # 스킬 1개 추가/수정 (Phase 6·7·8)
+/harness:harness-baseline              # 기준선 갱신 (Phase 1·2 재실행 + plugin version 박제)
+/harness:harness-audit                 # 추론 영역 감사 (책임·트리거·워크플로우, read-only)
+/harness:harness-validate [--json]     # 결정적 검증 (구조·스키마·체인 + version drift 알림, LLM 0)
+/harness:harness-status [--verbose]    # 하네스 현황 (구성·기준선·drift·MCP, read-only)
+/harness:harness-evolve <피드백>       # 피드백 반영 (Phase 9 수동 진화)
+/harness:harness-adapt                 # 관측 기반 적응 (Phase 10 telemetry drift)
+/harness:harness-grill <phase> [필드]  # 추궁 모드 — 모호 답안 1q씩 추천 답 + 사용자 확정 (Phase 0.5/2/5/9)
+/harness:harness-remove <agent|skill> <이름>            # 1개 제거 + 잔여 참조 자동 정리
+/harness:harness-split  <agent|skill> <원본> <결과...>  # 책임별 분할 (4축 기준 + 참조 갱신)
+/harness:harness-merge  <agent|skill> <결과> <원본...>  # 통합 + 참조 갱신
+/harness:harness-mcp <recommend|adopt|status> [...]     # MCP 통합 진입점 (추천·채택·상태 라우터)
+/harness:harness-mcp-recommend <agent> # MCP 후보 추천 (효율성·확장성·정확도 3축, Phase 5-2 자동 + on-demand)
+/harness:harness-mcp-adopt <사유>      # MCP 신규 채택 (발견→탐침→확인→설치→반영 5단계, §10)
+/harness:harness-mcp-status            # MCP 상태 진단 (인벤토리·도구·비용·정합, read-only)
 
 # CM (dharness self-host, root .claude/commands/)
-/cm-status                              # 메모리 통계 + DB 행 수 (dharness_event/pending draft 포함)
-/cm-sessions [--limit N]                # 최근 세션 목록
+/cm-status                              # 메모리 상태 보기 (누적 세션·관측 행 수·미적용 draft)
+/cm-sessions [--limit 개수]             # 최근 세션 목록 (세션 ID·날짜·소요·도구)
 /cm-reset                               # 메모리 전체 삭제 (확인 필수)
-/cm-claudemd-apply <sid> [사유...]      # SessionEnd가 만든 draft를 CHANGELOG.md "변경 이력" 표에 삽입
-/cm-claudemd-discard [sid]              # draft 폐기 (인자 없으면 모두)
+/cm-claudemd-apply <세션 ID> [사유...]  # 변경 이력 draft 적용 — CHANGELOG.md "변경 이력" 표에 박제
+/cm-claudemd-discard [세션 ID]          # 변경 이력 draft 폐기 (인자 없으면 모두)
 ```
 
 명령어 본문(`.md`)은 harness는 `plugins/harness/commands/`, CM은 `.claude/commands/`에 보관.
@@ -166,6 +167,45 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 | 10 | Runtime Adaptation | telemetry → drift 감지 → 제안+승인 |
 
 상세는 [`plugins/harness/skills/harness/SKILL.md`](./plugins/harness/skills/harness/SKILL.md).
+
+---
+
+## Doctrine drift refit (plugin upgrade 후 derived harness 보강)
+
+dharness plugin doctrine이 업그레이드된 후(예: 새 invariant·새 권장 패턴 박제) 기존 derived harness를 새 doctrine으로 끌어올리는 절차. 단일 명령이 아니라 **기존 명령 조합** — 2026-05-23 (v0.11.0) 인프라.
+
+### 1. 자동 알림 — version drift 1줄
+
+- `harness-new`·`harness-baseline`이 합성·갱신 시점 `plugin.json` `version`을 `intent_profile.md` frontmatter `meta.dharness_version`에 박제 (`intent-profile-schema.md` §5).
+- 이후 `/harness:harness-validate` 또는 `/harness:harness-status` 호출 시 baseline version ↔ 현 plugin version 비교 → mismatch면 ℹ️ refit 권고 1줄 자동 출력.
+
+```text
+ℹ️  dharness plugin upgrade 감지 — baseline `0.10.0` → 현 `0.11.0`.
+   doctrine refit 권고: `/harness:harness-audit` + `/harness:harness-validate` 진단 후
+   발견 항목별 `/harness:harness-evolve`·`-add-skill`·`-remove`로 수정.
+```
+
+### 2. 진단 — audit + validate
+
+| 진단 명령 | 영역 |
+|---|---|
+| `/harness:harness-audit` | LLM 추론 영역 — 책임 중복·트리거·통신 프로토콜·워크플로우 |
+| `/harness:harness-validate` | 결정적 invariant — 인젝션 가드·model 필드·tools↔MCP·SKILL.md 빈 파일·파일명·telemetry 박제·dangling reference 등 |
+
+### 3. 수정 — 항목별 매핑
+
+| 진단 발견 유형 | 수정 명령 |
+|---|---|
+| 본문 누락 절(예: `입력 신뢰 경계`)·schema 위반 | `/harness:harness-evolve <피드백>` |
+| 누락 에이전트·스킬 | `/harness:harness-add-agent` / `/harness:harness-add-skill` |
+| 책임 중복·통합 필요 | `/harness:harness-merge` |
+| 책임 과부하·분할 필요 | `/harness:harness-split` |
+| 잘못 합성된 항목 제거 | `/harness:harness-remove` |
+| MCP 매트릭스 부적합 | `/harness:harness-mcp-adopt` / `-recommend` |
+
+### 4. 재진단
+
+수정 후 `/harness:harness-validate` 재실행 → 0 errors + version drift 라인 사라짐 확인. 사라지지 않으면 `harness-baseline`으로 `meta.dharness_version` 새 anchor 박제.
 
 ---
 
