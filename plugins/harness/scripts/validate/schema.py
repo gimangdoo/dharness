@@ -19,7 +19,8 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-REPO_ROOT = Path.cwd()
+# scripts/validate/schema.py → parents[4]가 repo root. __file__ 기반 통일 (structure.py 정합).
+REPO_ROOT = Path(__file__).resolve().parents[4]
 BASELINE_DIR = REPO_ROOT / "_workspace" / "_baseline"
 
 PROJECT_PROFILE = BASELINE_DIR / "project_profile.md"

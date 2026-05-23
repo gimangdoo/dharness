@@ -24,7 +24,10 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-REPO_ROOT = Path.cwd()
+# scripts/validate/structure.py → parents[4]가 repo root (plugins/harness/scripts/validate/ 위).
+# cwd 의존 시 derived install user가 sub-dir에서 호출하면 silent precondition_fail —
+# __file__ 기반으로 통일 (chain.py / _schema.py 동일 패턴).
+REPO_ROOT = Path(__file__).resolve().parents[4]
 AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"

@@ -119,8 +119,12 @@ def _emit_agent_telemetry(
     now_iso: str,
     today: str,
 ) -> None:
-    """Task tool 결과 시 agent_invocation 1건 + 실패면 agent_failure 1건 emit."""
-    if tool_name != "Task":
+    """Task/Agent tool 결과 시 agent_invocation 1건 + 실패면 agent_failure 1건 emit.
+
+    실측(2026-05-23 review): Claude Code hook payload는 sub-agent 호출 시 `Agent`
+    tool name을 emit (raw.jsonl 검증). `Task`만 매칭 시 telemetry 영구 누락.
+    """
+    if tool_name not in ("Task", "Agent"):
         return
     subagent_type = tool_input.get("subagent_type") or "general-purpose"
     description = tool_input.get("description") or ""

@@ -21,12 +21,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 1. `프로젝트/.claude/agents/`, `프로젝트/.claude/skills/`, `프로젝트/CLAUDE.md`를 읽고, `_workspace/_baseline/`·`_workspace/_critique_phase*_*.md` 존재를 확인한다
 
-> **🔄 중단된 factory run 감지 doctrine (mattpocock handoff 흡수, 2026-05-21):** step 1에서 `_workspace/_baseline/` 또는 `_workspace/_critique_phase*_*.md`는 존재하는데 `.claude/agents/`·`.claude/skills/`가 비었거나 불완전하면, 이전 factory 세션이 중간에 멈춘 것이다 (context 한계·세션 종료 등). 이 경우 step 2의 신규/기존/운영 분기보다 *먼저* 판정한다:
-> 1. **재개 지점 판정**: 존재하는 phase 산출물 중 최대 N — `_critique_phase{N}` 최대값, 없으면 `_workspace/_baseline/intent_profile.md` 존재 시 Phase 2까지, `_workspace/_baseline/project_profile.md`만 존재 시 Phase 1까지 완료로 본다.
-> 2. **사용자 게이트**: "이전 구축이 Phase {N}까지 완료됨 — Phase {N+1}부터 재개할까, 처음부터 다시 할까?"를 제시한다.
-> 3. **handoff 문서 불요**: phase 산출물(`_workspace/_baseline/*.md`, `_critique_phase*`)이 구조화된 채 박제돼 있어 그 자체가 handoff다 — 별도 요약 문서를 만들지 않는다. 재개 세션은 해당 파일을 *재read*하여 컨텍스트를 복원한다.
->
-> **이유:** 11-phase factory는 긴 워크플로우 — context 한계로 중간 종료 시 처음부터 재실행은 Phase 1·2 재분석 비용 낭비. 산출물이 이미 파일로 박제돼 있으므로 재개가 정답. mattpocock `handoff` 스킬의 "대화 → handoff 문서" 개념을 factory에 적용하되, 산출물 파일이 이미 handoff 역할을 하므로 별도 문서 생성은 생략.
+> **🔄 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 0 — 중단된 factory run 감지 doctrine" 절을 진입 직전 *반드시* read. mattpocock handoff 흡수 — `_workspace/_baseline/`·`_critique_phase*` 박제됐는데 agents/skills 비었으면 재개 지점 판정 후 사용자 게이트.
 
 2. 현황에 따라 실행 모드를 분기한다:
    - **신규 구축**: 에이전트/스킬 디렉토리가 없거나 비어있음 → Phase 1부터 전체 실행
@@ -51,19 +46,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 > **사용자 핵심 요구 (2026-05-14)** — `$ARGUMENTS` 모호성 silent 진행 차단. 신규 구축 분기에서만 실행 (기존 확장/유지보수는 skip).
 
-> **🛑 Anti-premature-judgment doctrine (2026-05-15, 사용자 요구):** 본 Phase 진입 시점부터 Phase 3 합성 직전까지, 다음 단서 *단독*으로 프로젝트의 도메인·유형·기능·기술 스택을 **단정 금지**:
-> - cwd 디렉토리 이름 (예: `/Users/.../my-fintech-app` → "fintech" 단정 금지)
-> - 디렉토리 내 파일·폴더 이름 (예: `payment.py` 존재 → "결제 시스템" 단정 금지)
-> - `$ARGUMENTS` 문자열의 키워드만으로 도메인 확정 (예: "ML pipeline" → ML 도메인 확정 금지 — Phase 2에서 검증)
-> - README.md 한 줄 문장 (스캔만 가능, "단정"은 금지)
->
-> **단정 허용 조건 (둘 다 만족 필수):**
-> 1. **Phase 1 산출물** `_workspace/_baseline/project_profile.md`이 실제 파일로 박제되어 있고, manifest/source/git 신호 ≥2 기반 5축 (또는 Quick 3축) 데이터 포함
-> 2. **Phase 2 산출물** `_workspace/_baseline/intent_profile.md`이 실제 파일로 박제되어 있고, 필수 5필드(`constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor`)가 *사용자 raw 답변*(= `meta.user_confirmed_fields`)으로 채워져 있음
->
-> **위반 시:** Phase 3 진입 전 자기 점검 — "본 도메인 추론의 evidence가 위 2 조건을 만족하는가?" NO일 경우 Phase 1 또는 Phase 2로 회귀. 단서 강도가 강해 보여도 단정 표현(`이 프로젝트는 X다`, `domain: X로 확정`) 사용 금지 — 가설 표현(`X로 추정, 확인 필요`)만 허용.
->
-> **이유:** 디렉토리 이름·파일 이름은 사용자가 임의로 붙인 라벨이지 의도의 source of truth 아님. 사용자가 명시한 vision/scope/constraints가 도메인 정의의 권위. 본 doctrine 미준수 시 잘못된 도메인으로 Phase 3-6 전체 산출물이 오염 → Phase 8 검증 단계에서야 발견되어 rework 비용 폭증.
+> **🛑 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 0.5 — 🛑 Anti-premature-judgment doctrine" 절을 진입 직전 *반드시* read. cwd/파일/`$ARGUMENTS` 키워드 단독 도메인 단정 금지 — Phase 1·2 산출물 양쪽 박제 후만 허용 (evidence 2조건).
 
 `$ARGUMENTS` (도메인 한 문장)에 대해 4 항목 LLM 검사:
 
@@ -84,12 +67,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 프로젝트의 객관적 baseline을 추출. 결과 `_workspace/_baseline/project_profile.md`는 (a) Phase 3의 입력, (b) Phase 10의 t=0 anchor.
 
-> **🚧 Phase 1 entry 게이트 (2026-05-15, 사용자 요구):** 본 Phase는 **항상 실행되며 silent skip 차단**. 진입 시점부터 다음 강제 회로:
-> 1. **실 파일 read 강제**: 디렉토리 트리 + manifest(package.json/pyproject.toml/Cargo.toml/...) + git log 첫 페이지 + README.md를 *실제로* read. Glob/Grep 결과만으로 합성 금지. greenfield 분류로 가더라도 위 신호 부재를 *명시적*으로 박제 (`signals: {manifest: absent, git: absent, source: absent}`).
-> 2. **산출물 강제**: 모드(greenfield/Quick/Deep)와 무관하게 `_workspace/_baseline/project_profile.md`가 실제 파일로 *반드시* 생성. greenfield는 빈 stub 허용 — 단 `project_type: greenfield`, `signals: ...`, `directory_tree: ...`, `inferred_domain: null` 필드 채움. **본 파일 미생성 시 Phase 2 진입 차단**.
-> 3. **단정 표현 금지**: 산출물 내 `domain`, `purpose`, `function` 등 의도 필드는 Phase 2 완료 전까지 `null` 또는 `hypothesis: "X로 추정"`만 허용. `domain: fintech`와 같은 단정 표현 금지.
->
-> **이유:** 본 Phase가 사용자 의도와 독립적인 *객관* baseline의 단일 출처. 본 단계 silent skip 또는 디렉토리 이름 기반 단정은 Phase 0.5 anti-premature-judgment doctrine 직접 위반. 빈 stub이라도 박제하면 Phase 10 drift 감지의 t=0 anchor가 확보됨.
+> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 1 — 🚧 entry 게이트" 절을 진입 직전 *반드시* read. silent skip 차단 — 실 파일 read + `project_profile.md` 강제 박제(greenfield라도 빈 stub) + 단정 표현 금지.
 
 > **Sub-agent 격리 doctrine (P6-3, 2026-05-14)**: Deep audit 모드에서 5축(Stack/Architecture/Convention/Maturity/Pain Points)을 5 sub-agent 병렬 호출(`Agent` tool, `Explore` 타입). parent는 *합성만* 수행 — 각 sub-agent 회신을 5축 schema로 통합. parent 컨텍스트 부담 ↓, 깊이 ↑. Quick scan은 단일 sub-agent 1회 호출.
 
@@ -109,14 +87,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 사용자의 주관적 의도·제약·우선순위를 7섹션(vision/scope/constraints/architecture/quality/workflow/meta)으로 수집. 결과 `_workspace/_baseline/intent_profile.md`. greenfield/brownfield는 동일 schema를 공유, `project_type` 필드로 분기.
 
-> **🚧 Phase 2 entry 게이트 (2026-05-15, 사용자 요구):** Phase 1 산출물 `project_profile.md` 미존재 시 본 Phase **진입 차단** — Phase 1로 회귀. 진입 후 다음 강제 회로:
-> 1. **필수 5필드 사용자 답변 raw 인용 강제**: `constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor` — *모든* 필드에 대해 LLM이 사용자에게 *명시적 질문*을 출력하고, 사용자 raw 답변을 `meta.user_confirmed_fields` 리스트에 등록. brownfield의 자동 추론 결과는 *제시만* 가능, 사용자 확인 답변 없이 user_confirmed_fields에 등록 금지.
-> 2. **질문 폭격 강제**: 필수 5필드 미답변 상태에서 Phase 3 진입 차단. 사용자가 "다 알아서 하라" 등 답변 거부 시 → 추론값으로 채우되 `meta.inferred_fields`에 박제 + 별도 confirm 게이트(추론값 표 출력 → "이대로 진행?" 명시 인가 후만 Phase 3).
-> 3. **단정 표현 금지 (Phase 2 미완 상태에서)**: Phase 1과 동일 — `domain: X` 단정 출력 금지. Phase 2 완료(모든 필수 5필드 user_confirmed_fields OR 사용자 인가된 inferred_fields)된 후에만 Phase 3에서 단정 표현 허용.
-> 4. **brownfield 4단계 강제 순서**: 자동 추론 → *사용자 확인* → 갭 → 코드 grounded 질문. 1단계(자동 추론)만 수행하고 2단계 skip 금지.
-> 5. **Grilling 모드 분기**: `meta.confidence_low` 항목 ≥1 OR 필수 5필드 1차 거부 시 `references/grilling-loop.md` 1q-at-a-time + recommended answer 패턴 적용. cap 5 question, 초과 시 batch 자동 fallback. 추천 답안 출처는 `project_profile.md` signals ≥2 또는 §3-1 직접 매핑만 허용 — 디렉토리·파일 이름 단독 추천 doctrine 위반.
->
-> **이유:** Phase 0.5 anti-premature-judgment doctrine의 evidence 조건 #2 ("Phase 2 산출물 필수 5필드 user_confirmed_fields") 충족 회로. 본 게이트 미준수 시 디렉토리/파일 이름 기반 단정이 silent로 Phase 3-6에 유출되어 잘못된 하네스 산출.
+> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 2 — 🚧 entry 게이트" 절을 진입 직전 *반드시* read. `project_profile.md` 미존재 시 진입 차단 + 필수 5필드 user_confirmed_fields raw 인용 + brownfield 4단계 + Grilling 분기.
 
 **브랜치별 채우기:**
 | 브랜치 | 방식 |
@@ -183,19 +154,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 ### Phase 5: 에이전트 정의 생성
 
-> **🚧 Phase 5 entry 게이트 — Cardinality justification (2026-05-15, A6/M9 doctrine):** Phase 4 팀 패턴 선택 직후, Phase 5 합성 *진입 전* 사용자 confirm 게이트 강제.
->
-> 1. **에이전트 cardinality 표 출력 강제** — 제안할 에이전트 N개 각각에 대해 다음 4 컬럼 박제:
->    - `name` (kebab-case slug, 전역 유일)
->    - `핵심 책임` (1줄)
->    - `근거` (Phase 1·2·3 산출물 인용 — 어느 신호/요구에서 본 에이전트가 도출됐는지)
->    - `inline 대안 검토` (이 책임이 단일 호출만 필요하면 별도 에이전트 대신 parent prompt 직접 삽입 가능한지 — 답 `inline-OK` 시 cardinality 1 감소. 판정 논리 = deletion test, `references/agent-design-patterns.md` "에이전트 깊이" 참조)
-> 2. **`single-use → inline` 룰**: `inline 대안 검토`에서 `inline-OK` 판정 시 에이전트 생성 금지. parent prompt에 직접 삽입.
-> 3. **이름 유일성 사전 점검**: 제안 N개 slug + 기존 `.claude/agents/*.md` 파일 slug 전역 grep. 중복 시 rename 강제 (chain.py `check_agent_name_uniqueness` 회로가 사후 검출하나 사전 차단이 비용 ↓).
-> 4. **사용자 응답 enum**: `OK / N 감소 / N 증가 / 수정` — 게이트 통과 전 sub-agent 병렬 dispatch 금지.
-> 5. **Grilling 옵션 (Phase C, 2026-05-19)**: `inline 대안 검토` 컬럼 답이 모호한 후보 1~2개 (예: "단일 호출인지 다중인지 경계 모호") 한정 — `references/grilling-loop.md` 1q + recommended answer 패턴으로 후보별 challenge. 전체 N개 grilling은 합성 시간 폭증 — 모호 후보 cap 2.
->
-> 위반 시: Phase 5.5 self-critique에서 책임 중복·gap 검출되어 cycle 재진입 — 사전 게이트가 비용 ↓.
+> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 5 — 🚧 entry 게이트 — Cardinality justification" 절을 진입 직전 *반드시* read. cardinality 4컬럼 표 + `single-use → inline` 룰 + 이름 유일성 사전 점검 + 사용자 응답 enum + Grilling 옵션.
 
 **모든 에이전트는 반드시 `프로젝트/.claude/agents/{name}.md` 파일로 정의한다.** 빌트인 타입(`general-purpose`, `Explore`, `Plan`)을 사용하더라도 정의 파일 생성 필수. Agent 도구의 prompt에 역할을 직접 넣는 것은 금지. 이유: 다음 세션 재사용성, 협업 프로토콜 명시, 에이전트(누가)와 스킬(어떻게) 분리.
 
@@ -525,30 +484,8 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 
 ## 산출물 체크리스트
 
-생성 완료 후 확인. **차단(must)**은 빠지면 하네스 작동 실패, **권장(should)**은 품질 보장.
-
-### 차단 (must) — 9개
-
-- [ ] **Baseline 산출** — `_workspace/_baseline/project_profile.md` (Phase 1) + `intent_profile.md` (Phase 2, schema 준수) + `changelog.md` skeleton (Phase 7-4.1, 후속 `/harness:harness-*` append 대상)
-- [ ] **에이전트 정의 파일** — `프로젝트/.claude/agents/{name}.md` 빌트인 타입(`general-purpose`/`Explore`/`Plan`) 포함 필수
-- [ ] **스킬 + 오케스트레이터** — `프로젝트/.claude/skills/{name}/SKILL.md` + 오케스트레이터 1개 (데이터 흐름·에러 핸들링·테스트 시나리오 포함). 각 `SKILL.md`는 frontmatter만 있는 빈 파일이 아니라 본문(트리거·워크플로우·입출력·예시)까지 박제 — 빈 파일/디렉토리만 산출 금지 (Phase 6 빈 스킬 금지 invariant)
-- [ ] **실행 모드 명시** — 팀 / 서브 / 하이브리드 (하이브리드면 Phase별 모드 기재)
-- [ ] **사용자 `.claude/commands/`에 미생성** — harness 플러그인 본체 `commands/`는 L1 진입점으로 별개
-- [ ] **CLAUDE.md 하네스 섹션** — 운영·구조·규칙 + 변경 이력 포인터 (Phase 7-4 템플릿, litmus 통과·< 200줄)
-- [ ] **오케스트레이터 Phase 1에 컨텍스트 확인 단계** — 초기/후속/부분 재실행 판별
-- [ ] **Phase 10 capture 인프라** — `_workspace/_telemetry/` + `_telemetry/_rollback/` 디렉토리 + 오케스트레이터 telemetry capture 훅 + description에 Phase 10 트리거 키워드("점검"·"drift"·"적응"·"baseline 갱신"). 비코드 도메인은 사용 신호 캡처는 박제하고 baseline drift는 CLAUDE.md에 future scope 명시(10-7) — silent 생략 금지
-
-### 권장 (should) — 9개
-
-- [ ] **brownfield baseline 완전성** — 5축(또는 quick scan 3축) 채움 + 필수 5개 필드(`tech_stack`/`team.size`/`timeline.horizon`/`deployment_target`/`test_rigor`) + 스킵 필드 `meta.open_questions` 등록 + `inferred_fields`/`user_confirmed_fields` 둘 다 기록
-- [ ] **모든 Agent 호출에 `model: "opus"` 파라미터 명시**
-- [ ] **기존 에이전트/스킬과 충돌 없음**
-- [ ] **스킬 description 적극적("pushy")** — 후속 작업 키워드 포함
-- [ ] **SKILL.md 본문 500줄 이내** — 초과 시 references/ 분리
-- [ ] **테스트 프롬프트 2~3개 실행 검증**
-- [ ] **트리거 검증** — should-trigger + should-NOT-trigger
-- [ ] **변경 이력 갱신** — `_workspace/_baseline/changelog.md`에 에이전트/스킬 추가/삭제/수정 기록
-- [ ] **Phase 10 주기 점검** — 오케스트레이터가 telemetry append 직후 마지막 Adapt 후 `harness_invocation` 카운트, ≥ 10이면 최종 보고에 `/harness:harness-adapt` 권장 1줄 (orchestrator-template "Phase 10 주기 점검")
+> **🚧 Read at phase:** Phase 8 검증 진입 직전 + factory 종료 전 최종 self-check.
+> 18 항목 (must 9 / should 9) 단일 출처는 [`references/output-checklist.md`](./references/output-checklist.md) — 본 reference 미read 시 Phase 8-1 구조 검증의 항목 catalog 누락. `harness-validate`가 must 항목 일부를 결정적으로 검증.
 
 ## 참고
 
@@ -556,16 +493,17 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 >
 > | 진입 phase | reference 파일 | 사용 시점 |
 > |---|---|---|
-> | Phase 0 | (없음 — 기존 하네스 read만) | 감사 진입 |
-> | Phase 1 | `code-research.md`, `project-profile-schema.md` | Code Research 진입 |
-> | Phase 2 | `project-inquiry.md`, `intent-profile-schema.md`, `grilling-loop.md` (Low confidence 또는 필수 5필드 1차 거부 시) | Project Inquiry 진입 |
+> | Phase 0 | `phase-entry-gates.md` ("Phase 0 — 중단된 factory run 감지 doctrine" 절) | 감사 진입 |
+> | Phase 0.5 | `phase-entry-gates.md` ("Phase 0.5 — 🛑 Anti-premature-judgment doctrine" 절) | Domain Clarification 진입 |
+> | Phase 1 | `phase-entry-gates.md` ("Phase 1 — 🚧 entry 게이트" 절), `code-research.md`, `project-profile-schema.md` | Code Research 진입 |
+> | Phase 2 | `phase-entry-gates.md` ("Phase 2 — 🚧 entry 게이트" 절), `project-inquiry.md`, `intent-profile-schema.md`, `grilling-loop.md` (Low confidence 또는 필수 5필드 1차 거부 시) | Project Inquiry 진입 |
 > | Phase 3 | (없음 — Phase 1+2 합성) | 도메인 분석 |
 > | Phase 4 | `agent-design-patterns.md`, `team-examples.md` | 팀 패턴 선택 |
-> | Phase 5 | `agent-design-patterns.md`, `team-examples.md`, `qa-agent-guide.md` (QA 에이전트 정의 시) | 에이전트 정의 |
+> | Phase 5 | `phase-entry-gates.md` ("Phase 5 — 🚧 entry 게이트 — Cardinality justification" 절), `agent-design-patterns.md`, `team-examples.md`, `qa-agent-guide.md` (QA 에이전트 정의 시) | 에이전트 정의 |
 > | Phase 5-2 | `permission-profiles.md`, `mcp-recommendation.md`, `trigger-keyword-catalog.md` | MCP·도구 할당 |
 > | Phase 6 | `skill-writing-guide.md`, `skill-testing-guide.md` | 스킬 생성 |
 > | Phase 7 | `orchestrator-template.md` | CLAUDE.md 통합 |
-> | Phase 8 | `skill-testing-guide.md` (트리거 회귀) | 검증 |
+> | Phase 8 | `output-checklist.md` (must 9 / should 9 catalog), `skill-testing-guide.md` (트리거 회귀) | 검증 |
 > | Phase 9 | (사용자 발화 종속 — case-by-case) | 진화 |
 > | Phase 10 | `runtime-adaptation.md` | telemetry drift 적응 |
 > | Sub-agent 활용 | `team-tools-api.md` | Phase 1/5/6/8 sub-agent 격리 시 |
@@ -574,6 +512,8 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 >
 > **검증:** 각 reference 상단 헤더와 본 표 일치 — `harness-validate`가 향후 chain 검증에 포함 가능 (P0-2 doctrine 정합).
 
+- **Phase Entry Gates** (Phase 0/0.5/1/2/5 entry 게이트 doctrine 박스 모음, 2026-05-23 P2-A 분리): `references/phase-entry-gates.md`
+- **Output Checklist** (must 9 / should 9 항목 catalog, 2026-05-23 P2-A 분리): `references/output-checklist.md`
 - 하네스 패턴: `references/agent-design-patterns.md`
 - 기존 하네스 예시 (실제 파일 전문 포함): `references/team-examples.md`
 - 오케스트레이터 템플릿: `references/orchestrator-template.md`

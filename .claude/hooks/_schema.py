@@ -207,7 +207,7 @@ _FILE_RULES: tuple[tuple[re.Pattern[str], str, str], ...] = (
 
 _GIT_SUBCOMMAND_RE = re.compile(r"^\s*git\s+(\S+)")
 # chain 명령(`&&`/`;`/`|`/newline 등 separator) — 마지막 git subcommand가 우세
-_GIT_CHAIN_RE = re.compile(r"(?:^|[;&|\n]|&&)\s*git\s+(\S+)")
+_GIT_CHAIN_RE = re.compile(r"(?:^|[;|\n]|&{1,2})\s*git\s+(\S+)")
 _GIT_RELEVANT = {
     "commit": ("git_commit", "git"),
     "add": ("git_add", "git"),

@@ -45,6 +45,14 @@ argument-hint: <도메인 한 문장> [--mode=single|derived]
 - 에이전트 추가만 원함 → `/harness:harness-add-agent` 안내 후 중단
 - baseline 갱신만 원함 → `/harness:harness-baseline` 안내 후 중단
 
+2. (`--mode=single` 한정) `.claude/settings.local.json` 존재?
+
+self-host CM hook(SessionStart/PostToolUse/SessionEnd)이 발화하려면 본 파일이 hooks 3종을 등록해야 한다. clone 직후엔 gitignore 대상이라 부재 — 미존재 시 `dharness_event` 영구 누적 0 위험 (2026-05-13 commit `12a012f` 회복 사례).
+
+**미충족 시 자동 write 금지** (settings 파일 변경은 사용자 명시 확인 필수 — security gate). README §1 template 출력 + 다음 안내:
+- 사용자가 직접 작성 → Claude Code 세션 1회 재시작 → `/cm-status` 출력으로 SessionStart 훅 발화 확인 → 본 명령 재호출.
+- 작성 거부 시 `--mode=derived`로 재호출 권고 (derived는 self-host CM 미사용).
+
 ## 실행 절차
 
 `plugins/harness/skills/harness/SKILL.md`의 워크플로우 **Phase 0-8 전체 + Phase 10 인프라**를 따른다 (Phase 9는 사후 진화 트리거이므로 초기 구축에서는 실행하지 않고, Phase 10은 capture 디렉토리·오케스트레이터 자동 알림 블록·트리거 키워드 포함만 사전 배치).

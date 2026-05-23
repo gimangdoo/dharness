@@ -20,7 +20,9 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-REPO_ROOT = Path.cwd()
+# scripts/validate/chain.py → parents[4]가 repo root. __file__ 기반 통일 (structure.py/schema.py 정합).
+# cwd 의존 시 derived install user가 sub-dir에서 호출하면 silent precondition_fail.
+REPO_ROOT = Path(__file__).resolve().parents[4]
 AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 SETTINGS_FILES = [

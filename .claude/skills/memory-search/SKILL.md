@@ -4,8 +4,8 @@ description: |
   dharness 진화 이력을 자연어로 검색하는 규칙. "이전에 단계 X에서 뭐 했어?",
   "최근 schema 변경 이유는?", "지난번에 hook을 어떻게 단순화했지?", "phase 5 산출물
   관련 메모리" 같은 dharness 개발/유지보수 회고 질문 시 본 스킬의 절차를 따른다.
-  검색은 5 source(observations / dharness_event / CHANGELOG.md 변경 이력 / git log /
-  skill 본문)를 progressive disclosure로 조회하며, 별도 에이전트 호출 없이 LLM이 직접
+  검색은 4 source(observations_fts / dharness_event 필터 / CHANGELOG.md 변경 이력 /
+  git log)를 3-tool progressive disclosure로 조회하며, 별도 에이전트 호출 없이 LLM이 직접
   SQL·git·Read·Grep을 호출한다.
 ---
 
