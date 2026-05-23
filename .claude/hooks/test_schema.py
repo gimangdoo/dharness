@@ -207,44 +207,62 @@ class ClassifyMisc(unittest.TestCase):
 
 
 class HarnessNewGates(unittest.TestCase):
-    """SKILL.md anti-premature-judgment doctrine + Phase 1/2 entry 게이트 박제 회귀.
+    """anti-premature-judgment doctrine + Phase 1/2/5 entry 게이트 박제 회귀.
 
     사용자 요구 2026-05-15: `/harness:harness-new` 진입 시 cwd 디렉토리 이름·파일 이름 단독
     도메인 단정 차단. Phase 1 산출물 강제 + Phase 2 필수 5필드 사용자 답변 raw 인용 강제.
+
+    2026-05-23 P2-A split: doctrine 본문이 references/phase-entry-gates.md로 분리됨.
+    본 테스트는 (a) SKILL.md에 phase-entry-gates pointer 박제 + (b) references 본문에
+    doctrine 키워드 박제 — 두 조건 모두 검증한다.
     """
 
     REPO_ROOT = Path(__file__).resolve().parents[2]
     SKILL_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
+    GATES_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references" / "phase-entry-gates.md"
     CMD_MD = REPO_ROOT / "plugins" / "harness" / "commands" / "harness-new.md"
 
+    def _skill_pointer(self) -> str:
+        return self.SKILL_MD.read_text(encoding="utf-8-sig")
+
+    def _gates(self) -> str:
+        return self.GATES_MD.read_text(encoding="utf-8-sig")
+
     def test_anti_premature_judgment_doctrine_present(self):
-        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
-        self.assertIn("Anti-premature-judgment doctrine", text,
-                      "SKILL.md: Anti-premature-judgment doctrine 박스 미박제")
-        self.assertIn("cwd 디렉토리 이름", text,
-                      "SKILL.md: 'cwd 디렉토리 이름' 단정 금지 doctrine 미박제")
-        self.assertIn("단정 허용 조건", text,
-                      "SKILL.md: '단정 허용 조건' 게이트 미박제")
+        skill = self._skill_pointer()
+        gates = self._gates()
+        self.assertIn("phase-entry-gates.md", skill,
+                      "SKILL.md: phase-entry-gates.md pointer 미박제")
+        self.assertIn("Anti-premature-judgment doctrine", gates,
+                      "phase-entry-gates.md: Anti-premature-judgment doctrine 박스 미박제")
+        self.assertIn("cwd 디렉토리 이름", gates,
+                      "phase-entry-gates.md: 'cwd 디렉토리 이름' 단정 금지 doctrine 미박제")
+        self.assertIn("단정 허용 조건", gates,
+                      "phase-entry-gates.md: '단정 허용 조건' 게이트 미박제")
 
     def test_phase1_entry_gate_present(self):
-        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
-        self.assertIn("Phase 1 entry 게이트", text,
-                      "SKILL.md: Phase 1 entry 게이트 박스 미박제")
-        self.assertIn("산출물 강제", text,
-                      "SKILL.md: Phase 1 '산출물 강제' 문구 미박제")
-        self.assertIn("실 파일 read 강제", text,
-                      "SKILL.md: Phase 1 '실 파일 read 강제' 문구 미박제")
-        self.assertIn("silent skip 차단", text,
-                      "SKILL.md: 'silent skip 차단' 문구 미박제")
+        skill = self._skill_pointer()
+        gates = self._gates()
+        self.assertIn("phase-entry-gates.md", skill,
+                      "SKILL.md: phase-entry-gates.md pointer 미박제")
+        self.assertIn("Phase 1", gates)
+        self.assertIn("산출물 강제", gates,
+                      "phase-entry-gates.md: Phase 1 '산출물 강제' 문구 미박제")
+        self.assertIn("실 파일 read 강제", gates,
+                      "phase-entry-gates.md: Phase 1 '실 파일 read 강제' 문구 미박제")
+        self.assertIn("silent skip 차단", gates,
+                      "phase-entry-gates.md: 'silent skip 차단' 문구 미박제")
 
     def test_phase2_entry_gate_present(self):
-        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
-        self.assertIn("Phase 2 entry 게이트", text,
-                      "SKILL.md: Phase 2 entry 게이트 박스 미박제")
-        self.assertIn("질문 폭격 강제", text,
-                      "SKILL.md: Phase 2 '질문 폭격 강제' 문구 미박제")
-        self.assertIn("user_confirmed_fields", text,
-                      "SKILL.md: Phase 2 meta.user_confirmed_fields 박제 doctrine 미박제")
+        skill = self._skill_pointer()
+        gates = self._gates()
+        self.assertIn("phase-entry-gates.md", skill,
+                      "SKILL.md: phase-entry-gates.md pointer 미박제")
+        self.assertIn("Phase 2", gates)
+        self.assertIn("질문 폭격 강제", gates,
+                      "phase-entry-gates.md: Phase 2 '질문 폭격 강제' 문구 미박제")
+        self.assertIn("user_confirmed_fields", gates,
+                      "phase-entry-gates.md: Phase 2 meta.user_confirmed_fields 박제 doctrine 미박제")
 
     def test_harness_new_command_synced(self):
         text = self.CMD_MD.read_text(encoding="utf-8-sig")
@@ -254,17 +272,18 @@ class HarnessNewGates(unittest.TestCase):
                       "harness-new.md: 2026-05-15 entry 게이트 포인터 미박제")
 
     def test_phase5_cardinality_gate_present(self):
-        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
-        self.assertIn("Phase 5 entry 게이트", text,
-                      "SKILL.md: Phase 5 entry 게이트 박스 미박제")
-        self.assertIn("Cardinality justification", text,
-                      "SKILL.md: Phase 5 'Cardinality justification' 문구 미박제")
-        self.assertIn("inline 대안 검토", text,
-                      "SKILL.md: Phase 5 'inline 대안 검토' 컬럼 doctrine 미박제")
-        self.assertIn("single-use → inline", text,
-                      "SKILL.md: Phase 5 'single-use → inline' 룰 미박제")
-        self.assertIn("이름 유일성 사전 점검", text,
-                      "SKILL.md: Phase 5 '이름 유일성 사전 점검' doctrine 미박제")
+        skill = self._skill_pointer()
+        gates = self._gates()
+        self.assertIn("phase-entry-gates.md", skill,
+                      "SKILL.md: phase-entry-gates.md pointer 미박제")
+        self.assertIn("Cardinality justification", gates,
+                      "phase-entry-gates.md: Phase 5 'Cardinality justification' 문구 미박제")
+        self.assertIn("inline 대안 검토", gates,
+                      "phase-entry-gates.md: Phase 5 'inline 대안 검토' 컬럼 doctrine 미박제")
+        self.assertIn("single-use → inline", gates,
+                      "phase-entry-gates.md: Phase 5 'single-use → inline' 룰 미박제")
+        self.assertIn("이름 유일성 사전 점검", gates,
+                      "phase-entry-gates.md: Phase 5 '이름 유일성 사전 점검' doctrine 미박제")
 
     def test_phase3_5_self_critique_present(self):
         text = self.SKILL_MD.read_text(encoding="utf-8-sig")
