@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 import sqlite3
+import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -227,6 +228,99 @@ session_id: {sid}
         rc, out = _captured(cc.cmd_claudemd_apply, "apply04", [])
         self.assertEqual(rc, 1)
         self.assertIn("CHANGELOG.md 없음", out)
+
+
+class CmdPrune(HookTestBase):
+    def _seed_old_session(self, sid: str, old_date: str = "2025-01-01") -> None:
+        """오래된 세션 + observation + tool_output + telemetry + applied draft 박제."""
+        self.insert_session(sid, started_at=f"{old_date}T00:00:00Z", date=old_date)
+        self.insert_observation(sid, "harness_skill_edit", "skill", date=old_date)
+        # session dir + raw.jsonl + tool_output dir.
+        sess_dir = _schema.MEMORY_ROOT / "sessions" / sid
+        sess_dir.mkdir(parents=True, exist_ok=True)
+        (sess_dir / "raw.jsonl").write_text("x", encoding="utf-8")
+        tool_dir = _schema.TOOL_OUTPUTS / sid
+        tool_dir.mkdir(parents=True, exist_ok=True)
+        (tool_dir / "1.log").write_text("y", encoding="utf-8")
+        # telemetry 파일 (오래된 date).
+        (_schema.TELEMETRY_DIR / f"{old_date}.jsonl").write_text("z\n", encoding="utf-8")
+        # applied draft.
+        _schema.DRAFTS_APPLIED.mkdir(parents=True, exist_ok=True)
+        (_schema.DRAFTS_APPLIED / f"{old_date}_{sid}.md").write_text("a", encoding="utf-8")
+
+    def _seed_recent_session(self, sid: str) -> None:
+        """최근 세션 (prune 대상 아님)."""
+        today = time.strftime("%Y-%m-%d", time.gmtime())
+        self.insert_session(sid, started_at=f"{today}T00:00:00Z", date=today)
+        sess_dir = _schema.MEMORY_ROOT / "sessions" / sid
+        sess_dir.mkdir(parents=True, exist_ok=True)
+        (sess_dir / "raw.jsonl").write_text("recent", encoding="utf-8")
+
+    def test_invalid_days_returns_1(self):
+        cc = self.hooks["cm_commands"]
+        rc, out = _captured(cc.cmd_prune, 0, False)
+        self.assertEqual(rc, 1)
+        self.assertIn("1 이상", out)
+
+    def test_db_missing_returns_1(self):
+        cc = self.hooks["cm_commands"]
+        _schema.DB_PATH.unlink()
+        rc, _ = _captured(cc.cmd_prune, 30, False)
+        self.assertEqual(rc, 1)
+
+    def test_dry_run_no_deletion(self):
+        cc = self.hooks["cm_commands"]
+        self._seed_old_session("old01")
+        rc, out = _captured(cc.cmd_prune, 30, False)
+        self.assertEqual(rc, 0)
+        self.assertIn("[dry-run]", out)
+        self.assertIn("--confirm", out)
+        # 데이터 미삭제.
+        sess_dir = _schema.MEMORY_ROOT / "sessions" / "old01"
+        self.assertTrue(sess_dir.exists())
+        with sqlite3.connect(_schema.DB_PATH) as conn:
+            n = conn.execute("SELECT COUNT(*) FROM sessions WHERE session_id='old01'").fetchone()[0]
+        self.assertEqual(n, 1)
+
+    def test_confirm_deletes_old_keeps_recent(self):
+        cc = self.hooks["cm_commands"]
+        self._seed_old_session("old02", old_date="2025-01-01")
+        self._seed_recent_session("new02")
+        rc, _ = _captured(cc.cmd_prune, 30, True)
+        self.assertEqual(rc, 0)
+        # 오래된 세션 디렉토리·tool_output·telemetry·draft 삭제.
+        self.assertFalse((_schema.MEMORY_ROOT / "sessions" / "old02").exists())
+        self.assertFalse((_schema.TOOL_OUTPUTS / "old02").exists())
+        self.assertFalse((_schema.TELEMETRY_DIR / "2025-01-01.jsonl").exists())
+        self.assertFalse((_schema.DRAFTS_APPLIED / "2025-01-01_old02.md").exists())
+        # DB row 삭제.
+        with sqlite3.connect(_schema.DB_PATH) as conn:
+            n = conn.execute("SELECT COUNT(*) FROM sessions WHERE session_id='old02'").fetchone()[0]
+            obs = conn.execute("SELECT COUNT(*) FROM observations WHERE session_id='old02'").fetchone()[0]
+        self.assertEqual(n, 0)
+        self.assertEqual(obs, 0)
+        # 최근 세션 보존.
+        self.assertTrue((_schema.MEMORY_ROOT / "sessions" / "new02").exists())
+        with sqlite3.connect(_schema.DB_PATH) as conn:
+            n = conn.execute("SELECT COUNT(*) FROM sessions WHERE session_id='new02'").fetchone()[0]
+        self.assertEqual(n, 1)
+
+    def test_pending_drafts_preserved(self):
+        """pending drafts (DRAFTS_DIR 루트)은 prune 대상 아님."""
+        cc = self.hooks["cm_commands"]
+        self._seed_old_session("old03", old_date="2025-01-01")
+        pending = _schema.DRAFTS_DIR / "2025-01-01_old03.md"
+        pending.write_text("pending", encoding="utf-8")
+        rc, _ = _captured(cc.cmd_prune, 30, True)
+        self.assertEqual(rc, 0)
+        self.assertTrue(pending.exists())  # pending draft 보존.
+
+    def test_no_old_data_reports_zero(self):
+        cc = self.hooks["cm_commands"]
+        self._seed_recent_session("recent01")
+        rc, out = _captured(cc.cmd_prune, 30, True)
+        self.assertEqual(rc, 0)
+        self.assertIn("삭제할 데이터가 없습니다", out)
 
 
 class CmdClaudemdDiscard(HookTestBase):

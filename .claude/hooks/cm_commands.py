@@ -4,6 +4,7 @@
     py .claude/hooks/cm_commands.py status
     py .claude/hooks/cm_commands.py sessions [--limit N]
     py .claude/hooks/cm_commands.py reset --confirm
+    py .claude/hooks/cm_commands.py prune [--older-than DAYS] [--confirm]
     py .claude/hooks/cm_commands.py claudemd-list
     py .claude/hooks/cm_commands.py claudemd-apply <session_id>
     py .claude/hooks/cm_commands.py claudemd-discard [<session_id>]
@@ -20,7 +21,9 @@ import re
 import shutil
 import sqlite3
 import sys
+import time
 from collections.abc import Iterator
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from _schema import (
@@ -33,8 +36,13 @@ from _schema import (
     DRAFTS_DISCARDED,
     MEMORY_ROOT,
     REPO_ROOT,
+    TELEMETRY_DIR,
     TOOL_OUTPUTS,
 )
+
+PRUNE_DEFAULT_DAYS = 90  # 3개월 — memory-search 검색 속도와 history 잔존의 균형
+TELEMETRY_FILENAME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.jsonl$")
+DRAFT_FILENAME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})_[A-Za-z0-9]+\.md$")
 
 COUNT_TABLES = ("observations", "sessions")
 CHANGELOG_ROW_WARN_THRESHOLD = 40
@@ -147,6 +155,122 @@ def cmd_reset(confirmed: bool) -> int:
     for p, existed in _init_storage():
         marker = "(existing)" if existed else "(created)"
         print(f"  {'✅' if existed else '🆕'} {p.relative_to(REPO_ROOT)} {marker}")
+    return 0
+
+
+# ---------------------------- prune (partial GC) ----------------------------
+
+def _collect_prune_targets(cutoff_date: str) -> dict:
+    """cutoff_date (YYYY-MM-DD) *이전* 데이터를 대상으로 삭제 후보 enumerate.
+
+    반환: {sessions: [(sid, date), ...], session_dirs: [Path, ...],
+           tool_output_dirs: [Path, ...], telemetry_files: [Path, ...],
+           applied_drafts: [Path, ...], discarded_drafts: [Path, ...],
+           observation_rows: int, session_rows: int}
+    """
+    targets = {
+        "sessions": [], "session_dirs": [], "tool_output_dirs": [],
+        "telemetry_files": [], "applied_drafts": [], "discarded_drafts": [],
+        "observation_rows": 0, "session_rows": 0,
+    }
+    if not DB_PATH.exists():
+        return targets
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT session_id, date FROM sessions WHERE date < ? ORDER BY date ASC",
+            (cutoff_date,),
+        ).fetchall()
+        sids = [r["session_id"] for r in rows]
+        targets["sessions"] = [(r["session_id"], r["date"]) for r in rows]
+        targets["session_rows"] = len(sids)
+        if sids:
+            placeholders = ",".join("?" * len(sids))
+            n = conn.execute(
+                f"SELECT COUNT(*) FROM observations WHERE session_id IN ({placeholders})",
+                sids,
+            ).fetchone()[0]
+            targets["observation_rows"] = n
+    # 디렉토리·파일 enumerate.
+    sessions_root = MEMORY_ROOT / "sessions"
+    for sid, _ in targets["sessions"]:
+        d = sessions_root / sid
+        if d.exists():
+            targets["session_dirs"].append(d)
+        t = TOOL_OUTPUTS / sid
+        if t.exists():
+            targets["tool_output_dirs"].append(t)
+    # telemetry: filename에 박힌 date 비교.
+    if TELEMETRY_DIR.exists():
+        for p in sorted(TELEMETRY_DIR.glob("*.jsonl")):
+            m = TELEMETRY_FILENAME_RE.match(p.name)
+            if m and m.group(1) < cutoff_date:
+                targets["telemetry_files"].append(p)
+    # applied/discarded drafts: filename 박힌 date 비교 — pending drafts는 prune 대상 아님.
+    for sub in (DRAFTS_APPLIED, DRAFTS_DISCARDED):
+        if not sub.exists():
+            continue
+        key = "applied_drafts" if sub == DRAFTS_APPLIED else "discarded_drafts"
+        for p in sorted(sub.glob("*.md")):
+            m = DRAFT_FILENAME_RE.match(p.name)
+            if m and m.group(1) < cutoff_date:
+                targets[key].append(p)
+    return targets
+
+
+def _format_prune_summary(targets: dict, cutoff_date: str, dry_run: bool) -> str:
+    head = "🔍 [dry-run] " if dry_run else "🗑️  "
+    parts = [
+        f"{head}prune (cutoff: {cutoff_date} *이전* 데이터)",
+        f"  sessions:           {targets['session_rows']:>4} rows",
+        f"  observations:       {targets['observation_rows']:>4} rows",
+        f"  session 디렉토리:    {len(targets['session_dirs']):>4} 개",
+        f"  tool_output 디렉토리: {len(targets['tool_output_dirs']):>4} 개",
+        f"  telemetry 파일:      {len(targets['telemetry_files']):>4} 개",
+        f"  applied 드래프트:    {len(targets['applied_drafts']):>4} 개",
+        f"  discarded 드래프트:  {len(targets['discarded_drafts']):>4} 개",
+    ]
+    return "\n".join(parts)
+
+
+def cmd_prune(days: int, confirmed: bool) -> int:
+    if days < 1:
+        print("⚠️  --older-than 값은 1 이상이어야 합니다.")
+        return 1
+    if not _ensure_db():
+        return 1
+    cutoff_dt = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff_date = cutoff_dt.strftime("%Y-%m-%d")
+    targets = _collect_prune_targets(cutoff_date)
+    total = (targets["session_rows"] + len(targets["telemetry_files"])
+             + len(targets["applied_drafts"]) + len(targets["discarded_drafts"]))
+    print(_format_prune_summary(targets, cutoff_date, dry_run=not confirmed))
+    if total == 0:
+        print("\n삭제할 데이터가 없습니다.")
+        return 0
+    if not confirmed:
+        print(
+            f"\n--confirm 플래그 없이는 *삭제하지 않습니다* (dry-run). "
+            f"실제 삭제: prune --older-than {days} --confirm"
+        )
+        return 0
+    # 실제 삭제.
+    for d in targets["session_dirs"]:
+        shutil.rmtree(d, ignore_errors=True)
+    for d in targets["tool_output_dirs"]:
+        shutil.rmtree(d, ignore_errors=True)
+    for f in targets["telemetry_files"] + targets["applied_drafts"] + targets["discarded_drafts"]:
+        try:
+            f.unlink()
+        except OSError as e:
+            print(f"⚠️  unlink 실패: {f.name} — {e}", file=sys.stderr)
+    if targets["sessions"]:
+        sids = [s for s, _ in targets["sessions"]]
+        placeholders = ",".join("?" * len(sids))
+        with _connect() as conn:
+            conn.execute(f"DELETE FROM observations WHERE session_id IN ({placeholders})", sids)
+            conn.execute(f"DELETE FROM sessions WHERE session_id IN ({placeholders})", sids)
+            conn.commit()
+    print(f"\n✅ prune 완료. (cutoff: {cutoff_date})")
     return 0
 
 
@@ -318,6 +442,11 @@ def main() -> int:
     sub.add_parser("status")
     p_sessions = sub.add_parser("sessions"); p_sessions.add_argument("--limit", type=int, default=30)
     p_reset = sub.add_parser("reset"); p_reset.add_argument("--confirm", action="store_true")
+    p_prune = sub.add_parser("prune")
+    p_prune.add_argument("--older-than", type=int, default=PRUNE_DEFAULT_DAYS,
+                         help=f"N일 *이전* 데이터를 prune (default: {PRUNE_DEFAULT_DAYS})")
+    p_prune.add_argument("--confirm", action="store_true",
+                         help="실제 삭제 (생략 시 dry-run으로 영향 미리보기만)")
     sub.add_parser("claudemd-list")
     p_apply = sub.add_parser("claudemd-apply")
     p_apply.add_argument("session_id")
@@ -328,6 +457,7 @@ def main() -> int:
     if args.cmd == "status":              return cmd_status()
     if args.cmd == "sessions":            return cmd_sessions(args.limit)
     if args.cmd == "reset":               return cmd_reset(args.confirm)
+    if args.cmd == "prune":               return cmd_prune(getattr(args, "older_than"), args.confirm)
     if args.cmd == "claudemd-list":       return cmd_claudemd_list()
     if args.cmd == "claudemd-apply":      return cmd_claudemd_apply(args.session_id, args.reason)
     if args.cmd == "claudemd-discard":    return cmd_claudemd_discard(args.session_id)

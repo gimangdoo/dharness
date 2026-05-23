@@ -129,6 +129,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 /cm-status                              # 메모리 상태 보기 (누적 세션·관측 행 수·미적용 draft)
 /cm-sessions [--limit 개수]             # 최근 세션 목록 (세션 ID·날짜·소요·도구)
 /cm-reset                               # 메모리 전체 삭제 (확인 필수)
+/cm-prune [--older-than N] [--confirm]  # 메모리 부분 GC — N일(default 90) 이전 누적 삭제 (dry-run 우선)
 /cm-claudemd-apply <세션 ID> [사유...]  # 변경 이력 draft 적용 — CHANGELOG.md "변경 이력" 표에 박제
 /cm-claudemd-discard [세션 ID]          # 변경 이력 draft 폐기 (인자 없으면 모두)
 ```
