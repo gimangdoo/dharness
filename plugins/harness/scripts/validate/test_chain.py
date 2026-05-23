@@ -411,5 +411,117 @@ class CheckDharnessVersionDrift(_ChainTestBase):
         self.assertIsNotNone(result["message"])
 
 
+class CheckRequiredUserConfirmedFields(_ChainTestBase):
+    """W3 doctrine — 5 required INTENT 필드 모두 meta.user_confirmed_fields 등록 강제."""
+
+    REQUIRED = (
+        "constraints.tech_stack",
+        "constraints.team.size",
+        "constraints.timeline.horizon",
+        "architecture.deployment_target",
+        "quality.test_rigor",
+    )
+
+    def _write_intent_profile(self, frontmatter_body: str) -> Path:
+        baseline = self.root / "_workspace" / "_baseline"
+        baseline.mkdir(parents=True, exist_ok=True)
+        path = baseline / "intent_profile.md"
+        path.write_text(f"---\n{frontmatter_body}\n---\n", encoding="utf-8")
+        return path
+
+    def test_no_intent_profile_passes(self):
+        self.assertEqual(chain.check_required_user_confirmed_fields(), [])
+
+    def test_all_five_registered_passes(self):
+        fm = (
+            "meta:\n"
+            "  user_confirmed_fields:\n"
+            "    - constraints.tech_stack\n"
+            "    - constraints.team.size\n"
+            "    - constraints.timeline.horizon\n"
+            "    - architecture.deployment_target\n"
+            "    - quality.test_rigor\n"
+        )
+        self._write_intent_profile(fm)
+        self.assertEqual(chain.check_required_user_confirmed_fields(), [])
+
+    def test_meta_field_absent_fails_all(self):
+        self._write_intent_profile("meta:\n  open_questions: []\n  inferred_fields: []\n")
+        errors = chain.check_required_user_confirmed_fields()
+        # 1 (필드 자체 누락) + 5 (각 required 누락) = 6
+        self.assertEqual(len(errors), 6)
+        self.assertIn("필드 박제 누락", errors[0])
+        for required in self.REQUIRED:
+            self.assertTrue(any(required in e for e in errors[1:]))
+
+    def test_empty_list_fails_all_five(self):
+        self._write_intent_profile("meta:\n  user_confirmed_fields: []\n")
+        errors = chain.check_required_user_confirmed_fields()
+        self.assertEqual(len(errors), 5)
+        for required in self.REQUIRED:
+            self.assertTrue(any(required in e for e in errors))
+
+    def test_partial_registration_reports_missing_only(self):
+        fm = (
+            "meta:\n"
+            "  user_confirmed_fields:\n"
+            "    - constraints.tech_stack\n"
+            "    - quality.test_rigor\n"
+        )
+        self._write_intent_profile(fm)
+        errors = chain.check_required_user_confirmed_fields()
+        self.assertEqual(len(errors), 3)
+        joined = " ".join(errors)
+        self.assertNotIn("constraints.tech_stack", joined)
+        self.assertNotIn("quality.test_rigor", joined)
+        self.assertIn("constraints.team.size", joined)
+        self.assertIn("constraints.timeline.horizon", joined)
+        self.assertIn("architecture.deployment_target", joined)
+
+    def test_prefix_match_covers_required(self):
+        """sub-field 박제는 부모 dot-path 커버 (brownfield `constraints.tech_stack.locked_in` 패턴)."""
+        fm = (
+            "meta:\n"
+            "  user_confirmed_fields:\n"
+            "    - constraints.tech_stack.locked_in\n"
+            "    - constraints.team.size\n"
+            "    - constraints.timeline.horizon\n"
+            "    - architecture.deployment_target\n"
+            "    - quality.test_rigor\n"
+        )
+        self._write_intent_profile(fm)
+        self.assertEqual(chain.check_required_user_confirmed_fields(), [])
+
+    def test_inline_list_form_passes(self):
+        fm = (
+            "meta:\n"
+            "  user_confirmed_fields: [constraints.tech_stack, constraints.team.size, "
+            "constraints.timeline.horizon, architecture.deployment_target, quality.test_rigor]\n"
+        )
+        self._write_intent_profile(fm)
+        self.assertEqual(chain.check_required_user_confirmed_fields(), [])
+
+    def test_inline_empty_list_fails(self):
+        self._write_intent_profile("meta:\n  user_confirmed_fields: []\n")
+        errors = chain.check_required_user_confirmed_fields()
+        self.assertEqual(len(errors), 5)
+
+    def test_inferred_fields_only_does_not_satisfy(self):
+        """inferred_fields 등록만으로는 W3 doctrine 불충족 — 사용자 확인 답변 필수."""
+        fm = (
+            "meta:\n"
+            "  inferred_fields:\n"
+            "    - constraints.tech_stack\n"
+            "    - constraints.team.size\n"
+            "    - constraints.timeline.horizon\n"
+            "    - architecture.deployment_target\n"
+            "    - quality.test_rigor\n"
+            "  user_confirmed_fields: []\n"
+        )
+        self._write_intent_profile(fm)
+        errors = chain.check_required_user_confirmed_fields()
+        self.assertEqual(len(errors), 5)
+
+
 if __name__ == "__main__":
     unittest.main()

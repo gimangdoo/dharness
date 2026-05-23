@@ -290,7 +290,12 @@ meta:
     - "OpenAI API 비용은 개인 부담 가능 범위"
     - "음성 파일은 1시간 이내 길이만 가정"
   inferred_fields: []
-  user_confirmed_fields: []
+  user_confirmed_fields:
+    - constraints.tech_stack
+    - constraints.team.size
+    - constraints.timeline.horizon
+    - architecture.deployment_target
+    - quality.test_rigor
 ---
 
 # Intent Profile
@@ -319,7 +324,8 @@ meta:
 ```
 
 **주의 깊게 볼 점:**
-- `inferred_fields`, `user_confirmed_fields`가 빈 배열 — greenfield는 추론 대상이 없음
+- `inferred_fields`가 빈 배열 — greenfield는 추론 대상이 없음
+- `user_confirmed_fields`에 INTENT_REQUIRED 5필드 모두 등록 — 사용자 raw 답변으로 채움 (W3 doctrine 강제, `chain.py:check_required_user_confirmed_fields`)
 - `out_of_scope` 명시로 향후 scope creep 방지 신호
 - `open_questions`에 미결정 항목을 솔직히 등록 → Phase 10이 추후 트리거 가능
 
@@ -395,6 +401,8 @@ meta:
     - "architecture.deployment_target"
     - "workflow.ci_cd"
     - "quality.test_rigor"
+    - "constraints.team.size"
+    - "constraints.timeline.horizon"
 ---
 
 # Intent Profile
@@ -446,17 +454,18 @@ meta:
 - `workflow.collaboration_mode` ← git contributors 5명
 - `constraints.team.size` ← contributor 수 기반 추정
 
-### User Confirmed Fields (4개)
-- locked_in, deployment_target, ci_cd, test_rigor
+### User Confirmed Fields (6개 — INTENT_REQUIRED 5필드 모두 커버)
+- locked_in (= `constraints.tech_stack`), deployment_target, ci_cd, test_rigor, team.size, timeline.horizon
 
-### Inferred but NOT Confirmed (2개 — 신뢰도 낮음)
-- `workflow.collaboration_mode`, `constraints.team.size`
+### Inferred but NOT Confirmed (1개 — 신뢰도 낮음)
+- `workflow.collaboration_mode`
   → Phase 10이 변경 시도할 때 우선 사용자 확인 트리거
 ```
 
 **주의 깊게 볼 점:**
 - `locked_in`이 채워짐 — brownfield의 식별 신호
-- `inferred_fields − user_confirmed_fields = 2개` → 미확인 필드 명시
+- INTENT_REQUIRED 5필드(`constraints.tech_stack`/`team.size`/`timeline.horizon`/`architecture.deployment_target`/`quality.test_rigor`) 모두 `user_confirmed_fields` 등록 — W3 doctrine 강제 (`chain.py:check_required_user_confirmed_fields`). brownfield 자동 추론 항목도 *사용자 확인 답변* 받은 후에만 등록 — inferred-only는 doctrine 불충족.
+- `inferred_fields − user_confirmed_fields = 1개` → 미확인 필드 명시
 - `open_questions`에 코드 grounded 질문의 미결정 답변이 들어감
 - frontmatter의 enum + 본문의 자유 서술이 자연스럽게 섞임
 

@@ -647,6 +647,109 @@ _GRILLING_VALID_PHASES = ("0.5", "2", "5", "9")
 _GRILLING_VALID_SOURCES = ("signals>=2", "section_3_1_direct", "section_3_2_estimate")
 _GRILLING_REQUIRED_KEYS = ("phase", "field", "mode", "recommended", "recommended_source", "user_response")
 
+# W3 doctrine (phase-entry-gates.md:§Phase 2). 5필드 모두 사용자 raw 답변으로
+# meta.user_confirmed_fields 등록 필수. brownfield 자동 추론도 사용자 확인 답변
+# 받아야 user_confirmed_fields 등록 — inferred_fields 등록만으로 doctrine 불충족.
+_INTENT_USER_CONFIRMED_REQUIRED = (
+    "constraints.tech_stack",
+    "constraints.team.size",
+    "constraints.timeline.horizon",
+    "architecture.deployment_target",
+    "quality.test_rigor",
+)
+
+
+def _extract_user_confirmed_fields(yaml_body: str) -> list[str] | None:
+    """meta.user_confirmed_fields list 추출 — inline / indented / compact YAML 양쪽 지원.
+
+    반환값 의미:
+      None  — meta.user_confirmed_fields 필드 자체 박제 미존재
+      list  — 박제 list (빈 list 포함). 원소는 dot-path string.
+
+    `_extract_grilling_log_block` 패턴 재사용 — meta 블록 내부 list 키를 indent 기반 파싱.
+    inline 형태 `user_confirmed_fields: []` / `user_confirmed_fields: [a, b]`도 지원.
+    """
+    lines = yaml_body.splitlines()
+    in_meta = False
+    meta_indent = -1
+    in_list = False
+    list_indent = -1
+    items: list[str] = []
+    for raw in lines:
+        line = raw.rstrip()
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(stripped)
+        if not in_meta:
+            if stripped.startswith("meta:") and indent == 0:
+                in_meta = True
+                meta_indent = indent
+            continue
+        if in_meta and not in_list:
+            if indent <= meta_indent:
+                return None
+            m = re.match(r"^user_confirmed_fields\s*:\s*(.*)$", stripped)
+            if m:
+                inline = m.group(1).strip()
+                if inline.startswith("["):
+                    # inline list. `[]` 빈 list 포함.
+                    body = inline.strip().lstrip("[").rstrip("]")
+                    return [_strip_quotes(t.strip()) for t in body.split(",") if t.strip()]
+                if inline:
+                    # 단일 scalar — list로 해석 안 함. doctrine 위반 케이스로 빈 list 반환.
+                    return []
+                in_list = True
+                list_indent = indent
+            continue
+        if in_list:
+            if stripped.startswith("- ") and indent > list_indent:
+                items.append(_strip_quotes(stripped[2:].strip()))
+                continue
+            if indent <= list_indent and stripped:
+                break
+    if in_list:
+        return items
+    return None
+
+
+def check_required_user_confirmed_fields() -> list[str]:
+    """W3 doctrine — intent_profile.md meta.user_confirmed_fields가 INTENT_REQUIRED 5필드 전부 커버.
+
+    prefix 매칭 — `constraints.tech_stack.locked_in` 등록은 `constraints.tech_stack` 커버.
+    intent_profile.md 미존재 시 silent skip (schema.py가 별도 FAIL).
+    meta.user_confirmed_fields 박제 자체 미존재 또는 빈 list → 5필드 모두 누락 FAIL.
+
+    근거: phase-entry-gates.md §Phase 2 step 1 + Phase 0.5 anti-premature-judgment evidence #2.
+    """
+    errors: list[str] = []
+    if not INTENT_PROFILE.exists():
+        return errors
+    try:
+        text = INTENT_PROFILE.read_text(encoding="utf-8-sig")
+    except OSError:
+        return errors
+
+    fm = FRONTMATTER_RE.search(text)
+    body = fm.group(1) if fm else text
+
+    confirmed = _extract_user_confirmed_fields(body)
+    if confirmed is None:
+        errors.append(
+            "intent_profile.md meta.user_confirmed_fields 필드 박제 누락 — "
+            "Phase 2 doctrine 위반 (W3, phase-entry-gates.md §Phase 2 step 1)"
+        )
+        confirmed = []
+
+    for required in _INTENT_USER_CONFIRMED_REQUIRED:
+        prefix = required + "."
+        if not any(c == required or c.startswith(prefix) for c in confirmed):
+            errors.append(
+                f"intent_profile.md meta.user_confirmed_fields: 필수 필드 `{required}` 누락 — "
+                f"사용자 raw 답변 미박제 (W3 anti-premature-judgment 강제)"
+            )
+    return errors
+
 
 def check_intent_profile_grilling_log() -> list[str]:
     """meta.grilling_log[] doctrine 검증 (Phase B, 2026-05-19, grill-me 흡수).
@@ -937,6 +1040,7 @@ def main(argv: list[str]) -> int:
     errors.extend(check_skill_description_overlap())
     errors.extend(check_skill_signal_coverage())
     errors.extend(check_intent_profile_grilling_log())
+    errors.extend(check_required_user_confirmed_fields())
 
     version_drift = check_dharness_version_drift()
 

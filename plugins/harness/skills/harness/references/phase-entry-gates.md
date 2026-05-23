@@ -56,7 +56,7 @@ Phase 1 산출물 `project_profile.md` 미존재 시 본 Phase **진입 차단**
 
 1. **필수 5필드 사용자 답변 raw 인용 강제**: `constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor` — *모든* 필드에 대해 LLM이 사용자에게 *명시적 질문*을 출력하고, 사용자 raw 답변을 `meta.user_confirmed_fields` 리스트에 등록. brownfield의 자동 추론 결과는 *제시만* 가능, 사용자 확인 답변 없이 user_confirmed_fields에 등록 금지.
 2. **질문 폭격 강제**: 필수 5필드 미답변 상태에서 Phase 3 진입 차단. 사용자가 "다 알아서 하라" 등 답변 거부 시 → 추론값으로 채우되 `meta.inferred_fields`에 박제 + 별도 confirm 게이트(추론값 표 출력 → "이대로 진행?" 명시 인가 후만 Phase 3).
-3. **단정 표현 금지 (Phase 2 미완 상태에서)**: Phase 1과 동일 — `domain: X` 단정 출력 금지. Phase 2 완료(모든 필수 5필드 user_confirmed_fields OR 사용자 인가된 inferred_fields)된 후에만 Phase 3에서 단정 표현 허용.
+3. **단정 표현 금지 (Phase 2 미완 상태에서)**: Phase 1과 동일 — `domain: X` 단정 출력 금지. Phase 2 완료(모든 필수 5필드 `user_confirmed_fields` 등록 — `chain.py:check_required_user_confirmed_fields` 결정적 검증)된 후에만 Phase 3에서 단정 표현 허용. brownfield 자동 추론값은 별도 confirm 게이트(추론값 표 출력 → "이대로 진행?" 명시 인가) 통과 시 그 답변이 user_confirmed_fields 등록 트리거.
 4. **brownfield 4단계 강제 순서**: 자동 추론 → *사용자 확인* → 갭 → 코드 grounded 질문. 1단계(자동 추론)만 수행하고 2단계 skip 금지.
 5. **Grilling 모드 분기**: `meta.confidence_low` 항목 ≥1 OR 필수 5필드 1차 거부 시 `references/grilling-loop.md` 1q-at-a-time + recommended answer 패턴 적용. cap 5 question, 초과 시 batch 자동 fallback. 추천 답안 출처는 `project_profile.md` signals ≥2 또는 §3-1 직접 매핑만 허용 — 디렉토리·파일 이름 단독 추천 doctrine 위반.
 
