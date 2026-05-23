@@ -469,6 +469,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > | Phase 9 | (사용자 발화 종속 — case-by-case) | 진화 |
 > | Phase 10 | `runtime-adaptation.md` | telemetry drift 적응 |
 > | Sub-agent 활용 | `team-tools-api.md` | Phase 1/5/6/8 sub-agent 격리 시 |
+> | Doctrine 박제·갱신·refit | `doctrine-registry.md` | 신규 doctrine 박제, 기존 doctrine 갱신, plugin upgrade 후 refit 진단 |
 >
 > **trigger:** LLM은 phase 진입 시점에 위 매핑 표를 보고 *해당 phase에 대응하는 reference만* read. cross-phase 참조 필요 시 (예: Phase 5에서 Phase 2 intent profile 다시 read) 명시적으로 *재read* — silent prefetch 금지.
 >
@@ -476,6 +477,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 
 - **Phase Entry Gates** (Phase 0/0.5/1/2/5 entry 게이트 doctrine 박스 모음, 2026-05-23 P2-A 분리): `references/phase-entry-gates.md`
 - **Output Checklist** (must 9 / should 9 항목 catalog, 2026-05-23 P2-A 분리): `references/output-checklist.md`
+- **Doctrine Registry** (전 영역 doctrine 단일 색인 — id·박제 위치·근거 commit·정합 점검, 2026-05-23 P9): `references/doctrine-registry.md`
 - 하네스 패턴: `references/agent-design-patterns.md`
 - 기존 하네스 예시 (실제 파일 전문 포함): `references/team-examples.md`
 - 오케스트레이터 템플릿: `references/orchestrator-template.md`
