@@ -111,6 +111,8 @@ grilling_entry:
   timestamp: string                      # ISO8601
 
 required:                               # P6-10 / M2 (2026-05-14) — 다운스트림 hard-code 신뢰 박제
+                                        # 정본: scripts/validate/schema.py:INTENT_REQUIRED.
+                                        # doc ↔ schema sync은 chain.py:check_intent_required_doc_sync 결정적 검증.
   - constraints.tech_stack
   - constraints.team.size
   - constraints.timeline.horizon

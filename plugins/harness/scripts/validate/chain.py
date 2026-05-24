@@ -15,6 +15,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from schema import INTENT_REQUIRED  # noqa: E402  W3 doctrine 단일 출처
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 else:
@@ -650,13 +653,8 @@ _GRILLING_REQUIRED_KEYS = ("phase", "field", "mode", "recommended", "recommended
 # W3 doctrine (phase-entry-gates.md:§Phase 2). 5필드 모두 사용자 raw 답변으로
 # meta.user_confirmed_fields 등록 필수. brownfield 자동 추론도 사용자 확인 답변
 # 받아야 user_confirmed_fields 등록 — inferred_fields 등록만으로 doctrine 불충족.
-_INTENT_USER_CONFIRMED_REQUIRED = (
-    "constraints.tech_stack",
-    "constraints.team.size",
-    "constraints.timeline.horizon",
-    "architecture.deployment_target",
-    "quality.test_rigor",
-)
+# 정본은 schema.py:INTENT_REQUIRED — 본 alias로 의도 명시.
+_INTENT_USER_CONFIRMED_REQUIRED = tuple(INTENT_REQUIRED)
 
 
 def _extract_user_confirmed_fields(yaml_body: str) -> list[str] | None:
@@ -995,6 +993,8 @@ _DOCTRINE_FN_REF_PATTERN = re.compile(
     r"`(chain|structure|schema)\.py:([A-Za-z_][A-Za-z0-9_]*)`"
 )
 _DEF_PATTERN = re.compile(r"^def\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
+# 모듈-레벨 UPPERCASE 상수 (e.g. INTENT_REQUIRED) — registry가 fn 외 canonical symbol 인용 시 허용.
+_CONST_PATTERN = re.compile(r"^([A-Z_][A-Z0-9_]*)\s*=", re.MULTILINE)
 
 
 def _collect_module_fns(module_name: str) -> set[str]:
@@ -1005,7 +1005,7 @@ def _collect_module_fns(module_name: str) -> set[str]:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return set()
-    return set(_DEF_PATTERN.findall(text))
+    return set(_DEF_PATTERN.findall(text)) | set(_CONST_PATTERN.findall(text))
 
 
 def check_doctrine_registry_fn_refs() -> list[str]:
@@ -1037,6 +1037,98 @@ def check_doctrine_registry_fn_refs() -> list[str]:
                 f"doctrine-registry.md: `{module}.py:{fn}` 인용 — 실제 fn 미존재 "
                 f"(R6 doctrine drift)"
             )
+    return errors
+
+
+# §6 inverse index row: ``| `<module>.py` | <ids cell> |``
+_INVERSE_MODULE_ROW_PATTERN = re.compile(
+    r"^\|\s*`(chain|structure|schema)\.py`\s*\|\s*([^|]+)\|",
+    re.MULTILINE,
+)
+# §1-5 doctrine row: ``| W1 | ... |`` — capture id + rest of line for module ref scan.
+_DOCTRINE_ROW_LINE_PATTERN = re.compile(
+    r"^\|\s*((?:W|R|S|P|I)\d+)\s*\|([^\n]*)$",
+    re.MULTILINE,
+)
+_DOCTRINE_ID_TOKEN_PATTERN = re.compile(r"\b((?:W|R|S|P|I)\d+)\b")
+
+
+def check_doctrine_registry_inverse_index() -> list[str]:
+    """doctrine-registry.md §6 역색인 ↔ §1-5 doctrine id 매핑 정합 (R6 확장, 2026-05-24).
+
+    §1-5 row가 `chain.py:<fn>` / `structure.py:<fn>` / `schema.py:<fn>`를 인용하면
+    §6 inverse index의 해당 module 행에도 그 doctrine id가 등재돼 있어야 한다.
+    contributor가 §6 색인 read만으로 doctrine ↔ module 매핑을 추적하므로 drift 차단.
+    """
+    errors: list[str] = []
+    if not _DOCTRINE_REGISTRY.exists():
+        return errors
+    try:
+        text = _DOCTRINE_REGISTRY.read_text(encoding="utf-8-sig")
+    except OSError:
+        return errors
+    scanned = _strip_code_fences(text)
+
+    inverse: dict[str, set[str]] = {}
+    for module, ids_cell in _INVERSE_MODULE_ROW_PATTERN.findall(scanned):
+        ids = set(_DOCTRINE_ID_TOKEN_PATTERN.findall(ids_cell))
+        inverse.setdefault(module, set()).update(ids)
+
+    reported: set[tuple[str, str]] = set()
+    for match in _DOCTRINE_ROW_LINE_PATTERN.finditer(scanned):
+        doctrine_id = match.group(1)
+        row_body = match.group(2)
+        for module, _fn in _DOCTRINE_FN_REF_PATTERN.findall(row_body):
+            key = (doctrine_id, module)
+            if key in reported:
+                continue
+            if module not in inverse:
+                reported.add(key)
+                errors.append(
+                    f"doctrine-registry.md: §1-5 {doctrine_id} → `{module}.py:` "
+                    f"인용 — §6 inverse index에 `{module}.py` 행 부재 (R6 확장)"
+                )
+                continue
+            if doctrine_id not in inverse[module]:
+                reported.add(key)
+                errors.append(
+                    f"doctrine-registry.md: §1-5 {doctrine_id} → `{module}.py:` "
+                    f"인용 — §6 `{module}.py` 행에 {doctrine_id} 미등재 (R6 확장)"
+                )
+    return errors
+
+
+# W3 doctrine doc sync — 5 필수 필드가 schema.py 정본과 동기인 doc 위치.
+# 각 path는 PLUGIN_REFERENCES_DIR 또는 PLUGIN_SKILL_MD 기준 상대.
+_INTENT_REQUIRED_DOC_TARGETS = (
+    ("SKILL.md", lambda: PLUGIN_SKILL_MD),
+    ("phase-entry-gates.md", lambda: PLUGIN_REFERENCES_DIR / "phase-entry-gates.md"),
+    ("intent-profile-schema.md", lambda: PLUGIN_REFERENCES_DIR / "intent-profile-schema.md"),
+)
+
+
+def check_intent_required_doc_sync() -> list[str]:
+    """W3 doctrine doc sync — schema.py:INTENT_REQUIRED 5필드가 본문 doc에 모두 박제 (2026-05-24).
+
+    필드 list가 schema.py와 doc 5곳에 분산 hard-code된 drift 위험을 결정적으로 차단.
+    각 doc 위치(SKILL.md / phase-entry-gates.md / intent-profile-schema.md)에 5필드 모두
+    문자열 hit 보장. 1 필드라도 doc 누락 시 FAIL — schema 진화 시 doc 동기화 강제.
+    """
+    errors: list[str] = []
+    for label, resolver in _INTENT_REQUIRED_DOC_TARGETS:
+        path = resolver()
+        if not path.exists():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        for field in INTENT_REQUIRED:
+            if field not in text:
+                errors.append(
+                    f"{label}: schema.py:INTENT_REQUIRED 필드 `{field}` 박제 누락 "
+                    f"— doc ↔ schema sync drift (W3 doc sync)"
+                )
     return errors
 
 
@@ -1284,6 +1376,8 @@ def main(argv: list[str]) -> int:
     errors.extend(check_intent_profile_grilling_log())
     errors.extend(check_required_user_confirmed_fields())
     errors.extend(check_doctrine_registry_fn_refs())
+    errors.extend(check_doctrine_registry_inverse_index())
+    errors.extend(check_intent_required_doc_sync())
     errors.extend(check_advisor_handoff_adapter_consistency())
 
     version_drift = check_dharness_version_drift()

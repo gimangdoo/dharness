@@ -609,6 +609,179 @@ class CheckDoctrineRegistryRealRepo(unittest.TestCase):
         errors = chain.check_doctrine_registry_fn_refs()
         self.assertEqual(errors, [], f"stale fn refs detected: {errors}")
 
+    def test_repo_doctrine_registry_inverse_index_consistent(self):
+        # §1-5 doctrine row의 module 인용 ↔ §6 inverse index 매핑 회귀.
+        errors = chain.check_doctrine_registry_inverse_index()
+        self.assertEqual(errors, [], f"inverse index drift detected: {errors}")
+
+
+class CheckDoctrineRegistryInverseIndex(_ChainTestBase):
+    """R6 확장 — §6 inverse index ↔ §1-5 doctrine row module ref 정합 (2026-05-24)."""
+
+    def setUp(self):
+        super().setUp()
+        self._saved_reg = chain._DOCTRINE_REGISTRY
+        self.registry = self.root / "doctrine-registry.md"
+        chain._DOCTRINE_REGISTRY = self.registry
+
+    def tearDown(self):
+        chain._DOCTRINE_REGISTRY = self._saved_reg
+        super().tearDown()
+
+    def test_no_registry_passes(self):
+        self.assertEqual(chain.check_doctrine_registry_inverse_index(), [])
+
+    def test_id_in_inverse_passes(self):
+        self.registry.write_text(
+            "## §1\n"
+            "| W1 | doc | loc | commit | `chain.py:check_a` |\n"
+            "## §6\n"
+            "| `chain.py` | W1 |\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(chain.check_doctrine_registry_inverse_index(), [])
+
+    def test_id_missing_from_inverse_fails(self):
+        # §1-5에 W7이 chain.py:fn을 인용하는데 §6 chain.py 행에 W7 없으면 FAIL.
+        self.registry.write_text(
+            "## §1\n"
+            "| W1 | doc | loc | commit | `chain.py:check_a` |\n"
+            "| W7 | doc | loc | commit | `chain.py:check_b` |\n"
+            "## §6\n"
+            "| `chain.py` | W1 |\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_doctrine_registry_inverse_index()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("W7", errors[0])
+        self.assertIn("chain.py", errors[0])
+        self.assertIn("미등재", errors[0])
+
+    def test_module_absent_from_inverse_fails(self):
+        # §1-5가 schema.py를 인용하는데 §6에 schema.py 행 자체가 없으면 FAIL.
+        self.registry.write_text(
+            "## §1\n"
+            "| S7 | doc | loc | commit | `schema.py:find_x` |\n"
+            "## §6\n"
+            "| `chain.py` | W1 |\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_doctrine_registry_inverse_index()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("S7", errors[0])
+        self.assertIn("schema.py", errors[0])
+        self.assertIn("부재", errors[0])
+
+    def test_multiple_modules_per_row(self):
+        # 같은 doctrine row가 chain.py + schema.py 둘 다 인용해도 양쪽 검증.
+        self.registry.write_text(
+            "## §1\n"
+            "| S2 | doc | `chain.py:check_a` | commit | `schema.py:find_x` |\n"
+            "## §6\n"
+            "| `chain.py` | S2 |\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_doctrine_registry_inverse_index()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("schema.py", errors[0])
+
+    def test_duplicate_module_ref_reported_once(self):
+        # 같은 (doctrine_id, module) 쌍이 두 번 인용돼도 1회만 보고.
+        self.registry.write_text(
+            "## §1\n"
+            "| W3 | doc | `chain.py:check_a` | c | `chain.py:check_b` |\n"
+            "## §6\n"
+            "| `chain.py` | W1 |\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_doctrine_registry_inverse_index()
+        self.assertEqual(len(errors), 1)
+
+    def test_code_fence_ignored(self):
+        # 코드펜스 안 인용은 무시 (실제 doctrine row 아님).
+        self.registry.write_text(
+            "```python\n| W9 | x | `chain.py:fake` |\n```\n"
+            "## §6\n"
+            "| `chain.py` | W1 |\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(chain.check_doctrine_registry_inverse_index(), [])
+
+
+class CheckIntentRequiredDocSync(_ChainTestBase):
+    """W3 doc sync — schema.py:INTENT_REQUIRED ↔ doc 3곳 동기 (2026-05-24)."""
+
+    def setUp(self):
+        super().setUp()
+        self._saved_skill = chain.PLUGIN_SKILL_MD
+        self._saved_refs = chain.PLUGIN_REFERENCES_DIR
+        self.skill = self.root / "SKILL.md"
+        self.refs = self.root / "references"
+        self.refs.mkdir()
+        chain.PLUGIN_SKILL_MD = self.skill
+        chain.PLUGIN_REFERENCES_DIR = self.refs
+
+    def tearDown(self):
+        chain.PLUGIN_SKILL_MD = self._saved_skill
+        chain.PLUGIN_REFERENCES_DIR = self._saved_refs
+        super().tearDown()
+
+    def _write_full(self, missing: set[str] = frozenset()) -> None:
+        # 5필드 hit content (missing set의 필드는 제외).
+        all_fields = list(chain.INTENT_REQUIRED)
+        kept = [f for f in all_fields if f not in missing]
+        line = " ".join(f"`{f}`" for f in kept) + "\n"
+        self.skill.write_text(line, encoding="utf-8")
+        (self.refs / "phase-entry-gates.md").write_text(line, encoding="utf-8")
+        (self.refs / "intent-profile-schema.md").write_text(line, encoding="utf-8")
+
+    def test_no_doc_files_passes(self):
+        self.assertEqual(chain.check_intent_required_doc_sync(), [])
+
+    def test_all_fields_present_passes(self):
+        self._write_full()
+        self.assertEqual(chain.check_intent_required_doc_sync(), [])
+
+    def test_field_missing_in_one_doc_fails(self):
+        all_fields = list(chain.INTENT_REQUIRED)
+        # SKILL.md만 1필드 누락. 다른 2 doc은 완전.
+        self.skill.write_text(
+            " ".join(f"`{f}`" for f in all_fields[:-1]) + "\n",
+            encoding="utf-8",
+        )
+        full_line = " ".join(f"`{f}`" for f in all_fields) + "\n"
+        (self.refs / "phase-entry-gates.md").write_text(full_line, encoding="utf-8")
+        (self.refs / "intent-profile-schema.md").write_text(full_line, encoding="utf-8")
+        errors = chain.check_intent_required_doc_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("SKILL.md", errors[0])
+        self.assertIn(all_fields[-1], errors[0])
+
+    def test_field_missing_in_multiple_docs_reports_each(self):
+        # 5필드 중 첫 1개만 누락 — 3 doc에서 동일 누락 = 3 errors.
+        first = chain.INTENT_REQUIRED[0]
+        self._write_full(missing={first})
+        errors = chain.check_intent_required_doc_sync()
+        self.assertEqual(len(errors), 3)
+        for e in errors:
+            self.assertIn(first, e)
+
+
+class IntentRequiredSchemaAlias(unittest.TestCase):
+    """W3 정본 — chain.py _INTENT_USER_CONFIRMED_REQUIRED가 schema.py INTENT_REQUIRED alias."""
+
+    def test_alias_equals_schema(self):
+        # 정본 schema.py 변경 시 chain.py가 자동 추종 — drift 영구 차단.
+        self.assertEqual(
+            tuple(chain.INTENT_REQUIRED),
+            chain._INTENT_USER_CONFIRMED_REQUIRED,
+        )
+
+    def test_real_repo_doc_sync_no_drift(self):
+        # 실 repo SKILL.md/phase-entry-gates.md/intent-profile-schema.md에 5필드 모두 박제.
+        errors = chain.check_intent_required_doc_sync()
+        self.assertEqual(errors, [], f"doc sync drift detected: {errors}")
+
 
 class CheckAdvisorHandoffAdapterConsistency(_ChainTestBase):
     """W8 v0.12.1 adapter doctrine — advisor handoff merge 후 intent_profile.md 검증."""

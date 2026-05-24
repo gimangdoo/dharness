@@ -355,6 +355,26 @@ description: "{도메인} 오케스트레이터 (하이브리드). {키워드}. 
 
 ---
 
+## changelog.md 부트스트랩 skeleton (bug_002 2026-05-23, Phase 7-4.1 단일 출처)
+
+SKILL.md 7-4.1 위임. CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태로 생성. 미생성 시 `/harness:harness-add-agent`·`harness-mcp-adopt`·`harness-evolve` 등 9+ 명령이 append 가정으로 실패(silent no-op 또는 ad-hoc 포맷).
+
+skeleton template (`{도메인}`/`{YYYY-MM-DD}` 치환 → `_workspace/_baseline/changelog.md`로 박제):
+
+````markdown
+# {도메인} 변경 이력
+
+derived 프로젝트의 진화 기록 정본. 오케스트레이터·`/harness:harness-*` 명령이 본 표에 1행을 누적한다. CLAUDE.md는 매 세션 컨텍스트에 로딩되므로 자주 바뀌는 변경 이력은 본 파일로 분리한다 — Claude Code CLAUDE.md litmus (`code.claude.com/docs` memory.md / best-practices.md).
+
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|------|----------|------|------|
+| {YYYY-MM-DD} | 초기 구성 | 전체 | `/harness:harness-new` |
+````
+
+본 파일 *없으면* Phase 8 검증에서 차단(must) 미충족. 후속 `/harness:harness-*`는 본 표 4열 행 1개 append.
+
+---
+
 ## Phase 10 Telemetry 강제 블록
 
 모든 템플릿(A/B/C)이 워크플로우 종료 직전 *반드시* 다음 블록을 수행한다. 누락은 `/harness:harness-adapt` 자동 권장 alert의 단일 입력원을 끊는다. host 측 self-host CM 운영 중이면 SessionStart 알림 회로(임계값 기본 invocations 10 / failures 2, env var `CM_ADAPT_THRESHOLD_INVOCATIONS` / `CM_ADAPT_THRESHOLD_FAILURES`로 오버라이드)도 함께 무력화된다.

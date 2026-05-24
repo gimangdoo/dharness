@@ -21,7 +21,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 1. `프로젝트/.claude/agents/`, `프로젝트/.claude/skills/`, `프로젝트/CLAUDE.md`를 읽고, `_workspace/_baseline/`·`_workspace/_critique_phase*_*.md` 존재를 확인한다
 
-> **🔄 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 0 — 중단된 factory run 감지 doctrine" 절을 진입 직전 *반드시* read. mattpocock handoff 흡수 — `_workspace/_baseline/`·`_critique_phase*` 박제됐는데 agents/skills 비었으면 재개 지점 판정 후 사용자 게이트.
+> **🔄 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) §"Phase 0 — 중단된 factory run 감지 doctrine" 진입 직전 필수.
 
 2. 현황에 따라 실행 모드를 분기한다:
    - **신규 구축**: 에이전트/스킬 디렉토리가 없거나 비어있음 → Phase 1부터 전체 실행
@@ -46,7 +46,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 > **사용자 핵심 요구 (2026-05-14)** — `$ARGUMENTS` 모호성 silent 진행 차단. 신규 구축 분기에서만 실행 (기존 확장/유지보수는 skip).
 
-> **🛑 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 0.5 — 🛑 Anti-premature-judgment doctrine" 절을 진입 직전 *반드시* read. cwd/파일/`$ARGUMENTS` 키워드 단독 도메인 단정 금지 — Phase 1·2 산출물 양쪽 박제 후만 허용 (evidence 2조건).
+> **🛑 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) §"Phase 0.5 — 🛑 Anti-premature-judgment doctrine" 진입 직전 필수.
 
 `$ARGUMENTS` (도메인 한 문장)에 대해 4 항목 LLM 검사:
 
@@ -67,7 +67,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 프로젝트의 객관적 baseline을 추출. 결과 `_workspace/_baseline/project_profile.md`는 (a) Phase 3의 입력, (b) Phase 10의 t=0 anchor.
 
-> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 1 — 🚧 entry 게이트" 절을 진입 직전 *반드시* read. silent skip 차단 — 실 파일 read + `project_profile.md` 강제 박제(greenfield라도 빈 stub) + 단정 표현 금지.
+> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) §"Phase 1 — 🚧 entry 게이트" 진입 직전 필수.
 
 > **Sub-agent 격리 doctrine (P6-3, 2026-05-14)**: Deep audit 모드에서 5축(Stack/Architecture/Convention/Maturity/Pain Points)을 5 sub-agent 병렬 호출(`Agent` tool, `Explore` 타입). parent는 *합성만* 수행 — 각 sub-agent 회신을 5축 schema로 통합. parent 컨텍스트 부담 ↓, 깊이 ↑. Quick scan은 단일 sub-agent 1회 호출.
 
@@ -87,7 +87,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 사용자의 주관적 의도·제약·우선순위를 7섹션(vision/scope/constraints/architecture/quality/workflow/meta)으로 수집. 결과 `_workspace/_baseline/intent_profile.md`. greenfield/brownfield는 동일 schema를 공유, `project_type` 필드로 분기.
 
-> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 2 — 🚧 entry 게이트" 절을 진입 직전 *반드시* read. `project_profile.md` 미존재 시 진입 차단 + 필수 5필드 user_confirmed_fields raw 인용 + brownfield 4단계 + Grilling 분기.
+> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) §"Phase 2 — 🚧 entry 게이트" 진입 직전 필수.
 
 **브랜치별 채우기:**
 | 브랜치 | 방식 |
@@ -95,7 +95,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 | **greenfield** | 7섹션 순차 질문, 모든 필드 사용자 입력 |
 | **brownfield** | 4단계 — 자동 추론 → 확인 → 갭 메우기 → 코드 grounded 질문 |
 
-**필수 5개 (스킵 불가):** `constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor`. 그 외는 스킵 가능, 스킵 시 `meta.open_questions`에 등록.
+**필수 5개 (스킵 불가):** `constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor`. 그 외는 스킵 가능, 스킵 시 `meta.open_questions`에 등록. **정본:** `plugins/harness/scripts/validate/schema.py:INTENT_REQUIRED` — doc 5곳(SKILL.md / phase-entry-gates.md / intent-profile-schema.md×2 hit / chain.py alias) sync은 `chain.py:check_intent_required_doc_sync` 결정적 검증.
 
 **`meta.dharness_version` 박제 (필수, 2026-05-23 doctrine drift refit 인프라):** `plugins/harness/.claude-plugin/plugin.json` `version` 필드를 read 후 frontmatter `meta.dharness_version: "<현 plugin version>"`로 저장. 합성 시점 plugin doctrine 시점의 anchor. `harness-validate`/`harness-status`가 현 plugin version과 비교해 upgrade 발생 시 doctrine refit 권고 1줄 출력.
 
@@ -161,7 +161,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 ### Phase 5: 에이전트 정의 생성
 
-> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) "Phase 5 — 🚧 entry 게이트 — Cardinality justification" 절을 진입 직전 *반드시* read. cardinality 4컬럼 표 + `single-use → inline` 룰 + 이름 유일성 사전 점검 + 사용자 응답 enum + Grilling 옵션.
+> **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) §"Phase 5 — 🚧 entry 게이트 — Cardinality justification" 진입 직전 필수.
 
 **모든 에이전트는 반드시 `프로젝트/.claude/agents/{name}.md` 파일로 정의한다.** 빌트인 타입(`general-purpose`, `Explore`, `Plan`)을 사용하더라도 정의 파일 생성 필수. Agent 도구의 prompt에 역할을 직접 넣는 것은 금지. 이유: 다음 세션 재사용성, 협업 프로토콜 명시, 에이전트(누가)와 스킬(어떻게) 분리.
 
@@ -298,21 +298,7 @@ CLAUDE.md는 매 세션 컨텍스트에 로딩된다 — 줄마다 "제거 시 C
 
 #### 7-4.1. `_workspace/_baseline/changelog.md` 부트스트랩 (필수, bug_002 2026-05-23)
 
-CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태로 생성한다. 미생성 시 `/harness:harness-add-agent`·`harness-mcp-adopt`·`harness-evolve` 등 9+ 명령이 append 가정으로 실패(silent no-op 또는 ad-hoc 포맷).
-
-skeleton template (`{도메인}`/`{YYYY-MM-DD}` 치환):
-
-````markdown
-# {도메인} 변경 이력
-
-derived 프로젝트의 진화 기록 정본. 오케스트레이터·`/harness:harness-*` 명령이 본 표에 1행을 누적한다. CLAUDE.md는 매 세션 컨텍스트에 로딩되므로 자주 바뀌는 변경 이력은 본 파일로 분리한다 — Claude Code CLAUDE.md litmus (`code.claude.com/docs` memory.md / best-practices.md).
-
-| 날짜 | 변경 내용 | 대상 | 사유 |
-|------|----------|------|------|
-| {YYYY-MM-DD} | 초기 구성 | 전체 | `/harness:harness-new` |
-````
-
-본 파일 *없으면* Phase 8 검증에서 차단(must) 미충족. 후속 `/harness:harness-*`는 본 표 4열 행 1개 append.
+CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태로 생성한다. skeleton template + 부트스트랩 절차는 `references/orchestrator-template.md` "changelog.md 부트스트랩 skeleton" 절 단일 출처. 미생성 시 후속 `/harness:harness-*` 9+ 명령이 append 실패 + Phase 8 must 미충족.
 
 #### 7-4.5. CLAUDE.md HOW 본문 draft (Q3 doctrine, 2026-05-16)
 
