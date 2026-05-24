@@ -99,7 +99,12 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 **`meta.dharness_version` 박제 (필수, 2026-05-23 doctrine drift refit 인프라):** `plugins/harness/.claude-plugin/plugin.json` `version` 필드를 read 후 frontmatter `meta.dharness_version: "<현 plugin version>"`로 저장. 합성 시점 plugin doctrine 시점의 anchor. `harness-validate`/`harness-status`가 현 plugin version과 비교해 upgrade 발생 시 doctrine refit 권고 1줄 출력.
 
-**방법론 위임 doctrine (2026-05-24, methodology-advisor v0.1.0 handoff):** `workflow.methodology` 필드가 사용자에게 모호하거나 (TDD/DDD/BDD/Spec-driven/Trunk-based 등 24개 후보 중 선택 불가) 사용자가 명시적으로 "방법론 추천해줘" 발화 시 → `methodology-advisor` plugin sub-skill 호출. advisor 반환 yaml fragment (`workflow.methodology` + `methodology_source: advisor` + `methodology_matrix_row`)를 그대로 intent_profile frontmatter에 merge. 사용자 직접 응답 시 `methodology_source: user`, brownfield 자동 추론(jest.config·gherkin·OpenAPI signal) 시 `methodology_source: inferred`, 미수집 시 `none`. PM 영역(Kanban/Scrum/Shape Up)은 dharness 직접 매핑 없음 — `methodology` 필드만 박제하고 다운스트림 Phase 4·5에서 외부 도구로 위임.
+**방법론 위임 doctrine (2026-05-24, methodology-advisor v0.3.x handoff + v0.12.1 adapter):** `workflow.methodology` 필드가 사용자에게 모호하거나 (TDD/DDD/BDD/Spec-driven/Trunk-based 등 24개 후보 중 선택 불가) 사용자가 명시적으로 "방법론 추천해줘" 발화 시 → `methodology-advisor` plugin sub-skill 호출. advisor 출력 yaml fragment를 dharness 측 단방향 변환 후 intent_profile frontmatter에 merge:
+> - `workflow.methodology: ["DDD", "TDD", "Trunk-based"]` (mixed-case list) → primary = list[0] lowercase scalar 박제, secondary = list[1:] lowercase → `meta.advisor_secondary_methodologies`에 보존 (재현성·진화 비교)
+> - `workflow.methodology_source: "methodology-advisor v0.3.1"` (free string) → enum `"advisor"`로 정규화, 원본은 `meta.advisor_handoff_version`에 박제
+> - `workflow.methodology_matrix_row: "R4" | "matrix-miss"` → 그대로 박제
+>
+> 사용자 직접 응답 시 `methodology_source: user`, brownfield 자동 추론(jest.config·gherkin·OpenAPI signal) 시 `methodology_source: inferred`, 미수집 시 `none`. 카탈로그 외 방법론은 `methodology: unknown` + secondary에 원본 보존 + `meta.open_questions` 박제. PM 영역(Kanban/Scrum/Shape Up)은 dharness 직접 매핑 없음 — `methodology` 필드만 박제하고 다운스트림 Phase 4·5에서 외부 도구로 위임. 변환 룰 표는 `references/intent-profile-schema.md:§Advisor handoff 수신 시 변환 룰`.
 
 > 채우기 전략 상세, 자동 추론 매핑, 코드 grounded 질문 패턴(13종), 섹션별 질문 카탈로그는 `references/project-inquiry.md`. 풀 schema와 인스턴스 예시는 `references/intent-profile-schema.md`. Low confidence 추론 또는 필수 5필드 1차 거부 시 1q-at-a-time + LLM 추천 답안 패턴은 `references/grilling-loop.md` (mattpocock grill-me 흡수, 2026-05-19).
 

@@ -65,7 +65,7 @@ mattpocock `grill-me` 패턴 흡수 (2026-05-19). batch 표 prompt 대신 *순�
 
 §4-4 batch 패턴과 동일 응답 3지 + "코드 봐" 1개 추가 (패턴 4 trigger).
 
-## 3-4. Advisor Delegation Branch (2026-05-24, methodology-advisor v0.1.0)
+## 3-4. Advisor Delegation Branch (2026-05-24, methodology-advisor v0.3.x + v0.12.1 adapter)
 
 `workflow.methodology` 필드 grilling 시 사용자 응답이 "모르겠음" / "추천해줘" / "방법론 골라줘" 시 별도 분기:
 
@@ -75,13 +75,18 @@ mattpocock `grill-me` 패턴 흡수 (2026-05-19). batch 표 prompt 대신 *순�
 | "모르겠음" / "추천" / "골라줘" | **advisor 위임** — `/methodology-advisor` sub-skill 호출, handoff yaml fragment 수신 |
 | "스킵" / "건너뛰기" | `methodology: unknown` + `methodology_source: none` + `meta.open_questions`에 등록 |
 
-advisor 위임 시 처리:
-1. methodology-advisor sub-skill 호출 (입력: 현 시점 intent_profile 부분 합성 + 사용자 발화)
-2. handoff yaml fragment 수신 — `workflow.methodology` + `methodology_source: advisor` + `methodology_matrix_row: "row-NN"` 3 키 보장
-3. intent_profile frontmatter `workflow` 섹션에 merge — `meta.user_confirmed_fields`에 `workflow.methodology` 등록 (사용자가 advisor 추천 confirm 게이트 통과한 경우만)
-4. advisor 호출 1회는 grilling cap 5 question 중 **1 question으로 카운트** (token 비용 정합)
+advisor 위임 시 처리 (5 step):
+1. **methodology-advisor sub-skill 호출** (입력: 현 시점 intent_profile 부분 합성 + 사용자 발화, dharness-sub 모드 트리거)
+2. **handoff yaml fragment 수신** — advisor v0.3.x `intent_profile_patch:` envelope 보장 (`workflow.methodology` list + `methodology_source` free string + `methodology_matrix_row` 또는 "matrix-miss" sigil)
+3. **adapter 변환 step (v0.12.1 신설, dharness 측 단방향)** — `intent-profile-schema.md:§Advisor handoff 수신 시 변환 룰` 표 3 룰 적용:
+   - `methodology: ["DDD", "TDD", ...]` → primary scalar(list[0] lowercase) + secondary list(나머지 lowercase) → `meta.advisor_secondary_methodologies`에 보존
+   - `methodology_source: "methodology-advisor v0.3.1"` → enum `"advisor"`로 정규화 + 원본 → `meta.advisor_handoff_version` 박제
+   - `methodology_matrix_row` → 그대로 (sigil 포함)
+   - 카탈로그 외(`[catalog-miss]` sigil) → `methodology: unknown` + secondary에 원본 + `meta.open_questions`에 진화 단계 재합성 사유 박제
+4. **intent_profile frontmatter merge** — 변환 후 `workflow` + `meta` 섹션 박제. `meta.user_confirmed_fields`에 `workflow.methodology` 등록 (사용자가 advisor 추천 confirm 게이트 통과한 경우만)
+5. **grilling cap 카운트** — advisor 호출 1회 = grilling cap 5 question 중 **1 question** (token 비용 정합)
 
-advisor 호출 미가능(plugin 미설치) 시 — fallback: enum 풀 노출 + 사용자 직접 선택 grilling 1q 진행.
+advisor 호출 미가능(plugin 미설치) 시 — fallback: enum 풀 노출 + 사용자 직접 선택 grilling 1q 진행. adapter step 3 skip.
 
 ## 4. Codebase Exploration Fallback (패턴 4)
 
