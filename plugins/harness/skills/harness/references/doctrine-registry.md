@@ -2,12 +2,12 @@
 
 # Doctrine Registry
 
-dharness 전 영역에 박제된 doctrine 단일 색인. SKILL.md + 13 reference + 17 command + chain.py + schema.py 분산 hit(~120건)를 id·이름·박제 위치·근거 commit·정합 점검 명령 표로 집계.
+dharness 전 영역에 박제된 doctrine 단일 색인. SKILL.md + 22 reference + 17 command + chain.py + schema.py 분산 hit(~120건)를 id·이름·박제 위치·근거 commit·정합 점검 명령 표로 집계.
 
 본 registry는 *catalog*이지 *doctrine 본문*이 아님 — 본문은 각 박제 위치를 단일 출처로 한다. 본 표는 *어느 doctrine이 어디 박제됐는가*를 추적할 뿐.
 
 **박제 위치 표기:** `파일:section` (예: `SKILL.md:Phase 0.5` 또는 `phase-entry-gates.md:§Phase 0.5`).
-**정합 점검 표기:** `chain.py:fn_name` (deterministic) / `LLM cross-review` (자동화 불가) / `manual` (사용자 게이트).
+**정합 점검 표기:** `chain.py:<fn>` (deterministic) / `LLM cross-review` (자동화 불가) / `manual` (사용자 게이트).
 
 ---
 
@@ -24,6 +24,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | W5 | Phase 0 — 중단된 factory run 감지 (`_baseline/`·`_critique_phase*` 박제 + agents/skills 빈 상태 시 재개 게이트) | `phase-entry-gates.md:§Phase 0` | 2026-05-21 mattpocock handoff | manual (Phase 0 entry) |
 | W6 | Progressive disclosure (references lazy load — Phase 진입 시점에만 read, 무차별 prefetch 금지) | `SKILL.md:§참고` "Progressive disclosure doctrine" | 2026-05-14 M8 | LLM 행동 |
 | W7 | Grilling 분기 (Phase 2 low confidence + Phase 9 모호 피드백 — 1q + recommended answer, recommendation 출처 anti-premature-judgment 정합) | `grilling-loop.md`, `phase-entry-gates.md:§Phase 2` step 5 | 2026-05-19 Phase B/C, mattpocock grill-me 흡수 | `chain.py:check_intent_profile_grilling_log` (source enum 강제) |
+| W8 | methodology-advisor 위임 (workflow.methodology 모호 / 사용자 "추천해줘"·"모르겠음" 응답 시 → advisor sub-skill 호출 → handoff yaml fragment(`methodology` + `methodology_source: advisor` + `methodology_matrix_row`) intent_profile merge, 사용자 confirm 게이트 필수, advisor 1회 호출 = grilling cap 5 중 1 question 카운트) | `SKILL.md:§Phase 2 방법론 위임 doctrine`, `grilling-loop.md:§3-4`, `intent-profile-schema.md:§2 workflow` | 2026-05-24 v0.12.0 (advisor v0.3.1 handoff) | manual (Phase 2 grilling 사용자 confirm), schema 정합은 `intent-profile-schema.md:§8` cross-field 룰 2개 |
 
 ## §2. 책임 분리 doctrine (LLM ↔ deterministic ↔ user-gate)
 
@@ -35,7 +36,8 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | R2 | 진화 명령 3분기 (`evolve` 수동 / `audit` 추론 / `adapt` 자동) | `harness-evolve.md:§진화 명령 3분기 doctrine`, `harness-adapt.md:§진화 명령 3분기 doctrine` | 2026-05-14 | manual |
 | R3 | 사용자 확정 doctrine (도메인 단정·중요 합성 결정은 사용자 명시 confirm 후만) | `harness-new.md:§모드 분기`, `harness-remove.md:§사용자 확정`, `harness-merge.md`, `harness-split.md`, `harness-status.md`, `harness-validate.md` | 2026-05-14 | manual (각 명령 confirm gate) |
 | R4 | 명령 분기 (README 표 — 변경 유형별 16 슬래시 커맨드 매핑) | `README.md:§명령 분기 doctrine` | 2026-05-14, 2026-05-23 v0.11.0 추가 | manual |
-| R5 | P2 self-host (`chain.py`는 harness plugin 본체 내부 cross-reference만 검증 — derived 프로젝트 검증은 별도 산출) | `chain.py:_validate_internal_refs` | 2026-05-15 | `chain.py` 본체 |
+| R5 | P2 self-host (`chain.py`는 harness plugin 본체 내부 cross-reference만 검증 — derived 프로젝트 검증은 별도 산출) | `chain.py:check_plugin_internal_references` | 2026-05-15 | `chain.py` 본체 |
+| R6 | doctrine-registry fn명 정합 (registry 인용 `chain.py:<fn>` ↔ 실제 fn 존재 검증, drift 영구 차단) | `doctrine-registry.md`, `chain.py:check_doctrine_registry_fn_refs` | 2026-05-24 review patch | `chain.py:check_doctrine_registry_fn_refs` |
 
 ## §3. 합성·구조 doctrine (Phase 4·5·5-2·6·7 산출물 invariant)
 
@@ -47,14 +49,14 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | S2 | Q1 Orchestrator agent coverage — 모든 agent는 오케스트레이터에서 1회 이상 참조 (dead agent FAIL) | `orchestrator-template.md:§Q1 doctrine` | 2026-05-15 Q1 | `chain.py:check_orchestrator_agent_coverage` |
 | S3 | Q2 모델 선택 by role — frontmatter `model:` 필드는 *role 축*으로 결정 (`opus` 기본, read-only는 `sonnet`) | `permission-profiles-synthesis.md:§5-1-c` (P7 분리, 2026-05-23) | 2026-05-16 Q2 | `chain.py:check_agent_model_field` |
 | S4 | Q3 CLAUDE.md HOW 본문 draft (코드 도메인 한정 권장, `project_profile.md`에서 추출 + 사용자 게이트) | `orchestrator-template.md:§CLAUDE.md HOW 본문 draft` | 2026-05-16 Q3 | manual (사용자 confirm gate) |
-| S5 | A7 writes path 충돌 (agents/*.md `writes:` 경로 per-agent exclusivity) | `chain.py:_check_writes_exclusivity` | 2026-05-15 A7 | `chain.py:_check_writes_exclusivity` |
-| S6 | N-C-1 입력 신뢰 경계 (외부 입력·부작용 도구 보유 agent ↔ 본문 `입력 신뢰 경계` 절 존재) | `agent-design-patterns.md:§입력 신뢰 경계`, `SKILL.md:§Phase 5` | 2026-05-14 N-C-1 | `chain.py:check_injection_guard` |
-| S7 | P6-4 inferred_fields source 인용 (모든 `inferred_fields` 항목 `source` 필드 보유 — 인용 0이면 schema 위반) | `intent-profile-schema.md`, `schema.py:_validate_inferred_fields` | 2026-05-14 P6-4 | `schema.py` |
+| S5 | A7 writes path 충돌 (agents/*.md `writes:` 경로 per-agent exclusivity) | `chain.py:check_agent_write_path_overlap` | 2026-05-15 A7 | `chain.py:check_agent_write_path_overlap` |
+| S6 | N-C-1 입력 신뢰 경계 (외부 입력·부작용 도구 보유 agent ↔ 본문 `입력 신뢰 경계` 절 존재) | `agent-design-patterns.md:§입력 신뢰 경계`, `SKILL.md:§Phase 5` | 2026-05-14 N-C-1 | `chain.py:check_agent_injection_guard` |
+| S7 | P6-4 inferred_fields source 인용 (모든 `inferred_fields` 항목 `source` 필드 보유 — 인용 0이면 schema 위반) | `intent-profile-schema.md`, `schema.py:find_inferred_fields_without_source` | 2026-05-14 P6-4 | `schema.py:find_inferred_fields_without_source` |
 | S8 | 8 profile 분류 (P6-11) — 범용 4종(§2-1~§2-4 PoC 완료) + 도메인 4종(§2-5~§2-8 PoC 진행) | `permission-profiles.md:§2` | 2026-05-14 P6-11 | manual (분류 합성) |
 | S9 | 도메인 4 신호 (P6-11) — ml-pipeline / devops-infra / mobile-native / data-eng signal 매핑 | `mcp-recommendation.md:§1 P6-11`, `trigger-keyword-catalog.md` | 2026-05-14 P6-11 | manual (signal 추출) |
 | S10 | 합성 default 풀 (P6-9) — Phase 5-2 inline `mcpServers:` 자동 합성 시 ✓ 외 status는 금지 | `permission-profiles-inventory.md:§3-0 P6-9` (P7 분리, 2026-05-23) | 2026-05-14 P6-9 | manual (R-7 confirm gate) |
 | S11 | catalog 확장 (trigger-keyword) — 새 signal·키워드 박제 시 `trigger-keyword-catalog.md`가 단일 출처 | `trigger-keyword-catalog.md:§5` | 2026-05-14 P6-8 | manual |
-| S12 | P0-2 빈 스킬 금지 — 스킬 디렉토리 생성 = `SKILL.md` 본문까지 채워 박제 (디렉토리만/frontmatter만 금지) | `SKILL.md:§Phase 6`, `skill-writing-guide.md:§최소 본문 골격` | 2026-05-22 P0 | `chain.py:check_empty_skill` |
+| S12 | P0-2 빈 스킬 금지 — 스킬 디렉토리 생성 = `SKILL.md` 본문까지 채워 박제 (디렉토리만/frontmatter만 금지) | `SKILL.md:§Phase 6`, `skill-writing-guide.md:§최소 본문 골격` | 2026-05-22 P0 | `structure.py:check_skills_dir` |
 
 ## §4. 보안·회수 doctrine (Phase 5-2 MCP·permission 합성)
 
@@ -74,9 +76,9 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 
 | id | doctrine | 박제 위치 | 박제 commit | 정합 점검 |
 |---|---|---|---|---|
-| I1 | doctrine drift refit (v0.11.0) — plugin doctrine 업그레이드 후 기존 derived harness 끌어올리는 절차 (validate + audit 진단 → evolve/add-*/remove 수정) | `README.md:§Doctrine drift refit`, `chain.py:_check_dharness_version_drift` | 2026-05-23 v0.11.0 (eba9d21) | `chain.py:_check_dharness_version_drift` (info 1줄) |
-| I2 | meta.dharness_version anchor — `intent_profile.md` frontmatter에 합성 시점 plugin version 박제 (refit 진단 t=0) | `intent-profile-schema.md`, `harness-new.md`, `harness-baseline.md`, `SKILL.md:§Phase 2` | 2026-05-23 doctrine drift refit 인프라 | `chain.py:_check_dharness_version_drift` |
-| I3 | P2-A 박제 — Phase entry gate 박스(Phase 0/0.5/1/2/5)를 `phase-entry-gates.md`로 분리 (SKILL.md ≤500 LOC cap 정합) | `phase-entry-gates.md` | 2026-05-23 P2-A (00177f0, c856629) | `chain.py:check_skill_md_loc_cap` (cap ≤500) |
+| I1 | doctrine drift refit (v0.11.0) — plugin doctrine 업그레이드 후 기존 derived harness 끌어올리는 절차 (validate + audit 진단 → evolve/add-*/remove 수정) | `README.md:§Doctrine drift refit`, `chain.py:check_dharness_version_drift` | 2026-05-23 v0.11.0 (eba9d21) | `chain.py:check_dharness_version_drift` (info 1줄) |
+| I2 | meta.dharness_version anchor — `intent_profile.md` frontmatter에 합성 시점 plugin version 박제 (refit 진단 t=0) | `intent-profile-schema.md`, `harness-new.md`, `harness-baseline.md`, `SKILL.md:§Phase 2` | 2026-05-23 doctrine drift refit 인프라 | `chain.py:check_dharness_version_drift` |
+| I3 | P2-A 박제 — Phase entry gate 박스(Phase 0/0.5/1/2/5)를 `phase-entry-gates.md`로 분리 (SKILL.md ≤500 LOC cap 정합) | `phase-entry-gates.md` | 2026-05-23 P2-A (00177f0, c856629) | manual (LOC cap 미자동 검증, 향후 chain.py 함수 후보) |
 | I4 | 상태 표기 — ✓/📜/⚠️ status 의미 단일 정의 (PoC 완료 / 후보 제안 / dynamic adoption 진입) | `team-tools-api.md:§0` | 2026-05-14 | manual |
 | I5 | P1-1 AC 검증 — team-tools-api §9 — 본 reference는 P1-1 진행 중 ❓ inferred → ✅ verified로 격상, 의사코드 영역은 본 reference cross-link 유지 | `team-tools-api.md:§9` | 2026-05-14 P1-1 | manual |
 | I6 | QA host-agnostic 환원 (P2-2) — `qa-agent-guide.md` §1~§5는 framework 무관 doctrine, §6은 도메인 카탈로그 (web-app/ML/data/mobile/devops) | `qa-agent-guide.md:§0 doctrine` | 2026-05-14 P2-2 | LLM (Phase 5 합성) |
@@ -91,7 +93,7 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 
 | 파일 | 박제된 doctrine id |
 |---|---|
-| `SKILL.md` | W1·W2·W3·W4·W6·S1·S12 (포인터·박스) |
+| `SKILL.md` | W1·W2·W3·W4·W6·W8·S1·S12 (포인터·박스) |
 | `phase-entry-gates.md` | W1·W2·W3·W4·W5·W7 (본문) |
 | `permission-profiles.md` (main) | S8·P1·P2·P5 |
 | `permission-profiles-inventory.md` (P7 분리) | S10 (§3-0 합성 default 풀) |
@@ -102,11 +104,12 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `qa-agent-guide.md` | I6·I7 |
 | `trigger-keyword-catalog.md` | S11 |
 | `mcp-recommendation.md` | S9·P3 |
-| `intent-profile-schema.md` | S7·I2 |
-| `grilling-loop.md` | W7 |
+| `intent-profile-schema.md` | S7·I2·W8 |
+| `grilling-loop.md` | W7·W8 |
 | `team-tools-api.md` | I4·I5 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W1·W3·W4·S2·S3·S5·S6·S12·I1·I2·I3·R5 (결정적 검증) |
+| `chain.py` | W1·W3·W4·S2·S3·S5·S6·I1·I2·R5·R6 (결정적 검증) |
+| `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | S7 |
 | `harness-audit.md` | R1 |
 | `harness-validate.md` | R1·R3·I1·I2 |

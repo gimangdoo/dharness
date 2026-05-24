@@ -985,6 +985,61 @@ def check_plugin_internal_references() -> list[str]:
     return errors
 
 
+_DOCTRINE_REGISTRY = (
+    PLUGIN_REFERENCES_DIR / "doctrine-registry.md"
+)
+_VALIDATE_DIR = Path(__file__).resolve().parent
+# `chain.py:fn` / `structure.py:fn` / `schema.py:fn` — backtick 안 인용 패턴.
+# 본 정규식은 단일 출처 doctrine-registry.md의 fn-name drift 영구 차단을 위함 (R6 doctrine).
+_DOCTRINE_FN_REF_PATTERN = re.compile(
+    r"`(chain|structure|schema)\.py:([A-Za-z_][A-Za-z0-9_]*)`"
+)
+_DEF_PATTERN = re.compile(r"^def\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
+
+
+def _collect_module_fns(module_name: str) -> set[str]:
+    path = _VALIDATE_DIR / f"{module_name}.py"
+    if not path.exists():
+        return set()
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return set()
+    return set(_DEF_PATTERN.findall(text))
+
+
+def check_doctrine_registry_fn_refs() -> list[str]:
+    """doctrine-registry.md의 `chain.py:<fn>`·`structure.py:<fn>`·`schema.py:<fn>` 인용 ↔
+    실제 모듈 def 존재 정합 (R6 doctrine, 2026-05-24).
+
+    drift 영구 차단: registry 인용이 실 fn명과 어긋나면 contributor가 잘못된 경로로
+    정합 점검을 시도. registry는 단일 출처 색인이므로 결정적 검증 필수.
+    """
+    errors: list[str] = []
+    if not _DOCTRINE_REGISTRY.exists():
+        return errors
+    try:
+        text = _DOCTRINE_REGISTRY.read_text(encoding="utf-8-sig")
+    except OSError:
+        return errors
+    scanned = _strip_code_fences(text)
+    fn_cache: dict[str, set[str]] = {}
+    seen: set[tuple[str, str]] = set()
+    for module, fn in _DOCTRINE_FN_REF_PATTERN.findall(scanned):
+        key = (module, fn)
+        if key in seen:
+            continue
+        seen.add(key)
+        if module not in fn_cache:
+            fn_cache[module] = _collect_module_fns(module)
+        if fn not in fn_cache[module]:
+            errors.append(
+                f"doctrine-registry.md: `{module}.py:{fn}` 인용 — 실제 fn 미존재 "
+                f"(R6 doctrine drift)"
+            )
+    return errors
+
+
 def find_orchestrator() -> Path | None:
     if not SKILLS_DIR.exists():
         return None
@@ -1041,6 +1096,7 @@ def main(argv: list[str]) -> int:
     errors.extend(check_skill_signal_coverage())
     errors.extend(check_intent_profile_grilling_log())
     errors.extend(check_required_user_confirmed_fields())
+    errors.extend(check_doctrine_registry_fn_refs())
 
     version_drift = check_dharness_version_drift()
 

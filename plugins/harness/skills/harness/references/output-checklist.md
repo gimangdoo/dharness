@@ -1,12 +1,12 @@
-# 산출물 체크리스트 — must (9) / should (9)
+# 산출물 체크리스트 — must (8) / should (9)
 
 > **Read at phase:** Phase 8 (검증 단계 진입 시) + factory 종료 직전 최종 self-check.
 > SKILL.md ≤500 LOC cap 정합 (P2-A 박제, 2026-05-23 review patch). 본 reference 미read 시
-> Phase 8-1 구조 검증의 18 항목 catalog 누락.
+> Phase 8-1 구조 검증의 17 항목 catalog 누락.
 
 생성 완료 후 확인. **차단(must)**은 빠지면 하네스 작동 실패, **권장(should)**은 품질 보장.
 
-## 차단 (must) — 9개
+## 차단 (must) — 8개
 
 - [ ] **Baseline 산출** — `_workspace/_baseline/project_profile.md` (Phase 1) + `intent_profile.md` (Phase 2, schema 준수) + `changelog.md` skeleton (Phase 7-4.1, 후속 `/harness:harness-*` append 대상)
 - [ ] **에이전트 정의 파일** — `프로젝트/.claude/agents/{name}.md` 빌트인 타입(`general-purpose`/`Explore`/`Plan`) 포함 필수

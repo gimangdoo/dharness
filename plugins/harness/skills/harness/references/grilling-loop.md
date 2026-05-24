@@ -65,6 +65,24 @@ mattpocock `grill-me` 패턴 흡수 (2026-05-19). batch 표 prompt 대신 *순�
 
 §4-4 batch 패턴과 동일 응답 3지 + "코드 봐" 1개 추가 (패턴 4 trigger).
 
+## 3-4. Advisor Delegation Branch (2026-05-24, methodology-advisor v0.1.0)
+
+`workflow.methodology` 필드 grilling 시 사용자 응답이 "모르겠음" / "추천해줘" / "방법론 골라줘" 시 별도 분기:
+
+| 사용자 응답 | grilling 동작 |
+|---|---|
+| 명시적 enum 값 ("TDD", "DDD" 등) | 통상 grilling — `methodology_source: user` 박제 |
+| "모르겠음" / "추천" / "골라줘" | **advisor 위임** — `/methodology-advisor` sub-skill 호출, handoff yaml fragment 수신 |
+| "스킵" / "건너뛰기" | `methodology: unknown` + `methodology_source: none` + `meta.open_questions`에 등록 |
+
+advisor 위임 시 처리:
+1. methodology-advisor sub-skill 호출 (입력: 현 시점 intent_profile 부분 합성 + 사용자 발화)
+2. handoff yaml fragment 수신 — `workflow.methodology` + `methodology_source: advisor` + `methodology_matrix_row: "row-NN"` 3 키 보장
+3. intent_profile frontmatter `workflow` 섹션에 merge — `meta.user_confirmed_fields`에 `workflow.methodology` 등록 (사용자가 advisor 추천 confirm 게이트 통과한 경우만)
+4. advisor 호출 1회는 grilling cap 5 question 중 **1 question으로 카운트** (token 비용 정합)
+
+advisor 호출 미가능(plugin 미설치) 시 — fallback: enum 풀 노출 + 사용자 직접 선택 grilling 1q 진행.
+
 ## 4. Codebase Exploration Fallback (패턴 4)
 
 사용자 응답 "코드 봐" / "모르겠음 — 코드 확인 가능?" 시:
@@ -105,6 +123,7 @@ grilling 모드에서도 §4-3 스킵 패턴 유효:
 | **P2 brownfield 단계 2** | `meta.confidence_low` 항목 존재 | 모든 Low confidence 항목 `user_confirmed_fields` 또는 `open_questions` 등록 |
 | **P2 brownfield 단계 3** | 갭 메우기 필드 ≥3 (`§3-3` 사용자 입력만 가능 필드) | 모든 갭 필드 채움 또는 §7 hard fail |
 | **P2 §7-1 1차 재질문 직전** | 필수 5필드 미답 + 사용자 1차 거부 | 답변 수령 또는 §7-2 2차 재질문 진입 |
+| **P2 workflow.methodology 분기** | 사용자 "모르겠음" / "추천해줘" 응답 (§3-4) | advisor handoff yaml merge 또는 enum 직접 선택 fallback |
 | **P5 cardinality (옵션)** | 에이전트 후보 N개 중 `inline-OK` 판정 모호 1~2개 | 모호 후보 inline/agent 결정 |
 | **P9-1 (옵션)** | 사용자 피드백 어휘 모호 ("이상해" 등) | 진화 대상 (§9-2 표 5행) 1개 이상 식별 |
 

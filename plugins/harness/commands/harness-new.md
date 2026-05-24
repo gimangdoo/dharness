@@ -67,7 +67,7 @@ self-host CM hook(SessionStart/PostToolUse/SessionEnd)이 발화하려면 본 �
 
 ## 완료 후 체크
 
-`plugins/harness/skills/harness/SKILL.md` §산출물 체크리스트의 24개 항목을 확인한다. 특히 다음 4개는 Phase 10 작동 및 후속 명령 append 전제조건이므로 반드시 확인:
+`plugins/harness/skills/harness/SKILL.md` §산출물 체크리스트의 17개 항목(must 8 / should 9, 단일 출처 `references/output-checklist.md`)을 확인한다. 특히 다음 4개는 Phase 10 작동 및 후속 명령 append 전제조건이므로 반드시 확인:
 
 - [ ] `_workspace/_telemetry/` 디렉토리 사전 생성됨
 - [ ] 오케스트레이터에 telemetry capture 훅 삽입됨 (매 실행 시 `_telemetry/{date}.jsonl` append)

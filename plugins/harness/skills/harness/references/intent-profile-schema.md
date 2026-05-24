@@ -84,6 +84,9 @@ workflow:
   collaboration_mode: solo | pair | team
   review_style: none | self | peer | strict   # strict=2인 이상 승인 필요
   ci_cd: none | lint | test | full_pipeline
+  methodology: tdd | bdd | ddd | spec-driven | trunk-based | kanban | scrum | shape-up | xp | none | unknown   # 2026-05-24, methodology-advisor plugin handoff 수신. 자유 텍스트 enum 외 값 시 schema 위반.
+  methodology_source: advisor | user | inferred | none   # 채움 출처. advisor=methodology-advisor plugin handoff, user=사용자 직접 응답, inferred=brownfield 자동 추론(jest.config·gherkin·OpenAPI 등 signal), none=미수집.
+  methodology_matrix_row: string | null         # advisor handoff 시 decision-matrix.md row id (예: "row-07"). 비-advisor source 시 null.
 
 meta:
   open_questions: [string]              # 스킵되거나 미결정된 항목
@@ -126,6 +129,8 @@ required:                               # P6-10 / M2 (2026-05-14) — 다운스�
 | | enterprise | 대규모. 가용성·SLA 요구 |
 | `test_rigor` | none / smoke / unit / integration / tdd | 점차 강화. tdd=test-first |
 | `review_style` | none / self / peer / strict | 코드 리뷰 강도 |
+| `methodology` | tdd / bdd / ddd / spec-driven / trunk-based / kanban / scrum / shape-up / xp / none / unknown | 개발 방법론. methodology-advisor plugin handoff 또는 사용자 직접 응답으로 채움. `unknown`=advisor 호출 미수행 + 사용자 미응답. |
+| `methodology_source` | advisor / user / inferred / none | 채움 출처. `advisor` 시 `methodology_matrix_row` 필수. |
 
 ---
 
@@ -500,5 +505,7 @@ Phase 2 종료 시 intent_profile.md가 다음 룰을 통과해야 한다.
 | `team.size = solo` + `workflow.review_style = strict` | 경고: 1인이 strict 리뷰 불가능 |
 | `data_sensitivity = regulated` + `quality.security_requirements = []` | 경고: regulated 데이터인데 보안 요구사항 미정의 |
 | `project_type = greenfield` + `constraints.tech_stack.locked_in != []` | 모순: greenfield인데 locked-in이 있음 |
+| `workflow.methodology_source = advisor` + `workflow.methodology_matrix_row = null` | 모순: advisor handoff 시 decision-matrix row id 필수 |
+| `workflow.methodology_source != advisor` + `workflow.methodology_matrix_row != null` | 모순: 비-advisor source는 matrix row id 보유 금지 |
 
 검증 실패 시 사용자에게 해당 룰과 이유를 제시하고 응답을 요구한다. 사용자가 의도된 것이라 응답하면 `meta.explicit_assumptions`에 "{룰} 의도적 위반: {사용자 이유}"로 기록.

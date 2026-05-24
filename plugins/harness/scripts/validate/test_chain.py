@@ -523,5 +523,92 @@ class CheckRequiredUserConfirmedFields(_ChainTestBase):
         self.assertEqual(len(errors), 5)
 
 
+class CheckDoctrineRegistryFnRefs(_ChainTestBase):
+    """R6 doctrine — doctrine-registry.md fn 인용 ↔ 실제 fn 정합 (2026-05-24)."""
+
+    def setUp(self):
+        super().setUp()
+        # 본 테스트는 _DOCTRINE_REGISTRY + _VALIDATE_DIR (실 모듈 .py) 양쪽을 모킹.
+        self._saved_reg = chain._DOCTRINE_REGISTRY
+        self._saved_dir = chain._VALIDATE_DIR
+        self.registry = self.root / "doctrine-registry.md"
+        self.validate_dir = self.root / "validate"
+        self.validate_dir.mkdir()
+        chain._DOCTRINE_REGISTRY = self.registry
+        chain._VALIDATE_DIR = self.validate_dir
+
+    def tearDown(self):
+        chain._DOCTRINE_REGISTRY = self._saved_reg
+        chain._VALIDATE_DIR = self._saved_dir
+        super().tearDown()
+
+    def _write_module(self, name: str, fns: list[str]) -> None:
+        body = "\n".join(f"def {fn}():\n    pass\n" for fn in fns)
+        (self.validate_dir / f"{name}.py").write_text(body, encoding="utf-8")
+
+    def test_no_registry_passes(self):
+        self.assertEqual(chain.check_doctrine_registry_fn_refs(), [])
+
+    def test_all_fn_refs_exist_passes(self):
+        self._write_module("chain", ["check_a", "check_b"])
+        self._write_module("structure", ["check_skills_dir"])
+        self.registry.write_text(
+            "| S1 | x | `chain.py:check_a` | y | `chain.py:check_b` |\n"
+            "| S2 | x | `structure.py:check_skills_dir` | y | manual |\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(chain.check_doctrine_registry_fn_refs(), [])
+
+    def test_missing_fn_fails(self):
+        self._write_module("chain", ["check_a"])
+        self.registry.write_text(
+            "| S1 | x | `chain.py:check_missing` | y | ok |\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_doctrine_registry_fn_refs()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("check_missing", errors[0])
+        self.assertIn("R6 doctrine", errors[0])
+
+    def test_wrong_module_fails(self):
+        self._write_module("chain", ["check_a"])
+        self._write_module("structure", [])
+        self.registry.write_text(
+            "| S1 | x | `structure.py:check_a` | y | ok |\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_doctrine_registry_fn_refs()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("structure.py:check_a", errors[0])
+
+    def test_duplicate_ref_reported_once(self):
+        self._write_module("chain", ["check_a"])
+        self.registry.write_text(
+            "| S1 | `chain.py:check_missing` |\n"
+            "| S2 | `chain.py:check_missing` |\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_doctrine_registry_fn_refs()
+        self.assertEqual(len(errors), 1)
+
+    def test_fence_inside_skipped(self):
+        self._write_module("chain", ["check_a"])
+        self.registry.write_text(
+            "```python\n# 예시\n`chain.py:nonexistent`\n```\n"
+            "| S1 | `chain.py:check_a` |\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(chain.check_doctrine_registry_fn_refs(), [])
+
+
+class CheckDoctrineRegistryRealRepo(unittest.TestCase):
+    """실 repo doctrine-registry.md ↔ 실 chain.py/structure.py/schema.py 회귀."""
+
+    def test_repo_doctrine_registry_no_stale_fn_refs(self):
+        # 본 테스트는 모킹 없이 실 모듈 경로 사용 — drift 발생 시 즉시 FAIL.
+        errors = chain.check_doctrine_registry_fn_refs()
+        self.assertEqual(errors, [], f"stale fn refs detected: {errors}")
+
+
 if __name__ == "__main__":
     unittest.main()
