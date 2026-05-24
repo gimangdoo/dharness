@@ -1,0 +1,20 @@
+# methodology-advisor handoff (dharness-sub mode)
+# version: 0.3.1
+# matrix_hit: R3
+# 출처: handoff-template.md §2 패턴 + decision-matrix.md R3 row
+# 입력 신호: greenfield + product + solo + short timeline → R3 exact match
+
+intent_profile_patch:
+  quality:
+    test_rigor: tdd                # TDD core 추천 → handoff-template §3.1 매핑
+
+  workflow:
+    methodology: ["Spec-driven", "TDD", "Trunk-based"]   # R3 추천 1순위 (4축 합성 = 설계+테스트+워크플로우)
+    methodology_source: "methodology-advisor v0.3.1"
+    methodology_matrix_row: "R3"
+
+meta:
+  user_confirmed_fields:
+    - quality.test_rigor
+    - workflow.methodology
+  open_questions: []               # 미해결 0 (matrix-hit)

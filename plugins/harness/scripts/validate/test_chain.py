@@ -610,5 +610,144 @@ class CheckDoctrineRegistryRealRepo(unittest.TestCase):
         self.assertEqual(errors, [], f"stale fn refs detected: {errors}")
 
 
+class CheckAdvisorHandoffAdapterConsistency(_ChainTestBase):
+    """W8 v0.12.1 adapter doctrine — advisor handoff merge 후 intent_profile.md 검증."""
+
+    def _write_intent(self, frontmatter: str, body: str = "# Intent Profile") -> None:
+        chain.INTENT_PROFILE.parent.mkdir(parents=True, exist_ok=True)
+        chain.INTENT_PROFILE.write_text(
+            f"---\n{frontmatter}\n---\n\n{body}\n", encoding="utf-8"
+        )
+
+    def test_no_intent_profile_passes(self):
+        self.assertEqual(chain.check_advisor_handoff_adapter_consistency(), [])
+
+    def test_no_workflow_section_passes(self):
+        self._write_intent("version: 1\nproject_type: greenfield\n")
+        self.assertEqual(chain.check_advisor_handoff_adapter_consistency(), [])
+
+    def test_advisor_source_with_all_fields_passes(self):
+        self._write_intent(
+            "version: 1\n"
+            "workflow:\n"
+            "  methodology: spec-driven\n"
+            "  methodology_source: advisor\n"
+            '  methodology_matrix_row: "R3"\n'
+            "meta:\n"
+            "  advisor_handoff_version: \"methodology-advisor v0.3.1\"\n"
+            "  advisor_secondary_methodologies:\n"
+            "    - tdd\n"
+            "    - trunk-based\n"
+        )
+        self.assertEqual(chain.check_advisor_handoff_adapter_consistency(), [])
+
+    def test_user_source_with_no_matrix_passes(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: tdd\n"
+            "  methodology_source: user\n"
+        )
+        self.assertEqual(chain.check_advisor_handoff_adapter_consistency(), [])
+
+    def test_methodology_non_enum_fails(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: agile\n"
+            "  methodology_source: user\n"
+        )
+        errors = chain.check_advisor_handoff_adapter_consistency()
+        self.assertTrue(any("dharness enum 11 외" in e for e in errors))
+
+    def test_source_non_enum_fails(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: tdd\n"
+            "  methodology_source: bogus\n"
+        )
+        errors = chain.check_advisor_handoff_adapter_consistency()
+        self.assertTrue(any("enum 4" in e for e in errors))
+
+    def test_rule1_advisor_without_matrix_row_fails(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: tdd\n"
+            "  methodology_source: advisor\n"
+            "meta:\n"
+            "  advisor_handoff_version: \"v0.3.1\"\n"
+        )
+        errors = chain.check_advisor_handoff_adapter_consistency()
+        self.assertTrue(any("methodology_matrix_row 미박제" in e for e in errors))
+
+    def test_rule2_non_advisor_with_matrix_row_fails(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: tdd\n"
+            "  methodology_source: user\n"
+            '  methodology_matrix_row: "R3"\n'
+        )
+        errors = chain.check_advisor_handoff_adapter_consistency()
+        self.assertTrue(any("비-advisor source는" in e for e in errors))
+
+    def test_rule3_advisor_without_handoff_version_fails(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: tdd\n"
+            "  methodology_source: advisor\n"
+            '  methodology_matrix_row: "R3"\n'
+        )
+        errors = chain.check_advisor_handoff_adapter_consistency()
+        self.assertTrue(any("advisor_handoff_version 미박제" in e for e in errors))
+
+    def test_rule4_secondary_without_advisor_source_fails(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: tdd\n"
+            "  methodology_source: user\n"
+            "meta:\n"
+            "  advisor_secondary_methodologies:\n"
+            "    - bdd\n"
+        )
+        errors = chain.check_advisor_handoff_adapter_consistency()
+        self.assertTrue(any("secondary list는" in e for e in errors))
+
+    def test_rule5_advisor_with_uppercase_methodology_fails(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: TDD\n"
+            "  methodology_source: advisor\n"
+            '  methodology_matrix_row: "R3"\n'
+            "meta:\n"
+            "  advisor_handoff_version: \"v0.3.1\"\n"
+        )
+        errors = chain.check_advisor_handoff_adapter_consistency()
+        # methodology=TDD는 enum 외 + lowercase 위반 양쪽 catch — 최소 한쪽 검출
+        self.assertTrue(
+            any("lowercase 정규화" in e or "enum 11 외" in e for e in errors)
+        )
+
+    def test_inline_secondary_list_passes(self):
+        self._write_intent(
+            "workflow:\n"
+            "  methodology: spec-driven\n"
+            "  methodology_source: advisor\n"
+            '  methodology_matrix_row: "R3"\n'
+            "meta:\n"
+            "  advisor_handoff_version: \"v0.3.1\"\n"
+            "  advisor_secondary_methodologies: [tdd, trunk-based]\n"
+        )
+        self.assertEqual(chain.check_advisor_handoff_adapter_consistency(), [])
+
+
+class CheckAdvisorHandoffAdapterRealRepo(unittest.TestCase):
+    """실 repo intent_profile.md(존재 시) ↔ adapter doctrine 회귀.
+
+    dharness self-host에는 _workspace/_baseline/ 부재 — silent skip PASS.
+    """
+
+    def test_repo_intent_profile_advisor_consistency(self):
+        errors = chain.check_advisor_handoff_adapter_consistency()
+        self.assertEqual(errors, [], f"adapter doctrine 위반: {errors}")
+
+
 if __name__ == "__main__":
     unittest.main()
