@@ -503,12 +503,24 @@ Phase 2 종료 시 intent_profile.md가 다음 룰을 통과해야 한다.
 
 ### Cross-field 룰
 
+> **정합 점검 채널 (cycle 4, 2026-05-25):** 아래 표 룰 중 **deterministic enforce**는 `chain.py` 결정적 검증으로 격상, **LLM-only annotation**은 Phase 2 합성 시 LLM이 판단하고 위반 시 `meta.explicit_assumptions`에 사용자 이유 박제 후 통과 — chain.py 비강제.
+>
+> | 룰 | 채널 |
+> |---|---|
+> | C14-1 `version` 존재 | `chain.py:check_intent_profile_version` (deterministic) |
+> | C14-2 `project_type` enum | `chain.py:check_intent_profile_project_type` (deterministic) |
+> | C14-3 brownfield → `inferred_fields` 1+ | `chain.py:check_intent_profile_brownfield_inferred` (deterministic) |
+> | C15-1 prod+test=none | LLM-only annotation (경고, `meta.explicit_assumptions` 통과 허용) |
+> | C15-2 solo+strict | LLM-only annotation (경고) |
+> | C15-3 regulated+empty-security | LLM-only annotation (경고) |
+> | C15-4 greenfield+locked_in | `chain.py:check_intent_profile_greenfield_locked_in` (deterministic, 모순 invariant) |
+
 | 조합 | 룰 |
 |------|----|
-| `timeline.horizon = production` + `quality.test_rigor = none` | 경고: production에 테스트 없음은 위험 |
-| `team.size = solo` + `workflow.review_style = strict` | 경고: 1인이 strict 리뷰 불가능 |
-| `data_sensitivity = regulated` + `quality.security_requirements = []` | 경고: regulated 데이터인데 보안 요구사항 미정의 |
-| `project_type = greenfield` + `constraints.tech_stack.locked_in != []` | 모순: greenfield인데 locked-in이 있음 |
+| `timeline.horizon = production` + `quality.test_rigor = none` | 경고: production에 테스트 없음은 위험 (C15-1, LLM-only) |
+| `team.size = solo` + `workflow.review_style = strict` | 경고: 1인이 strict 리뷰 불가능 (C15-2, LLM-only) |
+| `data_sensitivity = regulated` + `quality.security_requirements = []` | 경고: regulated 데이터인데 보안 요구사항 미정의 (C15-3, LLM-only) |
+| `project_type = greenfield` + `constraints.tech_stack.locked_in != []` | 모순: greenfield인데 locked-in이 있음 (C15-4, deterministic) |
 | `workflow.methodology_source = advisor` + `workflow.methodology_matrix_row = null` | 모순: advisor handoff 시 decision-matrix row id 필수 |
 | `workflow.methodology_source != advisor` + `workflow.methodology_matrix_row != null` | 모순: 비-advisor source는 matrix row id 보유 금지 |
 | `workflow.methodology_source = advisor` + `meta.advisor_handoff_version` 미박제 | 모순 (v0.12.1 adapter 룰): advisor 수신 시 원본 free-string source는 `meta.advisor_handoff_version`에 보존 박제 필수 — 재현성 손실 차단 |

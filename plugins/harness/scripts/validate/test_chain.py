@@ -1340,5 +1340,136 @@ class CheckPluginInternalReferences(unittest.TestCase):
         self.assertEqual(chain.check_plugin_internal_references(), [])
 
 
+# ────────────────────────────────────────────────────────────────────────
+# C14/C15 cycle 4 — intent_profile §8 필수 룰 4종 결정적 검증 (2026-05-25)
+# ────────────────────────────────────────────────────────────────────────
+
+
+class _IntentProfileTestBase(unittest.TestCase):
+    """intent_profile.md 모킹용 베이스."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.profile = self.root / "intent_profile.md"
+        self._saved = chain.INTENT_PROFILE
+        chain.INTENT_PROFILE = self.profile
+
+    def tearDown(self):
+        chain.INTENT_PROFILE = self._saved
+        self.tmp.cleanup()
+
+    def _write(self, frontmatter: str) -> None:
+        self.profile.write_text(f"---\n{frontmatter}\n---\n\n본문\n", encoding="utf-8")
+
+
+class CheckIntentProfileVersion(_IntentProfileTestBase):
+    def test_no_profile_skips(self):
+        self.assertEqual(chain.check_intent_profile_version(), [])
+
+    def test_version_present_passes(self):
+        self._write("version: 1\nproject_type: greenfield")
+        self.assertEqual(chain.check_intent_profile_version(), [])
+
+    def test_version_missing_fails(self):
+        self._write("project_type: greenfield")
+        errors = chain.check_intent_profile_version()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("version:", errors[0])
+        self.assertIn("C14-1", errors[0])
+
+
+class CheckIntentProfileProjectType(_IntentProfileTestBase):
+    def test_no_profile_skips(self):
+        self.assertEqual(chain.check_intent_profile_project_type(), [])
+
+    def test_greenfield_passes(self):
+        self._write("version: 1\nproject_type: greenfield")
+        self.assertEqual(chain.check_intent_profile_project_type(), [])
+
+    def test_brownfield_passes(self):
+        self._write("version: 1\nproject_type: brownfield")
+        self.assertEqual(chain.check_intent_profile_project_type(), [])
+
+    def test_missing_fails(self):
+        self._write("version: 1")
+        errors = chain.check_intent_profile_project_type()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("project_type:", errors[0])
+
+    def test_invalid_enum_fails(self):
+        self._write("version: 1\nproject_type: unknown")
+        errors = chain.check_intent_profile_project_type()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("unknown", errors[0])
+        self.assertIn("C14-2", errors[0])
+
+
+class CheckIntentProfileBrownfieldInferred(_IntentProfileTestBase):
+    def test_no_profile_skips(self):
+        self.assertEqual(chain.check_intent_profile_brownfield_inferred(), [])
+
+    def test_greenfield_skips(self):
+        self._write("version: 1\nproject_type: greenfield")
+        self.assertEqual(chain.check_intent_profile_brownfield_inferred(), [])
+
+    def test_brownfield_inline_list_passes(self):
+        self._write(
+            "version: 1\nproject_type: brownfield\nmeta:\n"
+            "  inferred_fields: [constraints.tech_stack.locked_in]"
+        )
+        self.assertEqual(chain.check_intent_profile_brownfield_inferred(), [])
+
+    def test_brownfield_block_list_passes(self):
+        self._write(
+            "version: 1\nproject_type: brownfield\nmeta:\n"
+            "  inferred_fields:\n    - constraints.tech_stack.locked_in"
+        )
+        self.assertEqual(chain.check_intent_profile_brownfield_inferred(), [])
+
+    def test_brownfield_empty_list_fails(self):
+        self._write("version: 1\nproject_type: brownfield\nmeta:\n  inferred_fields: []")
+        errors = chain.check_intent_profile_brownfield_inferred()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("비어있음", errors[0])
+        self.assertIn("C14-3", errors[0])
+
+    def test_brownfield_missing_field_fails(self):
+        self._write("version: 1\nproject_type: brownfield")
+        errors = chain.check_intent_profile_brownfield_inferred()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("박제 누락", errors[0])
+
+
+class CheckIntentProfileGreenfieldLockedIn(_IntentProfileTestBase):
+    def test_no_profile_skips(self):
+        self.assertEqual(chain.check_intent_profile_greenfield_locked_in(), [])
+
+    def test_greenfield_empty_locked_in_passes(self):
+        self._write(
+            "version: 1\nproject_type: greenfield\n"
+            "constraints:\n  tech_stack:\n    locked_in: []"
+        )
+        self.assertEqual(chain.check_intent_profile_greenfield_locked_in(), [])
+
+    def test_brownfield_with_locked_in_passes(self):
+        self._write(
+            "version: 1\nproject_type: brownfield\n"
+            'constraints:\n  tech_stack:\n    locked_in: ["React", "PostgreSQL"]'
+        )
+        self.assertEqual(chain.check_intent_profile_greenfield_locked_in(), [])
+
+    def test_greenfield_with_locked_in_fails(self):
+        self._write(
+            "version: 1\nproject_type: greenfield\n"
+            'constraints:\n  tech_stack:\n    locked_in: ["React"]'
+        )
+        errors = chain.check_intent_profile_greenfield_locked_in()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("greenfield", errors[0])
+        self.assertIn("React", errors[0])
+        self.assertIn("C15-4", errors[0])
+
+
 if __name__ == "__main__":
     unittest.main()
