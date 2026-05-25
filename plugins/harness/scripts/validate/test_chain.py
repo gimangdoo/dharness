@@ -1090,5 +1090,255 @@ class CheckCommandCountSyncRealRepo(unittest.TestCase):
         self.assertEqual(errors, [], f"command count drift: {errors}")
 
 
+# ────────────────────────────────────────────────────────────────────────
+# E8 test 커버리지 — 7 기존 fn (cycle 2, 2026-05-25)
+# ────────────────────────────────────────────────────────────────────────
+
+
+class CheckAgentToolsVsSettings(_ChainTestBase):
+    """agent `tools:` allowlist ↔ settings*.json permissions 정합 (inline list 형식 가정)."""
+
+    def test_empty_perms_skips(self):
+        self._write_agent("a1", "name: a1\ndescription: d\ntools: [mcp__foo__bar]")
+        self.assertEqual(chain.check_agent_tools_vs_settings(set()), [])
+
+    def test_builtin_tools_skipped(self):
+        self._write_agent("a1", "name: a1\ndescription: d\ntools: [Read, Write, WebSearch]")
+        self.assertEqual(chain.check_agent_tools_vs_settings({"Bash(ls:*)"}), [])
+
+    def test_matching_perm_passes(self):
+        self._write_agent(
+            "a1", "name: a1\ndescription: d\ntools: [mcp__github__list_pull_requests]"
+        )
+        perms = {"mcp__github__list_pull_requests"}
+        self.assertEqual(chain.check_agent_tools_vs_settings(perms), [])
+
+    def test_unknown_tool_warns(self):
+        self._write_agent(
+            "a1", "name: a1\ndescription: d\ntools: [mcp__nonexistent__tool]"
+        )
+        perms = {"mcp__github__list_pull_requests"}
+        errors = chain.check_agent_tools_vs_settings(perms)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("mcp__nonexistent__tool", errors[0])
+        self.assertIn("미정합", errors[0])
+
+
+class CheckAgentNameUniqueness(_ChainTestBase):
+    """agents/*.md frontmatter `name:` 전역 유일성."""
+
+    def test_unique_names_pass(self):
+        self._write_agent("a1", "name: a1\ndescription: d")
+        self._write_agent("a2", "name: a2\ndescription: d")
+        self.assertEqual(chain.check_agent_name_uniqueness(), [])
+
+    def test_no_agents_passes(self):
+        self.assertEqual(chain.check_agent_name_uniqueness(), [])
+
+    def test_duplicate_name_detected(self):
+        self._write_agent("file_a", "name: dup\ndescription: d")
+        self._write_agent("file_b", "name: dup\ndescription: d")
+        errors = chain.check_agent_name_uniqueness()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("name: dup", errors[0])
+        self.assertIn("file_a.md", errors[0])
+        self.assertIn("file_b.md", errors[0])
+
+
+class CheckAgentWritePathOverlap(_ChainTestBase):
+    """agents/*.md `writes:` 경로 충돌 (A7 doctrine)."""
+
+    def test_no_writes_passes(self):
+        self._write_agent("a1", "name: a1\ndescription: d")
+        self._write_agent("a2", "name: a2\ndescription: d")
+        self.assertEqual(chain.check_agent_write_path_overlap(), [])
+
+    def test_disjoint_paths_pass(self):
+        self._write_agent("a1", "name: a1\ndescription: d\nwrites: [src/a.md]")
+        self._write_agent("a2", "name: a2\ndescription: d\nwrites: [src/b.md]")
+        self.assertEqual(chain.check_agent_write_path_overlap(), [])
+
+    def test_exact_overlap_detected(self):
+        self._write_agent("a1", "name: a1\ndescription: d\nwrites: [src/shared.md]")
+        self._write_agent("a2", "name: a2\ndescription: d\nwrites: [src/shared.md]")
+        errors = chain.check_agent_write_path_overlap()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("src/shared.md", errors[0])
+        self.assertIn("A7", errors[0])
+
+    def test_glob_literal_intersection_detected(self):
+        self._write_agent("a1", "name: a1\ndescription: d\nwrites: [src/foo.md]")
+        self._write_agent("a2", "name: a2\ndescription: d\nwrites: [src/*.md]")
+        errors = chain.check_agent_write_path_overlap()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("glob 교집합", errors[0])
+
+
+class CheckOrchestratorAgentCoverage(_ChainTestBase):
+    """orchestrator 미참조 agent (dead) 검출 (Q1 cardinality)."""
+
+    def test_no_orchestrator_passes(self):
+        self._write_agent("a1", "name: a1\ndescription: d")
+        self.assertEqual(chain.check_orchestrator_agent_coverage(), [])
+
+    def test_referenced_agent_passes(self):
+        self._write_skill(
+            "orchestrator-skill",
+            "orchestrator",
+            body="## 참조\n\n`.claude/agents/a1.md` 호출.\n",
+        )
+        self._write_agent("a1", "name: a1\ndescription: d")
+        self.assertEqual(chain.check_orchestrator_agent_coverage(), [])
+
+    def test_dead_agent_detected(self):
+        self._write_skill(
+            "orchestrator-skill",
+            "orchestrator",
+            body="## 참조\n\n`.claude/agents/a1.md` 호출.\n",
+        )
+        self._write_agent("a1", "name: a1\ndescription: d")
+        self._write_agent("dead", "name: dead\ndescription: d")
+        errors = chain.check_orchestrator_agent_coverage()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("dead.md", errors[0])
+        self.assertIn("Q1 cardinality", errors[0])
+
+
+class CheckSkillNameUniqueness(_ChainTestBase):
+    """skills/*/SKILL.md `name:` 유일성 + dir 정합."""
+
+    def test_name_matches_dir_passes(self):
+        self._write_skill("s1", "desc 1")
+        self.assertEqual(chain.check_skill_name_uniqueness(), [])
+
+    def test_name_dir_mismatch_detected(self):
+        skill_dir = chain.SKILLS_DIR / "real-dir"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: different-name\ndescription: d\n---\n\n본문\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_skill_name_uniqueness()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("different-name", errors[0])
+        self.assertIn("real-dir", errors[0])
+
+    def test_duplicate_name_detected(self):
+        (chain.SKILLS_DIR / "dir-a").mkdir()
+        (chain.SKILLS_DIR / "dir-b").mkdir()
+        (chain.SKILLS_DIR / "dir-a" / "SKILL.md").write_text(
+            "---\nname: dup\ndescription: d\n---\n\n본문\n", encoding="utf-8"
+        )
+        (chain.SKILLS_DIR / "dir-b" / "SKILL.md").write_text(
+            "---\nname: dup\ndescription: d\n---\n\n본문\n", encoding="utf-8"
+        )
+        errors = chain.check_skill_name_uniqueness()
+        # 2 mismatch errors (name ≠ dir) + 1 duplicate error
+        dup_errors = [e for e in errors if "중복" in e]
+        self.assertEqual(len(dup_errors), 1)
+        self.assertIn("dup", dup_errors[0])
+
+
+class CheckReferenceLinks(_ChainTestBase):
+    """SKILL.md `references/<path>` dangling 검출."""
+
+    def test_no_skills_passes(self):
+        self.assertEqual(chain.check_reference_links(), [])
+
+    def test_existing_reference_passes(self):
+        skill = self._write_skill("s1", "desc")
+        refs_dir = skill.parent / "references"
+        refs_dir.mkdir()
+        (refs_dir / "guide.md").write_text("# guide\n", encoding="utf-8")
+        skill.write_text(
+            skill.read_text(encoding="utf-8") + "\n자세히는 `references/guide.md` 참조.\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(chain.check_reference_links(), [])
+
+    def test_dangling_reference_detected(self):
+        skill = self._write_skill("s1", "desc")
+        skill.write_text(
+            skill.read_text(encoding="utf-8") + "\n자세히는 `references/missing.md` 참조.\n",
+            encoding="utf-8",
+        )
+        errors = chain.check_reference_links()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("missing.md", errors[0])
+        self.assertIn("dangling", errors[0])
+
+    def test_code_fence_reference_ignored(self):
+        skill = self._write_skill("s1", "desc")
+        skill.write_text(
+            skill.read_text(encoding="utf-8")
+            + "\n```\n예시: references/example-only.md\n```\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(chain.check_reference_links(), [])
+
+
+class CheckPluginInternalReferences(unittest.TestCase):
+    """plugin SKILL.md / refs / commands `references/<path>` dangling 검출 (R5 self-host)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.skill_md = self.root / "SKILL.md"
+        self.refs = self.root / "references"
+        self.cmds = self.root / "commands"
+        self.refs.mkdir()
+        self.cmds.mkdir()
+        self._saved = {
+            "REPO_ROOT": chain.REPO_ROOT,
+            "PLUGIN_SKILL_MD": chain.PLUGIN_SKILL_MD,
+            "PLUGIN_REFERENCES_DIR": chain.PLUGIN_REFERENCES_DIR,
+            "PLUGIN_COMMANDS_DIR": chain.PLUGIN_COMMANDS_DIR,
+        }
+        chain.REPO_ROOT = self.root
+        chain.PLUGIN_SKILL_MD = self.skill_md
+        chain.PLUGIN_REFERENCES_DIR = self.refs
+        chain.PLUGIN_COMMANDS_DIR = self.cmds
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            setattr(chain, k, v)
+        self.tmp.cleanup()
+
+    def test_no_refs_dir_passes(self):
+        chain.PLUGIN_REFERENCES_DIR = self.root / "nonexistent"
+        self.assertEqual(chain.check_plugin_internal_references(), [])
+
+    def test_existing_reference_passes(self):
+        (self.refs / "guide.md").write_text("# guide\n", encoding="utf-8")
+        self.skill_md.write_text(
+            "# skill\n\n참조: `references/guide.md`\n", encoding="utf-8"
+        )
+        self.assertEqual(chain.check_plugin_internal_references(), [])
+
+    def test_dangling_reference_detected_in_skill(self):
+        self.skill_md.write_text(
+            "# skill\n\n참조: `references/missing.md`\n", encoding="utf-8"
+        )
+        errors = chain.check_plugin_internal_references()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("missing.md", errors[0])
+
+    def test_dangling_reference_detected_in_command(self):
+        (self.cmds / "harness-x.md").write_text(
+            "# cmd\n\n참조: `references/missing.md`\n", encoding="utf-8"
+        )
+        errors = chain.check_plugin_internal_references()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("harness-x.md", errors[0])
+        self.assertIn("missing.md", errors[0])
+
+    def test_code_fence_reference_ignored(self):
+        self.skill_md.write_text(
+            "# skill\n\n```\nreferences/example-only.md\n```\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(chain.check_plugin_internal_references(), [])
+
+
 if __name__ == "__main__":
     unittest.main()
