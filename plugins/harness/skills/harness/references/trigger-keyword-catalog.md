@@ -38,7 +38,7 @@
 | **infra-deployer** | S8 + S2 + S5 | "배포 + 인프라 적용 + CI 통합" | devops-infra + code-test |
 | **mobile-tester** | S9 + S1 + S5 | "iOS/Android 빌드 검토 + CI" | mobile-native + code-test |
 | **data-engineer** | S10 + S4 + S2 | "ETL 파이프라인 + DB + 적용" | data-eng + external-integration |
-| **ml-data-engineer** ⚠️ | S7 + S10 | "ML feature pipeline + 데이터 변환" | ml-pipeline + data-eng — **책임 과대 의심**: Phase 5.5 self-critique에서 `harness-split` 권고 (SKILL.md §Phase 5.5) |
+| **ml-data-engineer** ⚠️ | S7 + S10 | "ML feature pipeline + 데이터 변환" | ml-pipeline + data-eng (책임 과대 의심 — S7~S10 2+ 동시 매칭 룰 정본: [`mcp-recommendation.md` §1 박스](./mcp-recommendation.md)) |
 
 ---
 

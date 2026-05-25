@@ -99,7 +99,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 **`meta.dharness_version` 박제 (필수, 2026-05-23 doctrine drift refit 인프라):** `plugins/harness/.claude-plugin/plugin.json` `version` 필드를 read 후 frontmatter `meta.dharness_version: "<현 plugin version>"`로 저장. 합성 시점 plugin doctrine 시점의 anchor. `harness-validate`/`harness-status`가 현 plugin version과 비교해 upgrade 발생 시 doctrine refit 권고 1줄 출력.
 
-**방법론 위임 doctrine (2026-05-24, methodology-advisor v0.3.x handoff + v0.12.1 adapter):** `workflow.methodology` 필드가 사용자에게 모호하거나 (TDD/DDD/BDD/Spec-driven/Trunk-based 등 24개 후보 중 선택 불가) 사용자가 명시적으로 "방법론 추천해줘" 발화 시 → `methodology-advisor` plugin sub-skill 호출. advisor 출력 yaml fragment를 dharness 측 단방향 변환 후 intent_profile frontmatter에 merge:
+**방법론 위임 doctrine (2026-05-24, methodology-advisor v0.3.x handoff + v0.12.1 adapter):** `workflow.methodology` 필드가 사용자에게 모호하거나 (`methodology-advisor` plugin은 ~24 후보 catalog 보유 — dharness 자체 표준 enum 11종: TDD/BDD/DDD/Spec-driven/Trunk-based/Kanban/Scrum/Shape-up/XP/none/unknown은 `chain.py:_METHODOLOGY_ENUM` 정본) 또는 사용자가 명시적으로 "방법론 추천해줘" 발화 시 → `methodology-advisor` plugin sub-skill 호출. advisor 출력 yaml fragment를 dharness 측 단방향 변환 후 intent_profile frontmatter에 merge:
 > - `workflow.methodology: ["DDD", "TDD", "Trunk-based"]` (mixed-case list) → primary = list[0] lowercase scalar 박제, secondary = list[1:] lowercase → `meta.advisor_secondary_methodologies`에 보존 (재현성·진화 비교)
 > - `workflow.methodology_source: "methodology-advisor v0.3.1"` (free string) → enum `"advisor"`로 정규화, 원본은 `meta.advisor_handoff_version`에 박제
 > - `workflow.methodology_matrix_row: "R4" | "matrix-miss"` → 그대로 박제
