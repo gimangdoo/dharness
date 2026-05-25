@@ -24,7 +24,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | W5 | Phase 0 — 중단된 factory run 감지 (`_baseline/`·`_critique_phase*` 박제 + agents/skills 빈 상태 시 재개 게이트) | `phase-entry-gates.md:§Phase 0` | 2026-05-21 mattpocock handoff | manual (Phase 0 entry) |
 | W6 | Progressive disclosure (references lazy load — Phase 진입 시점에만 read, 무차별 prefetch 금지) | `SKILL.md:§참고` "Progressive disclosure doctrine" | 2026-05-14 M8 | LLM 행동 |
 | W7 | Grilling 분기 (Phase 2 low confidence + Phase 9 모호 피드백 — 1q + recommended answer, recommendation 출처 anti-premature-judgment 정합) | `grilling-loop.md`, `phase-entry-gates.md:§Phase 2` step 5 | 2026-05-19 Phase B/C, mattpocock grill-me 흡수 | `chain_intent.py:check_intent_profile_grilling_log` (source enum 강제) |
-| W8 | methodology-advisor 위임 + adapter 변환 (workflow.methodology 모호 / 사용자 "추천해줘"·"모르겠음" 응답 시 → advisor sub-skill 호출 → handoff yaml fragment 수신 → dharness 측 단방향 adapter 변환(list→scalar primary lowercase / free source→enum advisor / 원본 source string→meta.advisor_handoff_version 보존 / list[1:]→meta.advisor_secondary_methodologies 보존) → intent_profile merge, 사용자 confirm 게이트 필수, advisor 1회 호출 = grilling cap 5 중 1 question 카운트) | `SKILL.md:§Phase 2 방법론 위임 doctrine`, `grilling-loop.md:§3-4`, `intent-profile-schema.md:§2 workflow`, `intent-profile-schema.md:§Advisor handoff 수신 시 변환 룰` | 2026-05-24 v0.12.0~v0.12.2 (doctrine → adapter → deterministic check 3 단계 진화, advisor v0.3.x handoff, contract drift dogfood 회복) | `chain.py:check_advisor_handoff_adapter_consistency` (v0.12.2 신설, 5 cross-field 룰 + methodology/source enum 결정적 검증) + manual (Phase 2 grilling 사용자 confirm) |
+| W8 | methodology-advisor 위임 + adapter 변환 (workflow.methodology 모호 / 사용자 "추천해줘"·"모르겠음" 응답 시 → advisor sub-skill 호출 → handoff yaml fragment 수신 → dharness 측 단방향 adapter 변환(list→scalar primary lowercase / free source→enum advisor / 원본 source string→meta.advisor_handoff_version 보존 / list[1:]→meta.advisor_secondary_methodologies 보존) → intent_profile merge, 사용자 confirm 게이트 필수, advisor 1회 호출 = grilling cap 5 중 1 question 카운트) | `SKILL.md:§Phase 2 방법론 위임 doctrine`, `grilling-loop.md:§3-4`, `intent-profile-schema.md:§2 workflow`, `intent-profile-schema.md:§Advisor handoff 수신 시 변환 룰` | 2026-05-24 v0.12.0~v0.12.2 (doctrine → adapter → deterministic check 3 단계 진화, advisor v0.3.x handoff, contract drift dogfood 회복) | `chain_advisor.py:check_advisor_handoff_adapter_consistency` (v0.12.2 신설, 5 cross-field 룰 + methodology/source enum 결정적 검증) + manual (Phase 2 grilling 사용자 confirm) |
 | W9 | intent_profile §8 필수 룰 + cross-field 결정적 검증 (cycle 4) — `version` 존재 / `project_type` enum / brownfield→`inferred_fields` 1+ / greenfield+`locked_in`≠[] 모순. cross-field 경고 3종(C15-1/2/3)은 LLM-only annotation으로 명시 (`meta.explicit_assumptions` 통과 허용) | `intent-profile-schema.md:§8`, `chain_intent.py:check_intent_profile_*` (cycle 6+ MVP에서 chain.py로부터 분리) | 2026-05-25 cycle 4 C14/C15 hybrid 정합 + cycle 6+ chain.py 분할 | `chain_intent.py:check_intent_profile_version` + `chain_intent.py:check_intent_profile_project_type` + `chain_intent.py:check_intent_profile_brownfield_inferred` + `chain_intent.py:check_intent_profile_greenfield_locked_in` + LLM (C15-1/2/3 annotation) |
 
 ## §2. 책임 분리 doctrine (LLM ↔ deterministic ↔ user-gate)
@@ -112,10 +112,11 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `grilling-loop.md` | W7·W8 |
 | `team-tools-api.md` | I4·I5 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W4·W8·S2·S3·S5·S6·R5·R6 (결정적 검증 dispatcher) |
+| `chain.py` | W4·S2·S3·S5·S6·R5·R6 (결정적 검증 dispatcher) |
 | `chain_intent.py` (sub-cycle α+β 흡수 + cycle 6+ MVP 분리, 2026-05-25) | W1 (grilling 영역만)·W3 (5필드 + doc sync 2 fn)·W7 (grilling_log enum 1 fn)·W9 (intent_profile §8 4 fn) |
 | `chain_version.py` (sub-cycle δ 분리, 2026-05-25) | I1·I2 (dharness_version drift 1 fn) |
 | `chain_doc_sync.py` (sub-cycle ε 분리, 2026-05-25) | S13 (output-checklist count)·S14 (command count) |
+| `chain_advisor.py` (sub-cycle γ 분리, 2026-05-25) | W8 (advisor handoff adapter 1 fn + 5 cross-field 룰) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
 | `harness-audit.md` | R1 |
