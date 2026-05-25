@@ -1,13 +1,19 @@
-"""chain_intent.py — intent_profile.md §8 W9 결정적 검증 (chain.py 분할, 2026-05-25 cycle 6+ MVP).
+"""chain_intent.py — intent_profile.md 도메인 결정적 검증 (chain.py 분할, 2026-05-25).
 
-W9 doctrine — C14/C15 7 finding 중 deterministic 4종 (cycle 4 hybrid 합성 결정):
-  - check_intent_profile_version (C14-1)
-  - check_intent_profile_project_type (C14-2, enum {greenfield, brownfield})
-  - check_intent_profile_brownfield_inferred (C14-3)
-  - check_intent_profile_greenfield_locked_in (C15-4 모순 invariant)
+박제 doctrine:
+  - W3 (sub-cycle α 흡수, 2026-05-25) — meta.user_confirmed_fields ↔ INTENT_REQUIRED 5필드 정합
+      · _INTENT_USER_CONFIRMED_REQUIRED (chain.INTENT_REQUIRED alias)
+      · _extract_user_confirmed_fields helper
+      · check_required_user_confirmed_fields
+      · check_intent_required_doc_sync (W3 doc sync — schema ↔ doc 3곳)
+  - W9 (cycle 4, 2026-05-25) — intent_profile.md §8 필수/cross-field 결정적 4 fn
+      · check_intent_profile_version (C14-1)
+      · check_intent_profile_project_type (C14-2, enum {greenfield, brownfield})
+      · check_intent_profile_brownfield_inferred (C14-3)
+      · check_intent_profile_greenfield_locked_in (C15-4 모순 invariant)
 
 본 모듈은 단독 entry-point가 아니다 — chain.py가 import 후 main() chain에서 호출.
-chain.INTENT_PROFILE / chain.FRONTMATTER_RE는 runtime에 lookup하므로 모듈 import 시점
+chain.INTENT_PROFILE / chain.FRONTMATTER_RE 등은 runtime에 lookup하므로 모듈 import 시점
 circular 안전 (test_chain의 module-level monkey-patch 호환 유지).
 """
 
@@ -33,6 +39,128 @@ _PROJECT_TYPE_ENUM = {"greenfield", "brownfield"}
 _INTENT_VERSION_PATTERN = re.compile(r"^version\s*:\s*(\S+)\s*$", re.MULTILINE)
 _INTENT_PROJECT_TYPE_PATTERN = re.compile(r"^project_type\s*:\s*([\w-]+)\s*$", re.MULTILINE)
 _INTENT_LOCKED_IN_PATTERN = re.compile(r"^\s*locked_in\s*:\s*\[(.*?)\]\s*$", re.MULTILINE)
+
+
+def _extract_user_confirmed_fields(yaml_body: str) -> list[str] | None:
+    """meta.user_confirmed_fields list 추출 — inline / indented / compact YAML 양쪽 지원.
+
+    반환값 의미:
+      None  — meta.user_confirmed_fields 필드 자체 박제 미존재
+      list  — 박제 list (빈 list 포함). 원소는 dot-path string.
+
+    inline 형태 `user_confirmed_fields: []` / `user_confirmed_fields: [a, b]`도 지원.
+    """
+    strip_quotes = chain._strip_quotes
+    lines = yaml_body.splitlines()
+    in_meta = False
+    meta_indent = -1
+    in_list = False
+    list_indent = -1
+    items: list[str] = []
+    for raw in lines:
+        line = raw.rstrip()
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(stripped)
+        if not in_meta:
+            if stripped.startswith("meta:") and indent == 0:
+                in_meta = True
+                meta_indent = indent
+            continue
+        if in_meta and not in_list:
+            if indent <= meta_indent:
+                return None
+            m = re.match(r"^user_confirmed_fields\s*:\s*(.*)$", stripped)
+            if m:
+                inline = m.group(1).strip()
+                if inline.startswith("["):
+                    body = inline.strip().lstrip("[").rstrip("]")
+                    return [strip_quotes(t.strip()) for t in body.split(",") if t.strip()]
+                if inline:
+                    return []
+                in_list = True
+                list_indent = indent
+            continue
+        if in_list:
+            if stripped.startswith("- ") and indent > list_indent:
+                items.append(strip_quotes(stripped[2:].strip()))
+                continue
+            if indent <= list_indent and stripped:
+                break
+    if in_list:
+        return items
+    return None
+
+
+def check_required_user_confirmed_fields() -> list[str]:
+    """W3 doctrine — intent_profile.md meta.user_confirmed_fields가 INTENT_REQUIRED 5필드 전부 커버.
+
+    prefix 매칭 — `constraints.tech_stack.locked_in` 등록은 `constraints.tech_stack` 커버.
+    intent_profile.md 미존재 시 silent skip (schema.py가 별도 FAIL).
+    meta.user_confirmed_fields 박제 자체 미존재 또는 빈 list → 5필드 모두 누락 FAIL.
+
+    근거: phase-entry-gates.md §Phase 2 step 1 + Phase 0.5 anti-premature-judgment evidence #2.
+    """
+    errors: list[str] = []
+    if not chain.INTENT_PROFILE.exists():
+        return errors
+    try:
+        text = chain.INTENT_PROFILE.read_text(encoding="utf-8-sig")
+    except OSError:
+        return errors
+
+    fm = chain.FRONTMATTER_RE.search(text)
+    body = fm.group(1) if fm else text
+
+    confirmed = _extract_user_confirmed_fields(body)
+    if confirmed is None:
+        errors.append(
+            "intent_profile.md meta.user_confirmed_fields 필드 박제 누락 — "
+            "Phase 2 doctrine 위반 (W3, phase-entry-gates.md §Phase 2 step 1)"
+        )
+        confirmed = []
+
+    for required in chain._INTENT_USER_CONFIRMED_REQUIRED:
+        prefix = required + "."
+        if not any(c == required or c.startswith(prefix) for c in confirmed):
+            errors.append(
+                f"intent_profile.md meta.user_confirmed_fields: 필수 필드 `{required}` 누락 — "
+                f"사용자 raw 답변 미박제 (W3 anti-premature-judgment 강제)"
+            )
+    return errors
+
+
+_INTENT_REQUIRED_DOC_TARGETS = (
+    ("SKILL.md", lambda: chain.PLUGIN_SKILL_MD),
+    ("phase-entry-gates.md", lambda: chain.PLUGIN_REFERENCES_DIR / "phase-entry-gates.md"),
+    ("intent-profile-schema.md", lambda: chain.PLUGIN_REFERENCES_DIR / "intent-profile-schema.md"),
+)
+
+
+def check_intent_required_doc_sync() -> list[str]:
+    """W3 doctrine doc sync — schema.py:INTENT_REQUIRED 5필드가 본문 doc에 모두 박제 (2026-05-24).
+
+    필드 list가 schema.py와 doc 5곳에 분산 hard-code된 drift 위험을 결정적으로 차단.
+    각 doc 위치(SKILL.md / phase-entry-gates.md / intent-profile-schema.md)에 5필드 모두
+    문자열 hit 보장. 1 필드라도 doc 누락 시 FAIL — schema 진화 시 doc 동기화 강제.
+    """
+    errors: list[str] = []
+    for label, resolver in _INTENT_REQUIRED_DOC_TARGETS:
+        path = resolver()
+        if not path.exists():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        for field in chain.INTENT_REQUIRED:
+            if field not in text:
+                errors.append(
+                    f"{label}: schema.py:INTENT_REQUIRED 필드 `{field}` 박제 누락 "
+                    f"— doc ↔ schema sync drift (W3 doc sync)"
+                )
+    return errors
 
 
 def _count_yaml_list_items(raw: str) -> int:

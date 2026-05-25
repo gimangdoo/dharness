@@ -19,7 +19,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 |---|---|---|---|---|
 | W1 | Anti-premature-judgment (cwd/파일/`$ARGUMENTS` 단독 도메인 단정 금지, evidence 2조건) | `phase-entry-gates.md:§Phase 0.5` | 2026-05-15 사용자 요구 | `chain.py:check_intent_profile_grilling_log` (W1-grilling 영역만) / LLM cross-review (전 영역) |
 | W2 | Phase 1 entry — 실 파일 read 강제 + `project_profile.md` 박제 (greenfield라도 stub) + silent skip 차단 | `phase-entry-gates.md:§Phase 1` | 2026-05-15 사용자 요구 | LLM cross-review |
-| W3 | Phase 2 entry — 질문 폭격 + 필수 5필드 user_confirmed_fields raw 인용 + brownfield 4단계 + Grilling 분기 (5필드 정본: `schema.py:INTENT_REQUIRED`, doc 3곳 sync 결정적 강제) | `phase-entry-gates.md:§Phase 2`, `schema.py:INTENT_REQUIRED` | 2026-05-15 사용자 요구 / 2026-05-24 P12 deterministic 강제 / 2026-05-24 doc sync 확장 | `chain.py:check_required_user_confirmed_fields` (5필드 모두 user_confirmed_fields 등록 강제, prefix 매칭) + `chain.py:check_intent_required_doc_sync` (doc ↔ schema list drift 차단) / LLM (raw 인용 영역) |
+| W3 | Phase 2 entry — 질문 폭격 + 필수 5필드 user_confirmed_fields raw 인용 + brownfield 4단계 + Grilling 분기 (5필드 정본: `schema.py:INTENT_REQUIRED`, doc 3곳 sync 결정적 강제) | `phase-entry-gates.md:§Phase 2`, `schema.py:INTENT_REQUIRED` | 2026-05-15 사용자 요구 / 2026-05-24 P12 deterministic 강제 / 2026-05-24 doc sync 확장 / 2026-05-25 sub-cycle α `chain_intent.py` 흡수 | `chain_intent.py:check_required_user_confirmed_fields` (5필드 모두 user_confirmed_fields 등록 강제, prefix 매칭) + `chain_intent.py:check_intent_required_doc_sync` (doc ↔ schema list drift 차단) / LLM (raw 인용 영역) |
 | W4 | Phase 5 — Cardinality justification (4컬럼 표 + `single-use → inline` 룰 + 이름 유일성 사전 점검) | `phase-entry-gates.md:§Phase 5` | 2026-05-15 A6/M9 | `chain.py:check_orchestrator_agent_coverage` (dead agent FAIL) |
 | W5 | Phase 0 — 중단된 factory run 감지 (`_baseline/`·`_critique_phase*` 박제 + agents/skills 빈 상태 시 재개 게이트) | `phase-entry-gates.md:§Phase 0` | 2026-05-21 mattpocock handoff | manual (Phase 0 entry) |
 | W6 | Progressive disclosure (references lazy load — Phase 진입 시점에만 read, 무차별 prefetch 금지) | `SKILL.md:§참고` "Progressive disclosure doctrine" | 2026-05-14 M8 | LLM 행동 |
@@ -112,8 +112,8 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `grilling-loop.md` | W7·W8 |
 | `team-tools-api.md` | I4·I5 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W1·W3·W4·W7·W8·S2·S3·S5·S6·S13·S14·I1·I2·R5·R6 (결정적 검증 dispatcher) |
-| `chain_intent.py` (cycle 6+ MVP 분리, 2026-05-25) | W9 (intent_profile §8 4 fn) |
+| `chain.py` | W1·W4·W7·W8·S2·S3·S5·S6·S13·S14·I1·I2·R5·R6 (결정적 검증 dispatcher) |
+| `chain_intent.py` (cycle 6+ MVP 분리 + sub-cycle α 흡수, 2026-05-25) | W3 (5필드 + doc sync 2 fn)·W9 (intent_profile §8 4 fn) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
 | `harness-audit.md` | R1 |
