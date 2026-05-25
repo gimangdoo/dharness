@@ -647,66 +647,11 @@ def check_skill_signal_coverage() -> list[str]:
     return errors
 
 
-_GRILLING_VALID_PHASES = ("0.5", "2", "5", "9")
-_GRILLING_VALID_SOURCES = ("signals>=2", "section_3_1_direct", "section_3_2_estimate")
-_GRILLING_REQUIRED_KEYS = ("phase", "field", "mode", "recommended", "recommended_source", "user_response")
-
 # W3 doctrine (phase-entry-gates.md:§Phase 2). 5필드 모두 사용자 raw 답변으로
 # meta.user_confirmed_fields 등록 필수. brownfield 자동 추론도 사용자 확인 답변
 # 받아야 user_confirmed_fields 등록 — inferred_fields 등록만으로 doctrine 불충족.
 # 정본은 schema.py:INTENT_REQUIRED — 본 alias로 의도 명시.
 _INTENT_USER_CONFIRMED_REQUIRED = tuple(INTENT_REQUIRED)
-
-
-def check_intent_profile_grilling_log() -> list[str]:
-    """meta.grilling_log[] doctrine 검증 (Phase B, 2026-05-19, grill-me 흡수).
-
-    intent_profile.md frontmatter의 meta.grilling_log 박제 항목별로:
-      - 필수 키 6개 (phase/field/mode/recommended/recommended_source/user_response) 존재
-      - phase ∈ {"0.5","2","5","9"}, mode == "grilling"
-      - recommended_source ∈ {"signals>=2","section_3_1_direct","section_3_2_estimate"}
-        (디렉토리·파일 이름 단독 추천 — anti-premature-judgment doctrine 위반 차단)
-
-    intent_profile.md 또는 meta.grilling_log 미박제 시 silent skip (옵션 필드).
-    """
-    errors: list[str] = []
-    intent_path = REPO_ROOT / "_workspace" / "_baseline" / "intent_profile.md"
-    if not intent_path.exists():
-        return errors
-    try:
-        text = intent_path.read_text(encoding="utf-8-sig")
-    except OSError:
-        return errors
-
-    fm = FRONTMATTER_RE.search(text)
-    body = fm.group(1) if fm else text
-
-    log_block = _extract_grilling_log_block(body)
-    if log_block is None:
-        return errors
-
-    entries = _parse_grilling_entries(log_block)
-    for idx, entry in enumerate(entries):
-        missing = [k for k in _GRILLING_REQUIRED_KEYS if k not in entry]
-        if missing:
-            errors.append(
-                f"intent_profile.md meta.grilling_log[{idx}]: 필수 키 누락 {missing} — grilling-loop.md §8 위반"
-            )
-            continue
-        if entry["phase"] not in _GRILLING_VALID_PHASES:
-            errors.append(
-                f"intent_profile.md meta.grilling_log[{idx}].phase = `{entry['phase']}` 허용값 {_GRILLING_VALID_PHASES} 외"
-            )
-        if entry["mode"] != "grilling":
-            errors.append(
-                f"intent_profile.md meta.grilling_log[{idx}].mode = `{entry['mode']}` — 'grilling' 고정값"
-            )
-        if entry["recommended_source"] not in _GRILLING_VALID_SOURCES:
-            errors.append(
-                f"intent_profile.md meta.grilling_log[{idx}].recommended_source = `{entry['recommended_source']}` "
-                f"— anti-premature-judgment doctrine 위반. 허용값 {_GRILLING_VALID_SOURCES}"
-            )
-    return errors
 
 
 def _extract_dharness_version_from_baseline() -> str | None:
@@ -753,74 +698,6 @@ def check_dharness_version_drift() -> dict[str, str | None]:
         f"진단 후 발견 항목별 `/harness:harness-evolve`·`-add-skill`·`-remove`로 수정."
     )
     return {"baseline": baseline_v, "current": current_v, "message": msg}
-
-
-def _extract_grilling_log_block(yaml_body: str) -> str | None:
-    lines = yaml_body.splitlines()
-    in_meta = False
-    meta_indent = -1
-    log_indent = -1
-    in_log = False
-    collected: list[str] = []
-    for raw in lines:
-        line = raw.rstrip()
-        stripped = line.lstrip()
-        if not stripped or stripped.startswith("#"):
-            if in_log:
-                collected.append(raw)
-            continue
-        indent = len(line) - len(stripped)
-        if not in_meta:
-            if stripped.startswith("meta:") and indent == 0:
-                in_meta = True
-                meta_indent = indent
-            continue
-        if in_meta and not in_log:
-            if indent <= meta_indent:
-                return None
-            if stripped.startswith("grilling_log:"):
-                in_log = True
-                log_indent = indent
-            continue
-        if in_log:
-            # YAML compact block sequence form: list item at parent indent
-            # (e.g. `grilling_log:` indent=2, `- phase` indent=2). Treat as
-            # first list item rather than as a sibling key.
-            if stripped.startswith("- ") and indent == log_indent:
-                collected.append(raw)
-                continue
-            if indent <= log_indent and stripped:
-                break
-            collected.append(raw)
-    return "\n".join(collected) if collected else None
-
-
-def _parse_grilling_entries(block: str) -> list[dict[str, str]]:
-    entries: list[dict[str, str]] = []
-    current: dict[str, str] | None = None
-    key_value_re = re.compile(r"^([A-Za-z_]+)\s*:\s*(.*?)\s*$")
-    for raw in block.splitlines():
-        line = raw.rstrip()
-        stripped = line.lstrip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if stripped.startswith("- "):
-            if current is not None:
-                entries.append(current)
-            current = {}
-            body = stripped[2:].strip()
-            m = key_value_re.match(body)
-            if m:
-                current[m.group(1)] = _strip_quotes(m.group(2))
-            continue
-        if current is None:
-            continue
-        m = key_value_re.match(stripped)
-        if m:
-            current[m.group(1)] = _strip_quotes(m.group(2))
-    if current is not None:
-        entries.append(current)
-    return entries
 
 
 def _strip_quotes(value: str) -> str:
@@ -1138,6 +1015,7 @@ def check_command_count_sync() -> list[str]:
 from chain_intent import (  # noqa: E402
     check_intent_profile_brownfield_inferred,
     check_intent_profile_greenfield_locked_in,
+    check_intent_profile_grilling_log,
     check_intent_profile_project_type,
     check_intent_profile_version,
     check_intent_required_doc_sync,

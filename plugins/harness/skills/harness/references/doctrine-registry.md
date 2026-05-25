@@ -17,13 +17,13 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 
 | id | doctrine | 박제 위치 (단일 출처) | 박제 commit | 정합 점검 |
 |---|---|---|---|---|
-| W1 | Anti-premature-judgment (cwd/파일/`$ARGUMENTS` 단독 도메인 단정 금지, evidence 2조건) | `phase-entry-gates.md:§Phase 0.5` | 2026-05-15 사용자 요구 | `chain.py:check_intent_profile_grilling_log` (W1-grilling 영역만) / LLM cross-review (전 영역) |
+| W1 | Anti-premature-judgment (cwd/파일/`$ARGUMENTS` 단독 도메인 단정 금지, evidence 2조건) | `phase-entry-gates.md:§Phase 0.5` | 2026-05-15 사용자 요구 | `chain_intent.py:check_intent_profile_grilling_log` (W1-grilling 영역만) / LLM cross-review (전 영역) |
 | W2 | Phase 1 entry — 실 파일 read 강제 + `project_profile.md` 박제 (greenfield라도 stub) + silent skip 차단 | `phase-entry-gates.md:§Phase 1` | 2026-05-15 사용자 요구 | LLM cross-review |
 | W3 | Phase 2 entry — 질문 폭격 + 필수 5필드 user_confirmed_fields raw 인용 + brownfield 4단계 + Grilling 분기 (5필드 정본: `schema.py:INTENT_REQUIRED`, doc 3곳 sync 결정적 강제) | `phase-entry-gates.md:§Phase 2`, `schema.py:INTENT_REQUIRED` | 2026-05-15 사용자 요구 / 2026-05-24 P12 deterministic 강제 / 2026-05-24 doc sync 확장 / 2026-05-25 sub-cycle α `chain_intent.py` 흡수 | `chain_intent.py:check_required_user_confirmed_fields` (5필드 모두 user_confirmed_fields 등록 강제, prefix 매칭) + `chain_intent.py:check_intent_required_doc_sync` (doc ↔ schema list drift 차단) / LLM (raw 인용 영역) |
 | W4 | Phase 5 — Cardinality justification (4컬럼 표 + `single-use → inline` 룰 + 이름 유일성 사전 점검) | `phase-entry-gates.md:§Phase 5` | 2026-05-15 A6/M9 | `chain.py:check_orchestrator_agent_coverage` (dead agent FAIL) |
 | W5 | Phase 0 — 중단된 factory run 감지 (`_baseline/`·`_critique_phase*` 박제 + agents/skills 빈 상태 시 재개 게이트) | `phase-entry-gates.md:§Phase 0` | 2026-05-21 mattpocock handoff | manual (Phase 0 entry) |
 | W6 | Progressive disclosure (references lazy load — Phase 진입 시점에만 read, 무차별 prefetch 금지) | `SKILL.md:§참고` "Progressive disclosure doctrine" | 2026-05-14 M8 | LLM 행동 |
-| W7 | Grilling 분기 (Phase 2 low confidence + Phase 9 모호 피드백 — 1q + recommended answer, recommendation 출처 anti-premature-judgment 정합) | `grilling-loop.md`, `phase-entry-gates.md:§Phase 2` step 5 | 2026-05-19 Phase B/C, mattpocock grill-me 흡수 | `chain.py:check_intent_profile_grilling_log` (source enum 강제) |
+| W7 | Grilling 분기 (Phase 2 low confidence + Phase 9 모호 피드백 — 1q + recommended answer, recommendation 출처 anti-premature-judgment 정합) | `grilling-loop.md`, `phase-entry-gates.md:§Phase 2` step 5 | 2026-05-19 Phase B/C, mattpocock grill-me 흡수 | `chain_intent.py:check_intent_profile_grilling_log` (source enum 강제) |
 | W8 | methodology-advisor 위임 + adapter 변환 (workflow.methodology 모호 / 사용자 "추천해줘"·"모르겠음" 응답 시 → advisor sub-skill 호출 → handoff yaml fragment 수신 → dharness 측 단방향 adapter 변환(list→scalar primary lowercase / free source→enum advisor / 원본 source string→meta.advisor_handoff_version 보존 / list[1:]→meta.advisor_secondary_methodologies 보존) → intent_profile merge, 사용자 confirm 게이트 필수, advisor 1회 호출 = grilling cap 5 중 1 question 카운트) | `SKILL.md:§Phase 2 방법론 위임 doctrine`, `grilling-loop.md:§3-4`, `intent-profile-schema.md:§2 workflow`, `intent-profile-schema.md:§Advisor handoff 수신 시 변환 룰` | 2026-05-24 v0.12.0~v0.12.2 (doctrine → adapter → deterministic check 3 단계 진화, advisor v0.3.x handoff, contract drift dogfood 회복) | `chain.py:check_advisor_handoff_adapter_consistency` (v0.12.2 신설, 5 cross-field 룰 + methodology/source enum 결정적 검증) + manual (Phase 2 grilling 사용자 confirm) |
 | W9 | intent_profile §8 필수 룰 + cross-field 결정적 검증 (cycle 4) — `version` 존재 / `project_type` enum / brownfield→`inferred_fields` 1+ / greenfield+`locked_in`≠[] 모순. cross-field 경고 3종(C15-1/2/3)은 LLM-only annotation으로 명시 (`meta.explicit_assumptions` 통과 허용) | `intent-profile-schema.md:§8`, `chain_intent.py:check_intent_profile_*` (cycle 6+ MVP에서 chain.py로부터 분리) | 2026-05-25 cycle 4 C14/C15 hybrid 정합 + cycle 6+ chain.py 분할 | `chain_intent.py:check_intent_profile_version` + `chain_intent.py:check_intent_profile_project_type` + `chain_intent.py:check_intent_profile_brownfield_inferred` + `chain_intent.py:check_intent_profile_greenfield_locked_in` + LLM (C15-1/2/3 annotation) |
 
@@ -112,8 +112,8 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `grilling-loop.md` | W7·W8 |
 | `team-tools-api.md` | I4·I5 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W1·W4·W7·W8·S2·S3·S5·S6·S13·S14·I1·I2·R5·R6 (결정적 검증 dispatcher) |
-| `chain_intent.py` (cycle 6+ MVP 분리 + sub-cycle α 흡수, 2026-05-25) | W3 (5필드 + doc sync 2 fn)·W9 (intent_profile §8 4 fn) |
+| `chain.py` | W4·W8·S2·S3·S5·S6·S13·S14·I1·I2·R5·R6 (결정적 검증 dispatcher) |
+| `chain_intent.py` (sub-cycle α+β 흡수 + cycle 6+ MVP 분리, 2026-05-25) | W1 (grilling 영역만)·W3 (5필드 + doc sync 2 fn)·W7 (grilling_log enum 1 fn)·W9 (intent_profile §8 4 fn) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
 | `harness-audit.md` | R1 |
