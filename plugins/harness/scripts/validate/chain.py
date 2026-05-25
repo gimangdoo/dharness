@@ -654,52 +654,6 @@ def check_skill_signal_coverage() -> list[str]:
 _INTENT_USER_CONFIRMED_REQUIRED = tuple(INTENT_REQUIRED)
 
 
-def _extract_dharness_version_from_baseline() -> str | None:
-    if not INTENT_PROFILE.exists():
-        return None
-    try:
-        text = INTENT_PROFILE.read_text(encoding="utf-8-sig")
-    except OSError:
-        return None
-    fm = _extract_frontmatter_block(text)
-    if not fm:
-        return None
-    m = re.search(
-        r"^\s*dharness_version\s*:\s*['\"]?([^'\"\n]+?)['\"]?\s*$",
-        fm,
-        re.MULTILINE,
-    )
-    return m.group(1).strip() if m else None
-
-
-def _read_current_plugin_version() -> str | None:
-    try:
-        data = json.loads(PLUGIN_JSON_FROM_SCRIPT.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    v = data.get("version") if isinstance(data, dict) else None
-    return v if isinstance(v, str) else None
-
-
-def check_dharness_version_drift() -> dict[str, str | None]:
-    """baseline `intent_profile.md` `meta.dharness_version` vs 현 plugin.json `version` 비교.
-
-    schema 위반 아님 (옵션 필드) — *warning/info* 영역. doctrine drift refit 권고 1줄.
-    `harness-validate`/`harness-status`가 본 결과를 사용자에게 노출.
-    (2026-05-23 doctrine drift refit 인프라.)
-    """
-    baseline_v = _extract_dharness_version_from_baseline()
-    current_v = _read_current_plugin_version()
-    if baseline_v is None or current_v is None or baseline_v == current_v:
-        return {"baseline": baseline_v, "current": current_v, "message": None}
-    msg = (
-        f"dharness plugin upgrade 감지 — baseline `{baseline_v}` → 현 `{current_v}`. "
-        f"doctrine refit 권고: `/harness:harness-audit` + `/harness:harness-validate` "
-        f"진단 후 발견 항목별 `/harness:harness-evolve`·`-add-skill`·`-remove`로 수정."
-    )
-    return {"baseline": baseline_v, "current": current_v, "message": msg}
-
-
 def _strip_quotes(value: str) -> str:
     v = value.strip()
     if len(v) >= 2 and v[0] == v[-1] and v[0] in ("'", '"'):
@@ -776,7 +730,7 @@ _VALIDATE_DIR = Path(__file__).resolve().parent
 # `chain.py:fn` / `structure.py:fn` / `schema.py:fn` — backtick 안 인용 패턴.
 # 본 정규식은 단일 출처 doctrine-registry.md의 fn-name drift 영구 차단을 위함 (R6 doctrine).
 _DOCTRINE_FN_REF_PATTERN = re.compile(
-    r"`(chain|chain_intent|structure|schema)\.py:([A-Za-z_][A-Za-z0-9_]*)`"
+    r"`(chain|chain_intent|chain_version|structure|schema)\.py:([A-Za-z_][A-Za-z0-9_]*)`"
 )
 _DEF_PATTERN = re.compile(r"^def\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
 # 모듈-레벨 UPPERCASE 상수 (e.g. INTENT_REQUIRED) — registry가 fn 외 canonical symbol 인용 시 허용.
@@ -828,7 +782,7 @@ def check_doctrine_registry_fn_refs() -> list[str]:
 
 # §6 inverse index row: ``| `<module>.py` | <ids cell> |``
 _INVERSE_MODULE_ROW_PATTERN = re.compile(
-    r"^\|\s*`(chain|chain_intent|structure|schema)\.py`[^|]*\|\s*([^|]+)\|",
+    r"^\|\s*`(chain|chain_intent|chain_version|structure|schema)\.py`[^|]*\|\s*([^|]+)\|",
     re.MULTILINE,
 )
 # §1-5 doctrine row: ``| W1 | ... |`` — capture id + rest of line for module ref scan.
@@ -1021,6 +975,7 @@ from chain_intent import (  # noqa: E402
     check_intent_required_doc_sync,
     check_required_user_confirmed_fields,
 )
+from chain_version import check_dharness_version_drift  # noqa: E402
 
 
 _METHODOLOGY_ENUM = {

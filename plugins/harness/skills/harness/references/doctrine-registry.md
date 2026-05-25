@@ -79,8 +79,8 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 
 | id | doctrine | 박제 위치 | 박제 commit | 정합 점검 |
 |---|---|---|---|---|
-| I1 | doctrine drift refit (v0.11.0) — plugin doctrine 업그레이드 후 기존 derived harness 끌어올리는 절차 (validate + audit 진단 → evolve/add-*/remove 수정) | `README.md:§Doctrine drift refit`, `chain.py:check_dharness_version_drift` | 2026-05-23 v0.11.0 (eba9d21) | `chain.py:check_dharness_version_drift` (info 1줄) |
-| I2 | meta.dharness_version anchor — `intent_profile.md` frontmatter에 합성 시점 plugin version 박제 (refit 진단 t=0) | `intent-profile-schema.md`, `harness-new.md`, `harness-baseline.md`, `SKILL.md:§Phase 2` | 2026-05-23 doctrine drift refit 인프라 | `chain.py:check_dharness_version_drift` |
+| I1 | doctrine drift refit (v0.11.0) — plugin doctrine 업그레이드 후 기존 derived harness 끌어올리는 절차 (validate + audit 진단 → evolve/add-*/remove 수정) | `README.md:§Doctrine drift refit`, `chain_version.py:check_dharness_version_drift` | 2026-05-23 v0.11.0 (eba9d21) | `chain_version.py:check_dharness_version_drift` (info 1줄) |
+| I2 | meta.dharness_version anchor — `intent_profile.md` frontmatter에 합성 시점 plugin version 박제 (refit 진단 t=0) | `intent-profile-schema.md`, `harness-new.md`, `harness-baseline.md`, `SKILL.md:§Phase 2` | 2026-05-23 doctrine drift refit 인프라 | `chain_version.py:check_dharness_version_drift` |
 | I3 | P2-A 박제 — Phase entry gate 박스(Phase 0/0.5/1/2/5)를 `phase-entry-gates.md`로 분리 (SKILL.md ≤500 LOC cap 정합) | `phase-entry-gates.md` | 2026-05-23 P2-A (00177f0, c856629) | manual (LOC cap 미자동 검증, 향후 chain.py 함수 후보) |
 | I4 | 상태 표기 — ✓/📜/⚠️ status 의미 단일 정의 (PoC 완료 / 후보 제안 / dynamic adoption 진입) | `team-tools-api.md:§0` | 2026-05-14 | manual |
 | I5 | P1-1 AC 검증 — team-tools-api §9 — 본 reference는 P1-1 진행 중 ❓ inferred → ✅ verified로 격상, 의사코드 영역은 본 reference cross-link 유지 | `team-tools-api.md:§9` | 2026-05-14 P1-1 | manual |
@@ -112,8 +112,9 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `grilling-loop.md` | W7·W8 |
 | `team-tools-api.md` | I4·I5 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W4·W8·S2·S3·S5·S6·S13·S14·I1·I2·R5·R6 (결정적 검증 dispatcher) |
+| `chain.py` | W4·W8·S2·S3·S5·S6·S13·S14·R5·R6 (결정적 검증 dispatcher) |
 | `chain_intent.py` (sub-cycle α+β 흡수 + cycle 6+ MVP 분리, 2026-05-25) | W1 (grilling 영역만)·W3 (5필드 + doc sync 2 fn)·W7 (grilling_log enum 1 fn)·W9 (intent_profile §8 4 fn) |
+| `chain_version.py` (sub-cycle δ 분리, 2026-05-25) | I1·I2 (dharness_version drift 1 fn) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
 | `harness-audit.md` | R1 |
