@@ -42,6 +42,7 @@ INTENT_PROFILE = REPO_ROOT / "_workspace" / "_baseline" / "intent_profile.md"
 PLUGIN_SKILL_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
 PLUGIN_REFERENCES_DIR = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references"
 PLUGIN_COMMANDS_DIR = REPO_ROOT / "plugins" / "harness" / "commands"
+PLUGIN_README = REPO_ROOT / "plugins" / "harness" / "README.md"
 
 AGENT_NAME_PATTERN = re.compile(r"^\s*name\s*:\s*[\"']?([\w-]+)[\"']?\s*$", re.MULTILINE)
 SKILL_DIR_PATTERN = re.compile(r"\.claude/skills/([\w-]+)")
@@ -1208,6 +1209,54 @@ def check_output_checklist_count_sync() -> list[str]:
     return errors
 
 
+# S14 박제 — commands/harness-*.md glob count 정본 ↔ 인용 박제 (README 카탈로그 헤더 + doctrine-registry R4 본문).
+_README_CATALOG_HEADER_PATTERN = re.compile(r"Slash command 카탈로그\s*\((\d+)\s*개\)")
+_DOCTRINE_R4_LINE_PATTERN = re.compile(
+    r"^\|\s*R4\s*\|.*?(\d+)\s*슬래시\s*커맨드.*?\|", re.MULTILINE
+)
+
+
+def check_command_count_sync() -> list[str]:
+    """S14 doctrine doc sync — commands/harness-*.md glob count ↔ README/doctrine-registry 인용 (2026-05-25).
+
+    `plugins/harness/commands/harness-*.md` glob count가 정본. 인용 박제 위치:
+      - `README.md`: `### Slash command 카탈로그 (N개)` 헤더
+      - `doctrine-registry.md` R4 행 본문 `N 슬래시 커맨드`
+    drift 시 FAIL. 명령 추가/제거 시 cross-doc 동기 강제.
+    """
+    if not PLUGIN_COMMANDS_DIR.exists():
+        return []
+    canonical = len(sorted(PLUGIN_COMMANDS_DIR.glob("harness-*.md")))
+    errors: list[str] = []
+
+    if PLUGIN_README.exists():
+        try:
+            text = PLUGIN_README.read_text(encoding="utf-8-sig")
+        except OSError:
+            text = ""
+        for m in _README_CATALOG_HEADER_PATTERN.finditer(text):
+            quoted = int(m.group(1))
+            if quoted != canonical:
+                errors.append(
+                    f"README.md: `Slash command 카탈로그 ({quoted}개)` ↔ "
+                    f"commands/harness-*.md glob 정본 {canonical} drift (S14)"
+                )
+
+    if _DOCTRINE_REGISTRY.exists():
+        try:
+            reg = _DOCTRINE_REGISTRY.read_text(encoding="utf-8-sig")
+        except OSError:
+            reg = ""
+        for m in _DOCTRINE_R4_LINE_PATTERN.finditer(reg):
+            quoted = int(m.group(1))
+            if quoted != canonical:
+                errors.append(
+                    f"doctrine-registry.md: R4 본문 `{quoted} 슬래시 커맨드` ↔ "
+                    f"commands/harness-*.md glob 정본 {canonical} drift (S14)"
+                )
+    return errors
+
+
 _METHODOLOGY_ENUM = {
     "tdd", "bdd", "ddd", "spec-driven", "trunk-based",
     "kanban", "scrum", "shape-up", "xp", "none", "unknown",
@@ -1455,6 +1504,7 @@ def main(argv: list[str]) -> int:
     errors.extend(check_doctrine_registry_inverse_index())
     errors.extend(check_intent_required_doc_sync())
     errors.extend(check_output_checklist_count_sync())
+    errors.extend(check_command_count_sync())
     errors.extend(check_advisor_handoff_adapter_consistency())
 
     version_drift = check_dharness_version_drift()

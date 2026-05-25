@@ -58,6 +58,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | S11 | catalog 확장 (trigger-keyword) — 새 signal·키워드 박제 시 `trigger-keyword-catalog.md`가 단일 출처 | `trigger-keyword-catalog.md:§5` | 2026-05-14 P6-8 | manual |
 | S12 | P0-2 빈 스킬 금지 — 스킬 디렉토리 생성 = `SKILL.md` 본문까지 채워 박제 (디렉토리만/frontmatter만 금지) | `SKILL.md:§Phase 6`, `skill-writing-guide.md:§최소 본문 골격` | 2026-05-22 P0 | `structure.py:check_skills_dir` |
 | S13 | output-checklist 인용 카운트 sync — `output-checklist.md` 본문 must/should `- [ ]` 항목 카운트 정본 ↔ 헤더·SKILL.md·harness-new.md 인용 박제 동기 (체크리스트 항목 추가/삭제 시 cross-doc drift 차단) | `output-checklist.md`, `SKILL.md:§Phase 8`, `harness-new.md` | 2026-05-25 cycle 1 stale count 정합 | `chain.py:check_output_checklist_count_sync` |
+| S14 | 슬래시 커맨드 카탈로그 sync — `plugins/harness/commands/harness-*.md` glob count 정본 ↔ `README.md` `Slash command 카탈로그 (N개)` 헤더 ↔ `doctrine-registry.md` R4 본문 `N 슬래시 커맨드` 인용 (명령 추가/제거 시 cross-doc drift 차단, R4 manual → deterministic 격상) | `README.md:§Slash command 카탈로그`, `doctrine-registry.md:§2 R4` | 2026-05-25 cycle 1' command count 결정적 sync | `chain.py:check_command_count_sync` |
 
 ## §4. 보안·회수 doctrine (Phase 5-2 MCP·permission 합성)
 
@@ -110,14 +111,14 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `grilling-loop.md` | W7·W8 |
 | `team-tools-api.md` | I4·I5 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W1·W3·W4·W7·W8·S2·S3·S5·S6·S13·I1·I2·R5·R6 (결정적 검증) |
+| `chain.py` | W1·W3·W4·W7·W8·S2·S3·S5·S6·S13·S14·I1·I2·R5·R6 (결정적 검증) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
 | `harness-audit.md` | R1 |
 | `harness-validate.md` | R1·R3·I1·I2 |
 | `harness-evolve.md` / `harness-adapt.md` | R2 |
 | `harness-new.md` / `remove.md` / `merge.md` / `split.md` / `status.md` | R3·W1·W4·S13 (`harness-new.md`만) |
-| `README.md` | R4·I1 |
+| `README.md` | R4·I1·S14 |
 
 ---
 

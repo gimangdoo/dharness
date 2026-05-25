@@ -1005,5 +1005,90 @@ class CheckOutputChecklistCountSyncRealRepo(unittest.TestCase):
         self.assertEqual(errors, [], f"output-checklist count drift: {errors}")
 
 
+class CheckCommandCountSync(_ChainTestBase):
+    """S14 doctrine doc sync — commands/harness-*.md glob ↔ README 카탈로그 + R4 본문 (2026-05-25)."""
+
+    def setUp(self):
+        super().setUp()
+        self._saved_cmds = chain.PLUGIN_COMMANDS_DIR
+        self._saved_readme = chain.PLUGIN_README
+        self._saved_reg = chain._DOCTRINE_REGISTRY
+        self.cmds = self.root / "commands"
+        self.cmds.mkdir()
+        self.readme = self.root / "README.md"
+        self.reg = self.root / "doctrine-registry.md"
+        chain.PLUGIN_COMMANDS_DIR = self.cmds
+        chain.PLUGIN_README = self.readme
+        chain._DOCTRINE_REGISTRY = self.reg
+
+    def tearDown(self):
+        chain.PLUGIN_COMMANDS_DIR = self._saved_cmds
+        chain.PLUGIN_README = self._saved_readme
+        chain._DOCTRINE_REGISTRY = self._saved_reg
+        super().tearDown()
+
+    def _write_commands(self, n: int) -> None:
+        for i in range(n):
+            (self.cmds / f"harness-cmd{i}.md").write_text(f"# cmd{i}\n", encoding="utf-8")
+
+    def _write_readme(self, quoted: int) -> None:
+        self.readme.write_text(
+            f"# README\n\n### Slash command 카탈로그 ({quoted}개)\n\nfoo bar\n",
+            encoding="utf-8",
+        )
+
+    def _write_registry(self, quoted: int) -> None:
+        self.reg.write_text(
+            "| id | doctrine | 박제 | 근거 | 정합 |\n"
+            "|---|---|---|---|---|\n"
+            f"| R4 | 명령 분기 (README 표 — 변경 유형별 {quoted} 슬래시 커맨드 매핑) | `README.md` | 2026 | manual |\n",
+            encoding="utf-8",
+        )
+
+    def test_no_commands_dir_passes(self):
+        chain.PLUGIN_COMMANDS_DIR = self.root / "nonexistent"
+        self.assertEqual(chain.check_command_count_sync(), [])
+
+    def test_full_sync_passes(self):
+        self._write_commands(17)
+        self._write_readme(17)
+        self._write_registry(17)
+        self.assertEqual(chain.check_command_count_sync(), [])
+
+    def test_readme_drift_detected(self):
+        self._write_commands(17)
+        self._write_readme(16)
+        self._write_registry(17)
+        errors = chain.check_command_count_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("README.md", errors[0])
+        self.assertIn("16개", errors[0])
+        self.assertIn("정본 17", errors[0])
+
+    def test_registry_drift_detected(self):
+        self._write_commands(17)
+        self._write_readme(17)
+        self._write_registry(15)
+        errors = chain.check_command_count_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("doctrine-registry.md", errors[0])
+        self.assertIn("15 슬래시 커맨드", errors[0])
+
+    def test_both_drift_reports_each(self):
+        self._write_commands(17)
+        self._write_readme(16)
+        self._write_registry(15)
+        errors = chain.check_command_count_sync()
+        self.assertEqual(len(errors), 2)
+
+
+class CheckCommandCountSyncRealRepo(unittest.TestCase):
+    """실 repo commands/harness-*.md ↔ README 카탈로그 + doctrine-registry R4 동기 회귀."""
+
+    def test_real_repo_no_command_count_drift(self):
+        errors = chain.check_command_count_sync()
+        self.assertEqual(errors, [], f"command count drift: {errors}")
+
+
 if __name__ == "__main__":
     unittest.main()
