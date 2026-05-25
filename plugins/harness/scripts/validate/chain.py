@@ -723,119 +723,10 @@ def check_plugin_internal_references() -> list[str]:
     return errors
 
 
-_DOCTRINE_REGISTRY = (
-    PLUGIN_REFERENCES_DIR / "doctrine-registry.md"
-)
+# R6 self-host (chain_registry.py로 fn 분할, sub-cycle ζ) — path constant는 chain.py 잔류:
+# chain_doc_sync.py/chain_registry.py에서 chain._DOCTRINE_REGISTRY 참조 + test_chain monkey-patch 호환.
+_DOCTRINE_REGISTRY = PLUGIN_REFERENCES_DIR / "doctrine-registry.md"
 _VALIDATE_DIR = Path(__file__).resolve().parent
-# `chain.py:fn` / `structure.py:fn` / `schema.py:fn` — backtick 안 인용 패턴.
-# 본 정규식은 단일 출처 doctrine-registry.md의 fn-name drift 영구 차단을 위함 (R6 doctrine).
-_DOCTRINE_FN_REF_PATTERN = re.compile(
-    r"`(chain|chain_intent|chain_version|chain_doc_sync|chain_advisor|structure|schema)\.py:([A-Za-z_][A-Za-z0-9_]*)`"
-)
-_DEF_PATTERN = re.compile(r"^def\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
-# 모듈-레벨 UPPERCASE 상수 (e.g. INTENT_REQUIRED) — registry가 fn 외 canonical symbol 인용 시 허용.
-_CONST_PATTERN = re.compile(r"^([A-Z_][A-Z0-9_]*)\s*=", re.MULTILINE)
-
-
-def _collect_module_fns(module_name: str) -> set[str]:
-    path = _VALIDATE_DIR / f"{module_name}.py"
-    if not path.exists():
-        return set()
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return set()
-    return set(_DEF_PATTERN.findall(text)) | set(_CONST_PATTERN.findall(text))
-
-
-def check_doctrine_registry_fn_refs() -> list[str]:
-    """doctrine-registry.md의 `chain.py:<fn>`·`structure.py:<fn>`·`schema.py:<fn>` 인용 ↔
-    실제 모듈 def 존재 정합 (R6 doctrine, 2026-05-24).
-
-    drift 영구 차단: registry 인용이 실 fn명과 어긋나면 contributor가 잘못된 경로로
-    정합 점검을 시도. registry는 단일 출처 색인이므로 결정적 검증 필수.
-    """
-    errors: list[str] = []
-    if not _DOCTRINE_REGISTRY.exists():
-        return errors
-    try:
-        text = _DOCTRINE_REGISTRY.read_text(encoding="utf-8-sig")
-    except OSError:
-        return errors
-    scanned = _strip_code_fences(text)
-    fn_cache: dict[str, set[str]] = {}
-    seen: set[tuple[str, str]] = set()
-    for module, fn in _DOCTRINE_FN_REF_PATTERN.findall(scanned):
-        key = (module, fn)
-        if key in seen:
-            continue
-        seen.add(key)
-        if module not in fn_cache:
-            fn_cache[module] = _collect_module_fns(module)
-        if fn not in fn_cache[module]:
-            errors.append(
-                f"doctrine-registry.md: `{module}.py:{fn}` 인용 — 실제 fn 미존재 "
-                f"(R6 doctrine drift)"
-            )
-    return errors
-
-
-# §6 inverse index row: ``| `<module>.py` | <ids cell> |``
-_INVERSE_MODULE_ROW_PATTERN = re.compile(
-    r"^\|\s*`(chain|chain_intent|chain_version|chain_doc_sync|chain_advisor|structure|schema)\.py`[^|]*\|\s*([^|]+)\|",
-    re.MULTILINE,
-)
-# §1-5 doctrine row: ``| W1 | ... |`` — capture id + rest of line for module ref scan.
-_DOCTRINE_ROW_LINE_PATTERN = re.compile(
-    r"^\|\s*((?:W|R|S|P|I)\d+)\s*\|([^\n]*)$",
-    re.MULTILINE,
-)
-_DOCTRINE_ID_TOKEN_PATTERN = re.compile(r"\b((?:W|R|S|P|I)\d+)\b")
-
-
-def check_doctrine_registry_inverse_index() -> list[str]:
-    """doctrine-registry.md §6 역색인 ↔ §1-5 doctrine id 매핑 정합 (R6 확장, 2026-05-24).
-
-    §1-5 row가 `chain.py:<fn>` / `structure.py:<fn>` / `schema.py:<fn>`를 인용하면
-    §6 inverse index의 해당 module 행에도 그 doctrine id가 등재돼 있어야 한다.
-    contributor가 §6 색인 read만으로 doctrine ↔ module 매핑을 추적하므로 drift 차단.
-    """
-    errors: list[str] = []
-    if not _DOCTRINE_REGISTRY.exists():
-        return errors
-    try:
-        text = _DOCTRINE_REGISTRY.read_text(encoding="utf-8-sig")
-    except OSError:
-        return errors
-    scanned = _strip_code_fences(text)
-
-    inverse: dict[str, set[str]] = {}
-    for module, ids_cell in _INVERSE_MODULE_ROW_PATTERN.findall(scanned):
-        ids = set(_DOCTRINE_ID_TOKEN_PATTERN.findall(ids_cell))
-        inverse.setdefault(module, set()).update(ids)
-
-    reported: set[tuple[str, str]] = set()
-    for match in _DOCTRINE_ROW_LINE_PATTERN.finditer(scanned):
-        doctrine_id = match.group(1)
-        row_body = match.group(2)
-        for module, _fn in _DOCTRINE_FN_REF_PATTERN.findall(row_body):
-            key = (doctrine_id, module)
-            if key in reported:
-                continue
-            if module not in inverse:
-                reported.add(key)
-                errors.append(
-                    f"doctrine-registry.md: §1-5 {doctrine_id} → `{module}.py:` "
-                    f"인용 — §6 inverse index에 `{module}.py` 행 부재 (R6 확장)"
-                )
-                continue
-            if doctrine_id not in inverse[module]:
-                reported.add(key)
-                errors.append(
-                    f"doctrine-registry.md: §1-5 {doctrine_id} → `{module}.py:` "
-                    f"인용 — §6 `{module}.py` 행에 {doctrine_id} 미등재 (R6 확장)"
-                )
-    return errors
 
 
 # chain_intent.py 분할 (2026-05-25):
@@ -859,6 +750,10 @@ from chain_doc_sync import (  # noqa: E402
 
 
 from chain_advisor import check_advisor_handoff_adapter_consistency  # noqa: E402
+from chain_registry import (  # noqa: E402
+    check_doctrine_registry_fn_refs,
+    check_doctrine_registry_inverse_index,
+)
 
 
 def find_orchestrator() -> Path | None:

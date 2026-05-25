@@ -38,7 +38,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | R3 | 사용자 확정 doctrine (도메인 단정·중요 합성 결정은 사용자 명시 confirm 후만) | `harness-new.md:§모드 분기`, `harness-remove.md:§사용자 확정`, `harness-merge.md`, `harness-split.md`, `harness-status.md`, `harness-validate.md` | 2026-05-14 | manual (각 명령 confirm gate) |
 | R4 | 명령 분기 (README 표 — 변경 유형별 17 슬래시 커맨드 매핑) | `README.md:§명령 분기 doctrine` | 2026-05-14, 2026-05-23 v0.11.0 추가 | manual |
 | R5 | P2 self-host (`chain.py`는 harness plugin 본체 내부 cross-reference만 검증 — derived 프로젝트 검증은 별도 산출) | `chain.py:check_plugin_internal_references` | 2026-05-15 | `chain.py` 본체 |
-| R6 | doctrine-registry fn명 + 역색인 정합 ((a) registry 인용 `chain.py:<fn>` ↔ 실제 fn 존재 검증, (b) §1-5 module 인용 ↔ §6 inverse index 매핑 정합 — drift 영구 차단) | `doctrine-registry.md`, `chain.py:check_doctrine_registry_fn_refs`, `chain.py:check_doctrine_registry_inverse_index` | 2026-05-24 review patch + 2026-05-24 R6 확장 | `chain.py:check_doctrine_registry_fn_refs` + `chain.py:check_doctrine_registry_inverse_index` |
+| R6 | doctrine-registry fn명 + 역색인 정합 ((a) registry 인용 `chain.py:<fn>` ↔ 실제 fn 존재 검증, (b) §1-5 module 인용 ↔ §6 inverse index 매핑 정합 — drift 영구 차단) | `doctrine-registry.md`, `chain_registry.py:check_doctrine_registry_fn_refs`, `chain_registry.py:check_doctrine_registry_inverse_index` | 2026-05-24 review patch + 2026-05-24 R6 확장 | `chain_registry.py:check_doctrine_registry_fn_refs` + `chain_registry.py:check_doctrine_registry_inverse_index` |
 
 ## §3. 합성·구조 doctrine (Phase 4·5·5-2·6·7 산출물 invariant)
 
@@ -112,11 +112,12 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `grilling-loop.md` | W7·W8 |
 | `team-tools-api.md` | I4·I5 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W4·S2·S3·S5·S6·R5·R6 (결정적 검증 dispatcher) |
+| `chain.py` | W4·S2·S3·S5·S6·R5 (결정적 검증 dispatcher) |
 | `chain_intent.py` (sub-cycle α+β 흡수 + cycle 6+ MVP 분리, 2026-05-25) | W1 (grilling 영역만)·W3 (5필드 + doc sync 2 fn)·W7 (grilling_log enum 1 fn)·W9 (intent_profile §8 4 fn) |
 | `chain_version.py` (sub-cycle δ 분리, 2026-05-25) | I1·I2 (dharness_version drift 1 fn) |
 | `chain_doc_sync.py` (sub-cycle ε 분리, 2026-05-25) | S13 (output-checklist count)·S14 (command count) |
 | `chain_advisor.py` (sub-cycle γ 분리, 2026-05-25) | W8 (advisor handoff adapter 1 fn + 5 cross-field 룰) |
+| `chain_registry.py` (sub-cycle ζ 분리, 2026-05-25) | R6 (doctrine-registry fn refs + inverse index 2 fn — 자기참조 박제) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
 | `harness-audit.md` | R1 |
