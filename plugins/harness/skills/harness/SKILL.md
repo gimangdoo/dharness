@@ -461,7 +461,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > | Phase 3 | (없음 — Phase 1+2 합성) | 도메인 분석 |
 > | Phase 4 | `agent-design-patterns.md`, `team-examples.md` | 팀 패턴 선택 |
 > | Phase 5 | `phase-entry-gates.md` ("Phase 5 — 🚧 entry 게이트 — Cardinality justification" 절), `agent-design-patterns.md`, `team-examples.md`, `qa-agent-guide.md` (QA 에이전트 정의 시) | 에이전트 정의 |
-> | Phase 5-2 | `permission-profiles.md`, `mcp-recommendation.md`, `trigger-keyword-catalog.md` | MCP·도구 할당 |
+> | Phase 5-2 | `permission-profiles.md` + 3 sibling (`-inventory.md` / `-synthesis.md` / `-dynamic-adoption.md`, P7 분리, 2026-05-23), `mcp-recommendation.md`, `trigger-keyword-catalog.md` | MCP·도구 할당 |
 > | Phase 6 | `skill-writing-guide.md`, `skill-testing-guide.md` | 스킬 생성 |
 > | Phase 7 | `orchestrator-template.md` | CLAUDE.md 통합 |
 > | Phase 8 | `output-checklist.md` (must 8 / should 9 catalog), `skill-testing-guide.md` (트리거 회귀) | 검증 |
@@ -488,6 +488,10 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 - **Project Inquiry 가이드**: `references/project-inquiry.md` — 두 브랜치별 채우기 전략, profile-finding → question 매핑 룰
 - **Intent Profile 스키마**: `references/intent-profile-schema.md` — Phase 2 출력 표준 형식 + greenfield/brownfield 인스턴스 예시
 - **Runtime Adaptation 가이드**: `references/runtime-adaptation.md` — Phase 10 telemetry schema, capture 신호, diagnostic 룰, adapt 룰, 승인 UX
+- **Permission Profiles (main)**: `references/permission-profiles.md` — §1 3-layer / §2 8 capability profile / §4 결정 트리 / §5-2 anti-pattern / §5-3 deny / §6 안전 정책
+- **Permission Profiles Inventory** (P7 분리): `references/permission-profiles-inventory.md` — §3 MCP 후보 인벤토리 + §3-0 verification_status + §3-1 T0 매트릭스
+- **Permission Profiles Synthesis** (P7 분리): `references/permission-profiles-synthesis.md` — §5-1 에이전트 frontmatter 합성 (a/b/c — Layer B / Layer A+B / 모델 by role Q2 doctrine)
+- **Permission Profiles Dynamic Adoption** (P7 분리): `references/permission-profiles-dynamic-adoption.md` — §10 5-step + §10-4 rollback + §10-7 multi-writer (P4)
 - **MCP Recommendation 엔진**: `references/mcp-recommendation.md` — Phase 5-2 합성 시 자동 추천 (신호 추출·후보 풀·3축 점수·캐시·거부 학습, 10 신호 S1~S10)
 - **Team Tools API**: `references/team-tools-api.md` — sub-agent 활용 시 TeamCreate / SendMessage / TaskCreate 등 도구 schema
 - **Trigger Keyword Catalog**: `references/trigger-keyword-catalog.md` — 10 signal × Korean·English 키워드 단일 출처 (P6-8, 2026-05-14). Phase 5 description 작성 + Phase 5-2 signal 추출 시 should/NOT 예시 catalog
