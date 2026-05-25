@@ -464,7 +464,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > | Phase 5-2 | `permission-profiles.md`, `mcp-recommendation.md`, `trigger-keyword-catalog.md` | MCP·도구 할당 |
 > | Phase 6 | `skill-writing-guide.md`, `skill-testing-guide.md` | 스킬 생성 |
 > | Phase 7 | `orchestrator-template.md` | CLAUDE.md 통합 |
-> | Phase 8 | `output-checklist.md` (must 9 / should 9 catalog), `skill-testing-guide.md` (트리거 회귀) | 검증 |
+> | Phase 8 | `output-checklist.md` (must 8 / should 9 catalog), `skill-testing-guide.md` (트리거 회귀) | 검증 |
 > | Phase 9 | (사용자 발화 종속 — case-by-case) | 진화 |
 > | Phase 10 | `runtime-adaptation.md` | telemetry drift 적응 |
 > | Sub-agent 활용 | `team-tools-api.md` | Phase 1/5/6/8 sub-agent 격리 시 |
@@ -475,7 +475,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > **검증:** 각 reference 상단 헤더와 본 표 일치 — `harness-validate`가 향후 chain 검증에 포함 가능 (P0-2 doctrine 정합).
 
 - **Phase Entry Gates** (Phase 0/0.5/1/2/5 entry 게이트 doctrine 박스 모음, 2026-05-23 P2-A 분리): `references/phase-entry-gates.md`
-- **Output Checklist** (must 9 / should 9 항목 catalog, 2026-05-23 P2-A 분리): `references/output-checklist.md`
+- **Output Checklist** (must 8 / should 9 항목 catalog, 2026-05-23 P2-A 분리): `references/output-checklist.md`
 - **Doctrine Registry** (전 영역 doctrine 단일 색인 — id·박제 위치·근거 commit·정합 점검, 2026-05-23 P9): `references/doctrine-registry.md`
 - 하네스 패턴: `references/agent-design-patterns.md`
 - 기존 하네스 예시 (실제 파일 전문 포함): `references/team-examples.md`

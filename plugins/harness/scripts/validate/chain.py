@@ -1132,6 +1132,82 @@ def check_intent_required_doc_sync() -> list[str]:
     return errors
 
 
+# S13 박제 — output-checklist.md 본문 카운트 ↔ 인용 박제 정합 검증 대상 파일.
+_OUTPUT_CHECKLIST_QUOTE_TARGETS = (
+    ("SKILL.md", lambda: PLUGIN_SKILL_MD),
+    ("harness-new.md", lambda: PLUGIN_COMMANDS_DIR / "harness-new.md"),
+)
+_OUTPUT_CHECKLIST_QUOTE_PATTERN = re.compile(r"must\s+(\d+)\s*/\s*should\s+(\d+)")
+_OUTPUT_CHECKLIST_HEADER_PATTERN = re.compile(
+    r"must\s*\(\s*(\d+)\s*\)\s*/\s*should\s*\(\s*(\d+)\s*\)"
+)
+
+
+def check_output_checklist_count_sync() -> list[str]:
+    """S13 doctrine doc sync — output-checklist.md must/should 카운트 ↔ 인용 박제 정합 (2026-05-25).
+
+    `output-checklist.md` 본문 ## 차단 (must) / ## 권장 (should) 섹션 `- [ ]` 항목 카운트가
+    정본. 헤더 `must (N) / should (M)` 박제 + SKILL.md·harness-new.md 인용 박제 `must N / should M`
+    토큰이 정본과 mismatch 시 FAIL. 체크리스트 항목 추가/삭제 시 cross-doc 동기 강제.
+    """
+    checklist = PLUGIN_REFERENCES_DIR / "output-checklist.md"
+    if not checklist.exists():
+        return []
+    try:
+        body = checklist.read_text(encoding="utf-8-sig")
+    except OSError:
+        return []
+
+    must_count = 0
+    should_count = 0
+    current: str | None = None
+    for raw in body.splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("## "):
+            header = stripped.lower()
+            if "must" in header or "차단" in header:
+                current = "must"
+            elif "should" in header or "권장" in header:
+                current = "should"
+            else:
+                current = None
+            continue
+        if current == "must" and stripped.startswith("- [ ]"):
+            must_count += 1
+        elif current == "should" and stripped.startswith("- [ ]"):
+            should_count += 1
+
+    errors: list[str] = []
+
+    # output-checklist.md 헤더 `must (N) / should (M)` 정합.
+    for m in _OUTPUT_CHECKLIST_HEADER_PATTERN.finditer(body):
+        mu, sh = int(m.group(1)), int(m.group(2))
+        if mu != must_count or sh != should_count:
+            errors.append(
+                f"output-checklist.md: 헤더 `must ({mu}) / should ({sh})` ↔ "
+                f"본문 정본 `must {must_count} / should {should_count}` drift (S13)"
+            )
+
+    # 인용 박제 위치 — `must N / should M` 토큰.
+    for label, resolver in _OUTPUT_CHECKLIST_QUOTE_TARGETS:
+        path = resolver()
+        if not path.exists():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        for m in _OUTPUT_CHECKLIST_QUOTE_PATTERN.finditer(text):
+            mu, sh = int(m.group(1)), int(m.group(2))
+            if mu != must_count or sh != should_count:
+                errors.append(
+                    f"{label}: 인용 박제 `must {mu} / should {sh}` ↔ "
+                    f"output-checklist.md 정본 `must {must_count} / should {should_count}` "
+                    f"drift (S13)"
+                )
+    return errors
+
+
 _METHODOLOGY_ENUM = {
     "tdd", "bdd", "ddd", "spec-driven", "trunk-based",
     "kanban", "scrum", "shape-up", "xp", "none", "unknown",
@@ -1378,6 +1454,7 @@ def main(argv: list[str]) -> int:
     errors.extend(check_doctrine_registry_fn_refs())
     errors.extend(check_doctrine_registry_inverse_index())
     errors.extend(check_intent_required_doc_sync())
+    errors.extend(check_output_checklist_count_sync())
     errors.extend(check_advisor_handoff_adapter_consistency())
 
     version_drift = check_dharness_version_drift()

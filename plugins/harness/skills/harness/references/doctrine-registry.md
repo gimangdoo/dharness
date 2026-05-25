@@ -35,7 +35,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | R1 | audit ↔ validate 분리 (LLM·deterministic hybrid — audit는 추론, validate는 결정, adapt는 telemetry) | `harness-audit.md:§3개 명령 분리 doctrine`, `harness-validate.md:§audit ↔ validate 분리 doctrine` | 2026-05-13C, 2026-05-14 | manual (명령 호출자 책임) |
 | R2 | 진화 명령 3분기 (`evolve` 수동 / `audit` 추론 / `adapt` 자동) | `harness-evolve.md:§진화 명령 3분기 doctrine`, `harness-adapt.md:§진화 명령 3분기 doctrine` | 2026-05-14 | manual |
 | R3 | 사용자 확정 doctrine (도메인 단정·중요 합성 결정은 사용자 명시 confirm 후만) | `harness-new.md:§모드 분기`, `harness-remove.md:§사용자 확정`, `harness-merge.md`, `harness-split.md`, `harness-status.md`, `harness-validate.md` | 2026-05-14 | manual (각 명령 confirm gate) |
-| R4 | 명령 분기 (README 표 — 변경 유형별 16 슬래시 커맨드 매핑) | `README.md:§명령 분기 doctrine` | 2026-05-14, 2026-05-23 v0.11.0 추가 | manual |
+| R4 | 명령 분기 (README 표 — 변경 유형별 17 슬래시 커맨드 매핑) | `README.md:§명령 분기 doctrine` | 2026-05-14, 2026-05-23 v0.11.0 추가 | manual |
 | R5 | P2 self-host (`chain.py`는 harness plugin 본체 내부 cross-reference만 검증 — derived 프로젝트 검증은 별도 산출) | `chain.py:check_plugin_internal_references` | 2026-05-15 | `chain.py` 본체 |
 | R6 | doctrine-registry fn명 + 역색인 정합 ((a) registry 인용 `chain.py:<fn>` ↔ 실제 fn 존재 검증, (b) §1-5 module 인용 ↔ §6 inverse index 매핑 정합 — drift 영구 차단) | `doctrine-registry.md`, `chain.py:check_doctrine_registry_fn_refs`, `chain.py:check_doctrine_registry_inverse_index` | 2026-05-24 review patch + 2026-05-24 R6 확장 | `chain.py:check_doctrine_registry_fn_refs` + `chain.py:check_doctrine_registry_inverse_index` |
 
@@ -57,6 +57,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | S10 | 합성 default 풀 (P6-9) — Phase 5-2 inline `mcpServers:` 자동 합성 시 ✓ 외 status는 금지 | `permission-profiles-inventory.md:§3-0 P6-9` (P7 분리, 2026-05-23) | 2026-05-14 P6-9 | manual (R-7 confirm gate) |
 | S11 | catalog 확장 (trigger-keyword) — 새 signal·키워드 박제 시 `trigger-keyword-catalog.md`가 단일 출처 | `trigger-keyword-catalog.md:§5` | 2026-05-14 P6-8 | manual |
 | S12 | P0-2 빈 스킬 금지 — 스킬 디렉토리 생성 = `SKILL.md` 본문까지 채워 박제 (디렉토리만/frontmatter만 금지) | `SKILL.md:§Phase 6`, `skill-writing-guide.md:§최소 본문 골격` | 2026-05-22 P0 | `structure.py:check_skills_dir` |
+| S13 | output-checklist 인용 카운트 sync — `output-checklist.md` 본문 must/should `- [ ]` 항목 카운트 정본 ↔ 헤더·SKILL.md·harness-new.md 인용 박제 동기 (체크리스트 항목 추가/삭제 시 cross-doc drift 차단) | `output-checklist.md`, `SKILL.md:§Phase 8`, `harness-new.md` | 2026-05-25 cycle 1 stale count 정합 | `chain.py:check_output_checklist_count_sync` |
 
 ## §4. 보안·회수 doctrine (Phase 5-2 MCP·permission 합성)
 
@@ -93,7 +94,8 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 
 | 파일 | 박제된 doctrine id |
 |---|---|
-| `SKILL.md` | W1·W2·W3·W4·W6·W8·S1·S12 (포인터·박스) |
+| `SKILL.md` | W1·W2·W3·W4·W6·W8·S1·S12·S13 (포인터·박스) |
+| `output-checklist.md` | S13 (must/should 정본 카운트) |
 | `phase-entry-gates.md` | W1·W2·W3·W4·W5·W7 (본문) |
 | `permission-profiles.md` (main) | S8·P1·P2·P5 |
 | `permission-profiles-inventory.md` (P7 분리) | S10 (§3-0 합성 default 풀) |
@@ -108,13 +110,13 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `grilling-loop.md` | W7·W8 |
 | `team-tools-api.md` | I4·I5 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W1·W3·W4·W7·W8·S2·S3·S5·S6·I1·I2·R5·R6 (결정적 검증) |
+| `chain.py` | W1·W3·W4·W7·W8·S2·S3·S5·S6·S13·I1·I2·R5·R6 (결정적 검증) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
 | `harness-audit.md` | R1 |
 | `harness-validate.md` | R1·R3·I1·I2 |
 | `harness-evolve.md` / `harness-adapt.md` | R2 |
-| `harness-new.md` / `remove.md` / `merge.md` / `split.md` / `status.md` | R3·W1·W4 |
+| `harness-new.md` / `remove.md` / `merge.md` / `split.md` / `status.md` | R3·W1·W4·S13 (`harness-new.md`만) |
 | `README.md` | R4·I1 |
 
 ---

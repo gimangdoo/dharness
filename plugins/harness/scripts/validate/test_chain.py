@@ -922,5 +922,88 @@ class CheckAdvisorHandoffAdapterRealRepo(unittest.TestCase):
         self.assertEqual(errors, [], f"adapter doctrine 위반: {errors}")
 
 
+class CheckOutputChecklistCountSync(_ChainTestBase):
+    """S13 doctrine doc sync — output-checklist.md must/should ↔ 인용 박제 정합 (2026-05-25)."""
+
+    def setUp(self):
+        super().setUp()
+        self._saved_skill = chain.PLUGIN_SKILL_MD
+        self._saved_refs = chain.PLUGIN_REFERENCES_DIR
+        self._saved_cmds = chain.PLUGIN_COMMANDS_DIR
+        self.skill = self.root / "SKILL.md"
+        self.refs = self.root / "references"
+        self.cmds = self.root / "commands"
+        self.refs.mkdir()
+        self.cmds.mkdir()
+        chain.PLUGIN_SKILL_MD = self.skill
+        chain.PLUGIN_REFERENCES_DIR = self.refs
+        chain.PLUGIN_COMMANDS_DIR = self.cmds
+
+    def tearDown(self):
+        chain.PLUGIN_SKILL_MD = self._saved_skill
+        chain.PLUGIN_REFERENCES_DIR = self._saved_refs
+        chain.PLUGIN_COMMANDS_DIR = self._saved_cmds
+        super().tearDown()
+
+    def _write_checklist(self, must: int, should: int, header_must: int | None = None,
+                          header_should: int | None = None) -> None:
+        hm = must if header_must is None else header_must
+        hs = should if header_should is None else header_should
+        body = [
+            f"# 산출물 체크리스트 — must ({hm}) / should ({hs})",
+            "",
+            "## 차단 (must)",
+            "",
+        ]
+        body.extend(f"- [ ] **m{i}** — body" for i in range(must))
+        body.append("")
+        body.append("## 권장 (should)")
+        body.append("")
+        body.extend(f"- [ ] **s{i}** — body" for i in range(should))
+        (self.refs / "output-checklist.md").write_text("\n".join(body) + "\n", encoding="utf-8")
+
+    def test_no_checklist_passes(self):
+        self.assertEqual(chain.check_output_checklist_count_sync(), [])
+
+    def test_full_sync_passes(self):
+        self._write_checklist(must=8, should=9)
+        self.skill.write_text("Phase 8 catalog must 8 / should 9 항목.\n", encoding="utf-8")
+        (self.cmds / "harness-new.md").write_text(
+            "체크리스트의 17개 항목(must 8 / should 9, 단일 출처).\n", encoding="utf-8"
+        )
+        self.assertEqual(chain.check_output_checklist_count_sync(), [])
+
+    def test_skill_quote_drift_detected(self):
+        self._write_checklist(must=8, should=9)
+        self.skill.write_text("Phase 8 catalog must 9 / should 9 항목.\n", encoding="utf-8")
+        errors = chain.check_output_checklist_count_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("SKILL.md", errors[0])
+        self.assertIn("must 9 / should 9", errors[0])
+        self.assertIn("must 8 / should 9", errors[0])
+
+    def test_header_drift_detected(self):
+        # 본문 must=8, 헤더 must=9 — drift.
+        self._write_checklist(must=8, should=9, header_must=9, header_should=9)
+        errors = chain.check_output_checklist_count_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("output-checklist.md", errors[0])
+        self.assertIn("헤더", errors[0])
+
+    def test_multi_quote_drift_reports_each(self):
+        self._write_checklist(must=8, should=9)
+        self.skill.write_text("must 7 / should 9 그리고 must 8 / should 8 두 인용.\n", encoding="utf-8")
+        errors = chain.check_output_checklist_count_sync()
+        self.assertEqual(len(errors), 2)
+
+
+class CheckOutputChecklistCountSyncRealRepo(unittest.TestCase):
+    """실 repo output-checklist.md ↔ SKILL.md/harness-new.md 인용 동기 회귀."""
+
+    def test_real_repo_no_count_drift(self):
+        errors = chain.check_output_checklist_count_sync()
+        self.assertEqual(errors, [], f"output-checklist count drift: {errors}")
+
+
 if __name__ == "__main__":
     unittest.main()
