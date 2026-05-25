@@ -113,7 +113,7 @@ argument-hint: <agent|skill> <통합본 이름> <원본 2개 이상, 공백 구�
 📋 다음 권고:
   - `/harness:harness-audit` — LLM 추론 영역 일관성 검토
   - `/harness:harness-validate` — deterministic 구조·schema·chain 재검증
-  - (스킬 통합 시) Phase 8-4 트리거 회귀 8+8 테스트 권고
+  - (스킬 통합 시) Phase 8-4 트리거 회귀 테스트 권고 (쿼리 카운트는 `references/skill-testing-guide.md` §7 정본)
 ```
 
 ## 범위 외

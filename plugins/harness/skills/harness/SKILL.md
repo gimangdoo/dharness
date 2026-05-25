@@ -332,7 +332,7 @@ CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태�
 
 생성된 하네스를 검증한다.
 
-> **Sub-agent 격리 doctrine (P6-3, 2026-05-14)**: 검증 7단계(8-1~8-7)를 sub-agent 병렬 호출. 단 *비용 큰* 8-3 (실행 테스트)과 8-4 (트리거 회귀 검증 should/should-NOT 8+8)는 사용자 confirm 후 진행. 8-1·8-2·8-5·8-6·8-7은 sub-agent 5 병렬. parent는 결과 통합 + 보고만 담당.
+> **Sub-agent 격리 doctrine (P6-3, 2026-05-14)**: 검증 7단계(8-1~8-7)를 sub-agent 병렬 호출. 단 *비용 큰* 8-3 (실행 테스트)과 8-4 (트리거 회귀 검증 — 쿼리 카운트 정본은 [`references/skill-testing-guide.md` §7](./references/skill-testing-guide.md))는 사용자 confirm 후 진행. 8-1·8-2·8-5·8-6·8-7은 sub-agent 5 병렬. parent는 결과 통합 + 보고만 담당.
 >
 > **결정적 검증 위임 (2026-05-14)**: 8-1 구조 검증은 `/harness:harness-validate` (LLM 0, plugin scripts 번들)로 위임 가능 — sub-agent 호출 비용 절감.
 
