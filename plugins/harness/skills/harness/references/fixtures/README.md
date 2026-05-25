@@ -45,7 +45,9 @@ $env:BRAVE_API_KEY="<key>"; node plugins\harness\skills\harness\references\fixtu
 | 디렉토리 | 시나리오 | 패턴 |
 |----------|----------|------|
 | `synthesis_example/data-analyst/` | sqlite 분석 에이전트 | **단일 inline `mcpServers:`** (sqlite 1종) |
-| `synthesis_example/web-research/` | fetch + memory 리서치 에이전트 | **멀티 inline `mcpServers:`** (fetch + memory 2종 동시 등재) |
+| `synthesis_example/web-research/` | fetch + memory 리서치 에이전트 | **멀티 inline `mcpServers:`** (fetch + memory 2종 — npx 동종 runtime) |
+| `synthesis_example/code-test/` | 코드 review + commit 어시스턴트 | **멀티 inline `mcpServers:`** (filesystem + git 2종 — uvx + npx 혼합 runtime) |
+| `synthesis_example/reasoning-aux/` | reasoning chain + timezone 의사결정 어시스턴트 | **멀티 inline `mcpServers:`** (sequential-thinking + time 2종 — 완전 read-only profile) |
 
 각 디렉토리에 `.agent.md` / `settings.json` / `changelog_row.md` / `README.md` 4 파일 — 4 산출물 1세트 ([§10 Step 5](../permission-profiles.md#10-2-5-step-채택-절차-모든-트리거-공통)).
 
