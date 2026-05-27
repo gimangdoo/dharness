@@ -14,7 +14,7 @@ step 1에서 `_workspace/_baseline/` 또는 `_workspace/_critique_phase*_*.md`�
 2. **사용자 게이트**: "이전 구축이 Phase {N}까지 완료됨 — Phase {N+1}부터 재개할까, 처음부터 다시 할까?"를 제시한다.
 3. **handoff 문서 불요**: phase 산출물(`_workspace/_baseline/*.md`, `_critique_phase*`)이 구조화된 채 박제돼 있어 그 자체가 handoff다 — 별도 요약 문서를 만들지 않는다. 재개 세션은 해당 파일을 *재read*하여 컨텍스트를 복원한다.
 
-**이유:** 11-phase factory는 긴 워크플로우 — context 한계로 중간 종료 시 처음부터 재실행은 Phase 1·2 재분석 비용 낭비. 산출물이 이미 파일로 박제돼 있으므로 재개가 정답. mattpocock `handoff` 스킬의 "대화 → handoff 문서" 개념을 factory에 적용하되, 산출물 파일이 이미 handoff 역할을 하므로 별도 문서 생성은 생략.
+**이유:** 15-phase factory(11 base + 4 self-critique)는 긴 워크플로우 — context 한계로 중간 종료 시 처음부터 재실행은 Phase 1·2 재분석 비용 낭비. 산출물이 이미 파일로 박제돼 있으므로 재개가 정답. mattpocock `handoff` 스킬의 "대화 → handoff 문서" 개념을 factory에 적용하되, 산출물 파일이 이미 handoff 역할을 하므로 별도 문서 생성은 생략.
 
 ---
 

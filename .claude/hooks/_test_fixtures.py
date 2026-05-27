@@ -43,6 +43,7 @@ def _apply_tmp_paths(tmp_root: Path) -> None:
     _schema.CLAUDE_MD = tmp_root / "CLAUDE.md"
     _schema.CHANGELOG_MD = tmp_root / "CHANGELOG.md"
     _schema.LAST_ADAPT_FILE = _schema.TELEMETRY_DIR / "_last_adapt"
+    _schema.MIGRATION_MARKER = _schema.MEMORY_ROOT / f".migration_v{_schema.SCHEMA_VERSION}"
 
 
 def _reload_hooks() -> dict:
@@ -70,6 +71,7 @@ class HookTestBase(unittest.TestCase):
                 "REPO_ROOT", "MEMORY_ROOT", "DB_PATH", "TELEMETRY_DIR",
                 "TOOL_OUTPUTS", "DRAFTS_DIR", "DRAFTS_APPLIED", "DRAFTS_DISCARDED",
                 "SESSION_ID_FILE", "CLAUDE_MD", "CHANGELOG_MD", "LAST_ADAPT_FILE",
+                "MIGRATION_MARKER",
             )
         }
 

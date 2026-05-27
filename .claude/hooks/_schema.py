@@ -21,6 +21,7 @@ import calendar
 import json
 import os
 import re
+import shlex
 import sqlite3
 import sys
 import time
@@ -31,7 +32,13 @@ for _stream in (sys.stdin, sys.stdout, sys.stderr):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# REPO_ROOT 결정: ${CLAUDE_PROJECT_DIR} 우선 (Claude Code가 working dir을 결정적으로 전달),
+# 미설정 시 본 모듈 위치(.claude/hooks/_schema.py)에서 parents[2]로 fallback.
+_env_root = os.environ.get("CLAUDE_PROJECT_DIR")
+if _env_root:
+    REPO_ROOT = Path(_env_root).resolve()
+else:
+    REPO_ROOT = Path(__file__).resolve().parents[2]
 MEMORY_ROOT = REPO_ROOT / "_workspace" / "_memory"
 DB_PATH = MEMORY_ROOT / "observations" / "observations.db"
 TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"
@@ -100,31 +107,69 @@ _DROP_TABLES_V2: tuple[str, ...] = ("clusters", "daily_summaries")
 #                 sessions.digest_path) 제거 (R1 2026-05-14).
 SCHEMA_VERSION = 2
 
+# ALTER TABLE DROP COLUMN은 SQLite 3.35.0(2021-03)+에서만 지원. 미만은 dead 컬럼 그대로 둠.
+_SQLITE_SUPPORTS_DROP_COLUMN = sqlite3.sqlite_version_info >= (3, 35, 0)
+
+# 세션 단위 migration marker. 파일명에 SCHEMA_VERSION이 박혀 있어 bump 시 자동 stale.
+# 마커 존재 = 해당 버전 마이그레이션 이미 완료 — ensure_migrations short-circuit (락 회피).
+MIGRATION_MARKER = MEMORY_ROOT / f".migration_v{SCHEMA_VERSION}"
+
+
+def _get_conn(path: Path | None = None) -> sqlite3.Connection:
+    """WAL + busy_timeout + synchronous=NORMAL 적용된 SQLite 연결.
+
+    WAL: writer 활성 중에도 reader 동시 가능 — PostToolUse 쓰는 동안 /cm-status 읽기 가능.
+    busy_timeout=5000ms: 짧은 락 경합 자동 재시도.
+    synchronous=NORMAL: WAL 모드에서 안전한 fsync 정책.
+    """
+    conn = sqlite3.connect(path or DB_PATH)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    return conn
+
+
+def _marker_current() -> bool:
+    return MIGRATION_MARKER.exists()
+
+
+def _mark_migration_current() -> None:
+    try:
+        MIGRATION_MARKER.parent.mkdir(parents=True, exist_ok=True)
+        MIGRATION_MARKER.touch()
+    except OSError:
+        pass  # marker는 hot-path 최적화일 뿐 — 실패해도 정확성 영향 없음
+
 
 def ensure_migrations(conn: sqlite3.Connection) -> list[str]:
-    """누락 컬럼 ADD / dead 컬럼·테이블 DROP. PRAGMA user_version으로 short-circuit.
+    """누락 컬럼 ADD / dead 컬럼·테이블 DROP. PRAGMA user_version + marker로 short-circuit.
 
-    매 hook 프로세스마다 호출되지만, 첫 번째 PRAGMA user_version 조회로 대부분 즉시 반환.
-    SCHEMA_VERSION 미만일 때만 PRAGMA table_info → ALTER 흐름 진입.
+    Marker 존재 시 PRAGMA 조회 없이 즉시 반환 (post_tool_use hot-path 락 회피).
+    Marker 미존재 + PRAGMA user_version 도달 시 marker 생성 후 반환.
 
     v0→v2: category/artifact_kind ADD COLUMN + dead schema DROP (phase는 ADD 없이 바로 skip).
     v1→v2: dead schema DROP만.
     v2: no-op.
 
-    SQLite 3.35+ ALTER TABLE DROP COLUMN 활용. Python 3.12+ 기본 sqlite3 라이브러리는
-    SQLite 3.40+ 번들이므로 안전.
+    SQLite < 3.35: DROP COLUMN 미지원 — dead 컬럼은 그대로 두고 user_version도 bump하지 않음
+    (다음 SQLite 업그레이드 후 재시도). DROP TABLE은 모든 버전 지원.
     """
+    if _marker_current():
+        return []
     current_version = conn.execute("PRAGMA user_version").fetchone()[0]
     if current_version >= SCHEMA_VERSION:
+        _mark_migration_current()
         return []
 
     changed: list[str] = []
+    drop_failures = 0
     obs_info = conn.execute("PRAGMA table_info(observations)").fetchall()
     obs_cols = {row[1] for row in obs_info}
 
     if not obs_cols:
         # 빈 DB — DDL이 최신 schema를 이미 만들었음. version만 갱신.
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        _mark_migration_current()
         return []
 
     # v0→v1: category/artifact_kind 누락 시 ADD COLUMN (phase는 v2에서 drop이므로 skip)
@@ -141,33 +186,43 @@ def ensure_migrations(conn: sqlite3.Connection) -> list[str]:
             "CREATE INDEX IF NOT EXISTS observations_artifact_kind_idx ON observations(artifact_kind)"
         )
 
-    # v1→v2: dead 컬럼 DROP (존재할 때만 — fresh DB는 이미 없음)
-    for col in _DROP_COLUMNS_V2_OBS:
-        if col in obs_cols:
+    # v1→v2: dead 컬럼 DROP (SQLite 3.35+에서만)
+    if _SQLITE_SUPPORTS_DROP_COLUMN:
+        for col in _DROP_COLUMNS_V2_OBS:
+            if col in obs_cols:
+                try:
+                    conn.execute(f"ALTER TABLE observations DROP COLUMN {col}")
+                    changed.append(f"drop_col:obs.{col}")
+                except sqlite3.OperationalError as e:
+                    print(
+                        f"[_schema] migration v1→v2 skip: DROP observations.{col} failed: {e}",
+                        file=sys.stderr,
+                    )
+                    drop_failures += 1
+
+        sess_info = conn.execute("PRAGMA table_info(sessions)").fetchall()
+        sess_cols = {row[1] for row in sess_info}
+        if "digest_path" in sess_cols:
             try:
-                conn.execute(f"ALTER TABLE observations DROP COLUMN {col}")
-                changed.append(f"drop_col:obs.{col}")
+                conn.execute("ALTER TABLE sessions DROP COLUMN digest_path")
+                changed.append("drop_col:sess.digest_path")
             except sqlite3.OperationalError as e:
-                # 인덱스/트리거 의존성 등으로 DROP 실패 시 skip — stderr 로그로 관측성 확보
                 print(
-                    f"[_schema] migration v1→v2 skip: DROP observations.{col} failed: {e}",
+                    f"[_schema] migration v1→v2 skip: DROP sessions.digest_path failed: {e}",
                     file=sys.stderr,
                 )
-                continue
+                drop_failures += 1
+    else:
+        # 구 SQLite — dead 컬럼은 그대로 두고 user_version도 bump하지 않음.
+        # 다음 SQLite 업그레이드 후 재시도하도록 marker도 안 만듦.
+        drop_failures += 1
+        print(
+            f"[_schema] SQLite {sqlite3.sqlite_version} < 3.35.0 — DROP COLUMN 미지원, "
+            f"dead 컬럼 유지 + user_version bump 보류",
+            file=sys.stderr,
+        )
 
-    sess_info = conn.execute("PRAGMA table_info(sessions)").fetchall()
-    sess_cols = {row[1] for row in sess_info}
-    if "digest_path" in sess_cols:
-        try:
-            conn.execute("ALTER TABLE sessions DROP COLUMN digest_path")
-            changed.append("drop_col:sess.digest_path")
-        except sqlite3.OperationalError as e:
-            print(
-                f"[_schema] migration v1→v2 skip: DROP sessions.digest_path failed: {e}",
-                file=sys.stderr,
-            )
-
-    # v1→v2: dead 테이블 DROP (존재할 때만)
+    # v1→v2: dead 테이블 DROP (모든 SQLite 지원)
     for tbl in _DROP_TABLES_V2:
         result = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tbl,)
@@ -176,7 +231,11 @@ def ensure_migrations(conn: sqlite3.Connection) -> list[str]:
             conn.execute(f"DROP TABLE {tbl}")
             changed.append(f"drop_table:{tbl}")
 
-    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    # 모든 DROP COLUMN 성공 시에만 version bump + marker — partial migration은
+    # 다음 hook에서 재시도 가능하도록 user_version 보류.
+    if drop_failures == 0:
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        _mark_migration_current()
     return changed
 
 
@@ -205,9 +264,8 @@ _FILE_RULES: tuple[tuple[re.Pattern[str], str, str], ...] = (
     (re.compile(r"^\.gitignore$"), "gitignore_edit", "config"),
 )
 
-_GIT_SUBCOMMAND_RE = re.compile(r"^\s*git\s+(\S+)")
-# chain 명령(`&&`/`;`/`|`/newline 등 separator) — 마지막 git subcommand가 우세
-_GIT_CHAIN_RE = re.compile(r"(?:^|[;|\n]|&{1,2})\s*git\s+(\S+)")
+# Bash shell separator 토큰들 — shlex 파싱 후 이 토큰 뒤에 `git`이 오면 새 명령.
+_BASH_SEPARATORS = {";", "&&", "||", "|", "&", "\n"}
 _GIT_RELEVANT = {
     "commit": ("git_commit", "git"),
     "add": ("git_add", "git"),
@@ -259,14 +317,7 @@ def classify_dharness_event(tool_name: str, tool_input: dict) -> dict | None:
         return None
     if tool_name == "Bash":
         command = tool_input.get("command", "") or ""
-        # chain 분류 (P0-2): `git add X && git commit ...`처럼 여러 git 호출이 한 명령에 있으면
-        # bash chain semantic상 *마지막* subcommand가 terminal action. fallback은 첫 토큰 매칭.
-        chain_subs = [m.group(1) for m in _GIT_CHAIN_RE.finditer(command)]
-        if not chain_subs:
-            m = _GIT_SUBCOMMAND_RE.match(command)
-            if not m:
-                return None
-            chain_subs = [m.group(1)]
+        chain_subs = _extract_git_subcommands(command)
         # _GIT_RELEVANT 매핑 가능 항목만 후보 (status/log 등 read-only는 제외)
         candidates = [s for s in chain_subs if s in _GIT_RELEVANT]
         if not candidates:
@@ -291,6 +342,47 @@ def classify_dharness_event(tool_name: str, tool_input: dict) -> dict | None:
     return None
 
 
+def _extract_git_subcommands(command: str) -> list[str]:
+    """Bash command line에서 실제로 실행될 git subcommand만 추출.
+
+    shlex로 토큰화하면 quoted/heredoc 내부의 `git` 키워드는 single token에 흡수돼
+    false positive가 안 생긴다 (`echo "git commit"` → ['echo', 'git commit']).
+    shlex.split이 실패하는 malformed quoting은 안전하게 빈 리스트 반환.
+
+    chain 구분: `;`, `&&`, `||`, `|`, `&`, newline — 이들 뒤에 등장하는 `git`만 명령 시작.
+    """
+    try:
+        tokens = shlex.split(command, comments=True, posix=True)
+    except ValueError:
+        return []
+    subs: list[str] = []
+    expect_git = True  # 명령 시작 위치
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok in _BASH_SEPARATORS:
+            expect_git = True
+            i += 1
+            continue
+        if expect_git and tok == "git" and i + 1 < len(tokens):
+            sub = tokens[i + 1]
+            # subcommand 다음 토큰은 보통 옵션/인자 — 다음 separator까지 skip.
+            subs.append(sub)
+            j = i + 2
+            while j < len(tokens) and tokens[j] not in _BASH_SEPARATORS:
+                j += 1
+            i = j
+            expect_git = True
+            continue
+        # 명령의 첫 토큰이 git이 아니면 그 명령 전체 skip (다음 separator까지).
+        j = i + 1
+        while j < len(tokens) and tokens[j] not in _BASH_SEPARATORS:
+            j += 1
+        i = j
+        expect_git = False
+    return subs
+
+
 # ---------------------------- adapt counter helpers ----------------------------
 
 # Phase 10 자동 adapt 알림 카운터. `_workspace/_telemetry/*.jsonl`을 ascending 스캔해
@@ -309,6 +401,19 @@ def read_last_adapt_ts() -> float:
         return LAST_ADAPT_FILE.stat().st_mtime
     except OSError:
         return 0.0
+
+
+def touch_last_adapt() -> float:
+    """`_last_adapt` 파일 mtime을 현재 epoch로 박제 (없으면 생성).
+
+    PO5 (2026-05-27): manual shell touch doctrine 폐기 — `/cm-reset-adapt-counter`
+    subcommand의 programmatic 진입점. 반환: 새 mtime epoch float.
+    """
+    TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
+    LAST_ADAPT_FILE.touch(exist_ok=True)
+    now = time.time()
+    os.utime(LAST_ADAPT_FILE, (now, now))
+    return now
 
 
 def _iter_telemetry_files_since(since_ts: float) -> list[Path]:
@@ -384,8 +489,13 @@ def adapt_alert_due(counts: dict[str, int]) -> bool:
 # ---------------------------- session id helpers ----------------------------
 
 def write_session_id(session_id: str) -> None:
+    """Atomic write — tmp 파일 작성 후 os.replace로 교체. PostToolUse가 동시에
+    read해도 partial content 안 보임 (POSIX rename + Windows os.replace 모두 atomic).
+    """
     SESSION_ID_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SESSION_ID_FILE.write_text(session_id, encoding="utf-8")
+    tmp = SESSION_ID_FILE.with_suffix(".tmp")
+    tmp.write_text(session_id, encoding="utf-8")
+    os.replace(tmp, SESSION_ID_FILE)
 
 
 def read_session_id() -> str | None:

@@ -24,20 +24,11 @@ circular 안전 (test_chain의 module-level monkey-patch 호환 유지).
 from __future__ import annotations
 
 import re
-import sys
-
 
 # chain.py와 양방향 import 회피 — fn 본문에서만 sys.modules lookup으로 runtime resolve.
 # chain.py module-level `from chain_intent import ...`가 본 모듈 body 실행 시
-# `import chain` 했다면 partial init 충돌 — 그래서 import 자체를 lazy proxy로 우회.
-class _ChainProxy:
-    def __getattr__(self, name: str):
-        # chain.py가 `__main__`으로 실행되면 sys.modules에 'chain' 키가 없으므로 fallback.
-        mod = sys.modules.get("chain") or sys.modules["__main__"]
-        return getattr(mod, name)
-
-
-chain = _ChainProxy()
+# `import chain` 했다면 partial init 충돌 — _chain_proxy의 lazy proxy로 우회.
+from _chain_proxy import chain
 
 _PROJECT_TYPE_ENUM = {"greenfield", "brownfield"}
 _INTENT_VERSION_PATTERN = re.compile(r"^version\s*:\s*(\S+)\s*$", re.MULTILINE)

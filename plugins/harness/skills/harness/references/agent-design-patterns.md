@@ -378,3 +378,47 @@ description: "1-2문장 역할 설명. 트리거 키워드 나열."
 | **레퍼런스 로드** | `Read`로 스킬의 references/ 파일을 필요 시 로드 | 스킬 내용이 크고 조건부로만 필요한 경우 |
 
 권장: 재사용성이 높으면 Skill 도구, 전용이면 인라인, 대용량이면 레퍼런스 로드.
+
+---
+
+## 부록 — Team Tools API 의사 시그니처 (❓ inferred)
+
+> **2026-05-27 PB4 흡수**: 본 부록은 구 `team-tools-api.md` (삭제) 의사코드 영역을 흡수. 모든 시그니처는 `❓ inferred` (실호출 trial 미박제). 정밀화는 Claude Code 공식 도구 카탈로그 또는 `claude-code-guide` agent 호출로 위임.
+
+### 시나리오 매트릭스 (Phase 4 가이드)
+
+| 시나리오 | 사용 도구 |
+|---|---|
+| 2명 이상 협업 (기본) | `TeamCreate` + `TaskCreate` + `SendMessage` |
+| 단발 격리 위임 | `Agent` (Claude Code built-in) |
+| 비동기 작업 풀 | `TaskCreate` + `TaskGet` + `TaskOutput` |
+| 진행 갱신 | `TaskUpdate` |
+| 팀원 간 데이터 전달 | `SendMessage` |
+
+### 의사 시그니처
+
+```yaml
+TeamCreate(team_name, members[{name, agent_type, model, prompt, tools[]}], description?) → {team_id, members[]}
+SendMessage(team_id, from, to, content, metadata?) → {message_id, delivered}
+TaskCreate(tasks[{title, description, assignee?, depends_on[]?, priority?, metadata?}]) → {task_ids[]}
+TaskUpdate(task_id, status?, owner?, description?, metadata?, addBlocks[]?, addBlockedBy[]?) → {task}
+TaskGet(task_id) → {task: {title, description, status, owner, blockedBy, blocks, metadata, comments}}
+TaskOutput(task_id, format?: "raw"|"markdown"|"json") → {output, produced_at}
+```
+
+status enum: `pending` → `in_progress` → `completed`, plus `blocked` / `deleted`.
+
+### 호출 패턴 (Phase 7 오케스트레이션)
+
+```yaml
+team = TeamCreate(team_name: "{domain}-team", members: [...])
+tasks = TaskCreate(tasks: [
+  {title: "step1", assignee: "{m1}"},
+  {title: "step2", assignee: "{m2}", depends_on: ["step1"]}
+])
+SendMessage(team_id: team.team_id, from: "{m1}", to: "{m2}", content: "1단계 산출물 _workspace/01_m1.md")
+TaskUpdate(task_id: tasks[0], status: "completed", metadata: {output_path: "_workspace/01_m1.md"})
+output = TaskOutput(task_id: tasks[0])
+```
+
+파일 기반 산출물 패턴: assignee가 결과를 `_workspace/{phase}_{name}_{artifact}.{ext}`에 저장 후 `TaskUpdate(metadata.output_path)` 박제. 후속 작업은 `TaskGet` + 경로로 직접 Read. `TaskOutput`은 인라인 결과 패턴(작은 산출물) 한정.

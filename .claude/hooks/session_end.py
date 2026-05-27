@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """SessionEnd hook — transcript.md 생성 + sessions UPDATE + changelog draft 적재.
 
 session_id는 _memory/.current_session 파일에서 읽는다.
@@ -28,6 +29,7 @@ from _schema import (
     MEMORY_ROOT,
     REPO_ROOT,
     TELEMETRY_DIR,
+    _get_conn,
     read_session_id,
 )
 from _transcript_utils import flatten_to_transcript
@@ -145,7 +147,13 @@ total_events: {summary['total']}
 """
 
     draft_path = DRAFTS_DIR / f"{today}_{session_id}.md"
-    draft_path.write_text(body, encoding="utf-8")
+    # PO2 (2026-05-27): O_EXCL — sid race로 동일 (date, sid) collision 시 silent
+    # 덮어쓰기 차단. 충돌 시 FileExistsError → 호출자가 hook_degraded telemetry 박제.
+    try:
+        with open(draft_path, "x", encoding="utf-8") as fh:
+            fh.write(body)
+    except FileExistsError:
+        raise
     return draft_path
 
 
@@ -169,7 +177,7 @@ def main() -> int:
     duration_min: int | None = None
     draft_path: Path | None = None
     if DB_PATH.exists():
-        conn = sqlite3.connect(DB_PATH)
+        conn = _get_conn()
         try:
             with conn:
                 row = conn.execute(
@@ -189,6 +197,16 @@ def main() -> int:
                     draft_path = generate_draft(conn, session_id, today, duration_min)
                 except sqlite3.Error as e:
                     print(f"[CM SessionEnd] draft 생성 실패: {e}", file=sys.stderr)
+                except FileExistsError as e:
+                    # PO2: O_EXCL collision — sid race 잔재. telemetry 박제 + draft skip.
+                    print(f"[CM SessionEnd] draft 충돌 (O_EXCL): {e}", file=sys.stderr)
+                    TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
+                    with open(TELEMETRY_DIR / f"{today}.jsonl", "a", encoding="utf-8") as fh:
+                        fh.write(json.dumps({
+                            "ts": now_iso, "type": "hook_degraded",
+                            "handler": "session_end.py", "reason": "draft_o_excl_collision",
+                            "session_id": session_id, "path": str(e),
+                        }) + "\n")
         finally:
             conn.close()
 

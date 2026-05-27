@@ -10,23 +10,7 @@
 >
 > 본 문서 *자체* 섹션 자기 인용은 `본 §1`·`본 §3` 형식으로 명시 또는 *섹션 헤더 인근*에서만 bare 사용. 예외(다른 doc 참조)는 인라인 명시.
 
-> **휴리스틱 임계값 catalog + tuning 가이드 (P2-4 — 2026-05-14):** 본 doc의 임계값은 *deterministic* 아닌 휴리스틱. 도메인별 조정 권장.
->
-> | 임계 | default | 근거 | tuning 권장 |
-> |---|---|---|---|
-> | tier_weight R0 / R1 / R2 (본 §2) | 1.0 / 0.7 / 0.4 | 휴리스틱 — verified 우선 + 외부 trust 단계적 감쇠 | R1 trust 강한 도메인(`anthropic/modelcontextprotocol` 사용 비중 ↑)에선 R1=0.85 권장 |
-> | E 도구 카운트 (§3-1) ≤5 +2 / 6~15 +1 / 16+ 0 | — | 휴리스틱 — Claude Code deferred pool 적재 비례 비용 | 도메인 sub-grep으로 도구 5~10종 sweet spot. 16+는 toolset 필터로 분할 권장 |
-> | E 부수 효과 비중 (§3-1) ≤30% +2 | — | 휴리스틱 — read-only 비중 70%+면 strict mode 가용 | 보안·규제 도메인에선 ≤20%로 더 엄격 |
-> | E lazy 다운로드 ≥50MB -2 (§3-1) | — | 측정 (playwright Chromium ~120MB 22차 사이클) | 모바일 dev 도메인에선 패널티 -3 (디스크 제약) |
-> | S toolset enum ≥3 +2 (§3-2) | — | 휴리스틱 (github 19 toolset / playwright 7 caps 사례) | toolset 미지원 MCP는 enum=1 fixed |
-> | A 신호 매칭 ≥2 +2 (§3-3) | — | 휴리스틱 — 단일 신호 매칭은 false-positive 위험 | 모호 도메인(ML+data, mobile+web)에선 ≥3으로 강화 |
-> | A `verification_status` 페널티 (§3-3) | ✓ +4 / 📜 -2 / ⚠️ -4 | §3-0 status enum cross-mapping (P6-9) | spoof 우려 도메인(외부 npm 의존)에선 📜 -3로 강화 |
-> | wE / wS / wA default (§3-4) | 0.4 / 0.3 / 0.3 | 휴리스틱 — Phase 5-2 합성 시점 효율 우선 | 보안·규제: wA=0.5 / 비용 민감(`budget_constrained`): wE=0.5 — `--weights=` 명시 override |
-> | top-K (§4) | K=3 | 휴리스틱 — confirm gate 정보 과부하 방지 | 후보 풀 ≥10 도메인에선 K=5 권장 |
-> | 대안 후보 점수 차이 ≤1.0 | — | 휴리스틱 — clamp [0,10] 1점 차이 = 10% 갭 | tie-breaking 엄격 도메인에선 ≤0.5 |
-> | 거부 학습 ≥2회 → -2 페널티 (§8) | — | 휴리스틱 — 1회 거부는 noise 가능 | derived 프로젝트 telemetry 누적 시 ≥3회로 보수적 운영 |
->
-> 본 표는 *baseline* — `--weights=` / 도메인 self-critique (Phase 5.5)에서 override 가능. 임계값 변경 시 본 박스 행 갱신 권장.
+> **휴리스틱 임계값 baseline:** Phase 5-2 MCP 점수 임계값은 [`heuristics-baseline.md §2`](heuristics-baseline.md#2-phase-5-2--mcp-recommendation) 단일 출처. domain override는 `--weights=` CLI / 도메인 self-critique (Phase 5.5).
 
 Phase 5-2 합성 *직전* 각 에이전트에 대해 "효율성·확장성·정확도" 3축으로 MCP 후보를 검색·점수화·추천한다. 본 문서는 추천 엔진의 단일 출처 — Phase 5-2와 `/harness:harness-mcp-recommend`가 본 문서를 참조한다.
 

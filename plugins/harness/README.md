@@ -5,7 +5,7 @@
 
 ## 무엇인가
 
-Claude Code용 메타 스킬 플러그인. 도메인/프로젝트 설명을 입력하면 11-phase 워크플로우로 에이전트 정의(`.claude/agents/`)와 스킬 세트(`.claude/skills/`)를 자동 생성한다.
+Claude Code용 메타 스킬 플러그인. 도메인/프로젝트 설명을 입력하면 15-phase 워크플로우(11 base + 4 self-critique)로 에이전트 정의(`.claude/agents/`)와 스킬 세트(`.claude/skills/`)를 자동 생성한다.
 
 다른 단일 에이전트/프롬프트 프레임워크와 달리 **팀 아키텍처 팩토리** — 6가지 사전 정의된 팀 패턴 중 도메인에 맞는 것을 선택하고 에이전트 협업 프로토콜을 함께 설계한다.
 
@@ -58,7 +58,7 @@ claude --plugin-dir <path>/plugins/harness
 | **자연어 트리거** | 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화 |
 | **Slash command** | `/harness:harness-*` 결정적 호출 | Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-### Slash command 카탈로그 (17개)
+### Slash command 카탈로그 (16개)
 
 **합성·확장 (5)**
 ```
@@ -78,7 +78,7 @@ claude --plugin-dir <path>/plugins/harness
 
 **보조 (1)**
 ```
-/harness:harness-grill <phase 0.5|2|5|9> [필드]           # 추궁 모드 — 모호 답안 1q씩 추천 답 + 사용자 확정
+/harness:harness-grill <domain|inquiry|agents|feedback> [필드]  # 추궁 모드 — 모호 답안 1q씩 추천 답 + 사용자 확정
 ```
 
 **진단·검증 (4)**
@@ -89,9 +89,8 @@ claude --plugin-dir <path>/plugins/harness
 /harness:harness-validate [--json] [--strict]              # 결정적 검증 (구조·스키마·체인 + version drift 알림, LLM 0)
 ```
 
-**MCP (1 통합 + 3 원본 = 4)**
+**MCP (3 명령)**
 ```
-/harness:harness-mcp <recommend|adopt|status> [args]       # MCP 통합 진입점 (추천·채택·상태 라우터)
 /harness:harness-mcp-recommend <에이전트|역할>             # MCP 후보 추천 (효율성·확장성·정확도 3축)
 /harness:harness-mcp-adopt <사유>                          # MCP 신규 채택 (발견→탐침→확인→설치→반영 5단계)
 /harness:harness-mcp-status                                # MCP 상태 진단 (인벤토리·도구·비용·정합, read-only)
@@ -168,7 +167,7 @@ Phase 10  Runtime Adaptation (telemetry drift 자동 감지)
 ## 호환성·제약
 
 - Claude Code CLI / desktop / VS Code extension 지원.
-- 에이전트 모델 `opus` 권장 (하네스 품질이 추론 능력에 직결).
+- 에이전트 모델은 역할별 차등 (`opus`/`sonnet`/`haiku`) — 단일 출처 [`skills/harness/references/permission-profiles-synthesis.md` §5-1-c](./skills/harness/references/permission-profiles-synthesis.md). 일괄 `opus`는 비용 ~7배 doctrine 부적합.
 - MCP 채택은 사용자 명시 confirm gate 필수 — 자동 install 정책 미지원.
 - `.harness-host` marker file이 존재하는 디렉토리는 self-host 격리 영역 — `harness-mcp-*` 명령은 해당 위치에서 차단됨.
 

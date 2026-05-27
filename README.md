@@ -11,7 +11,7 @@
 - [빠른 시작](#빠른-시작)
 - [호출 방식](#호출-방식)
 - [프로젝트 구조](#프로젝트-구조)
-- [Skill 워크플로우 11단계](#skill-워크플로우-11단계)
+- [Skill 워크플로우 15단계](#skill-워크플로우-15단계)
 - [Doctrine drift refit (plugin upgrade 후 derived harness 보강)](#doctrine-drift-refit-plugin-upgrade-후-derived-harness-보강)
 - [추가 MCP 설치 (런타임 시점 채택)](#추가-mcp-설치-런타임-시점-채택)
 - [도입 후 권한 경계](#도입-후-권한-경계)
@@ -53,7 +53,9 @@
 git clone https://github.com/gimangdoo/dharness.git C:\path\to\dharness
 ```
 
-CM은 dharness 본 폴더에서 자동 동작 — `.claude/settings.local.json`이 hooks 3종을 직접 등록하면 별도 install 없이 다음 Claude Code 세션부터 발화합니다. **본 파일은 `.gitignore` 대상(user-local)이라 clone 직후엔 부재합니다** — 최초 1회 다음 template으로 작성:
+CM은 dharness 본 폴더에서 자동 동작 — `.claude/settings.local.json`이 hooks 3종을 직접 등록하면 별도 install 없이 다음 Claude Code 세션부터 발화합니다. **본 파일은 `.gitignore` 대상(user-local)이라 clone 직후엔 부재합니다** — OS별 template:
+
+**Windows** (`py` 런처 — Microsoft Store `python` 스텁 회피):
 
 ```json
 {
@@ -71,7 +73,25 @@ CM은 dharness 본 폴더에서 자동 동작 — `.claude/settings.local.json`�
 }
 ```
 
-> `py` 사용 이유: Windows의 Microsoft Store `python` 스텁 회피. Linux/macOS에선 `py` → `python3`로 치환. 임계값 변경 시 동일 객체에 `"env": { "CM_ADAPT_THRESHOLD_INVOCATIONS": "10", "CM_ADAPT_THRESHOLD_FAILURES": "2" }` 필드 추가. 작성 직후 Claude Code 세션을 한 번 재시작하면 SessionStart 훅이 발화 — `/cm-status` 출력의 `observations: N (dharness_event N)`로 확인 가능.
+**Linux/macOS** (`python3` — `py` 런처 미존재):
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\"" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_tool_use.py\"" }] }
+    ],
+    "SessionEnd": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_end.py\"" }] }
+    ]
+  }
+}
+```
+
+> 임계값 변경 시 각 hook 객체에 `"env": { "CM_ADAPT_THRESHOLD_INVOCATIONS": "10", "CM_ADAPT_THRESHOLD_FAILURES": "2" }` 필드 추가. 작성 직후 Claude Code 세션을 한 번 재시작하면 SessionStart 훅이 발화 — `/cm-status` 출력의 `observations: N (dharness_event N)`로 확인 가능. POSIX에선 hook 파일에 `chmod +x` 후 shebang(`#!/usr/bin/env python3`)으로 직접 실행도 가능 (interpreter 명시는 위 template 권장).
 
 ### 2. harness plugin 설치 (외부 프로젝트용)
 
@@ -103,7 +123,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 | **자연어 트리거** | "하네스 구성해줘" 등 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화, 일반 사용 |
 | **Slash command** | `/harness:harness-new`, `/cm-status` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-### Slash command 카탈로그 (`harness` 17개 + CM 5개 = 22개)
+### Slash command 카탈로그 (`harness` 16개 + CM 5개 = 21개)
 
 ```
 # harness plugin (메타 스킬 팩토리, 외부 install 가능)
@@ -116,11 +136,10 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 /harness:harness-status [--verbose]    # 하네스 현황 (구성·기준선·drift·MCP, read-only)
 /harness:harness-evolve <피드백>       # 피드백 반영 (Phase 9 수동 진화)
 /harness:harness-adapt                 # 관측 기반 적응 (Phase 10 telemetry drift)
-/harness:harness-grill <phase> [필드]  # 추궁 모드 — 모호 답안 1q씩 추천 답 + 사용자 확정 (Phase 0.5/2/5/9)
+/harness:harness-grill <step> [필드]   # 추궁 모드 — 모호 답안 1q씩 추천 답 + 사용자 확정 (step ∈ domain/inquiry/agents/feedback)
 /harness:harness-remove <agent|skill> <이름>            # 1개 제거 + 잔여 참조 자동 정리
 /harness:harness-split  <agent|skill> <원본> <결과...>  # 책임별 분할 (4축 기준 + 참조 갱신)
 /harness:harness-merge  <agent|skill> <결과> <원본...>  # 통합 + 참조 갱신
-/harness:harness-mcp <recommend|adopt|status> [...]     # MCP 통합 진입점 (추천·채택·상태 라우터)
 /harness:harness-mcp-recommend <agent> # MCP 후보 추천 (효율성·확장성·정확도 3축, Phase 5-2 자동 + on-demand)
 /harness:harness-mcp-adopt <사유>      # MCP 신규 채택 (발견→탐침→확인→설치→반영 5단계, §10)
 /harness:harness-mcp-status            # MCP 상태 진단 (인벤토리·도구·비용·정합, read-only)
@@ -167,20 +186,24 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 
 ---
 
-## Skill 워크플로우 11단계
+## Skill 워크플로우 15단계
 
-`harness` 메타 스킬은 다음 11단계로 동작합니다:
+`harness` 메타 스킬은 다음 15단계로 동작합니다 (11 본 phase + 4 self-critique phase):
 
 | Phase | 이름 | 출력 |
 |-------|------|------|
 | 0 | Pre-flight 감사 | 신규/확장/유지보수 분기 |
+| 0.5 | Domain Clarification self-critique | premature-judgment 차단 게이트 |
 | 1 | Code Research | 프로젝트 baseline (코드 인벤토리 + 도메인 sense) |
 | 2 | Project Inquiry | 사용자 의도 + 도메인 sense 정합 |
 | 3 | 도메인 분석 | 작업 유형 + 충돌 분석 |
+| 3.5 | Self-Critique on Domain Analysis | single-pass silent error 검출 |
 | 4 | 팀 아키텍처 | 모드 + 패턴 + 분리 기준 |
 | 5 | 에이전트 정의 | `.claude/agents/{name}.md` |
+| 5.5 | Self-Critique on Agent Definitions | 역할 중복 cross-review |
 | 6 | 스킬 생성 | `.claude/skills/{name}/SKILL.md` |
 | 7 | 오케스트레이션 | 통합 스킬 + CLAUDE.md 포인터 |
+| 7.5 | Orchestrator Dry-Run Simulation | dead link/순환 의존 검출 |
 | 8 | 검증 (7단계) | 구조·실행·트리거·드라이런·반복 개선 |
 | 9 | 진화 (수동) | 사용자 피드백 → 에이전트/스킬 갱신 |
 | 10 | Runtime Adaptation | telemetry → drift 감지 → 제안+승인 |
@@ -486,7 +509,7 @@ findstr /C:"tool_output_captured" _workspace\_telemetry\*.jsonl
 | `/cm-status`가 빈 결과 | 새 Claude Code 세션을 한 번 열어 SessionStart 훅 발동 확인 |
 | transcript는 있는데 digest가 없음 | digest 자동 생성은 도입되지 않음 — `memory-search` 스킬이 transcript.md / git log / observations FTS를 직접 fallback 조회 |
 | `/cm-claudemd-apply`가 "변경 이력 표를 찾지 못함" | CHANGELOG.md의 "변경 이력" heading 또는 strong 직후에 markdown 표가 있어야 — 헤더-구분선 깨졌는지 확인 |
-| SessionStart inject가 잘림 | budget 2000자 — `.claude/hooks/session_start.py:INJECT_BUDGET` 기본값 |
+| SessionStart inject가 잘림 | budget 2000 char (token 아님, ~2× 추정) — `.claude/hooks/session_start.py:INJECT_CHAR_BUDGET` 기본값 |
 
 ---
 
@@ -494,7 +517,7 @@ findstr /C:"tool_output_captured" _workspace\_telemetry\*.jsonl
 
 | 문서 | 용도 |
 |------|------|
-| [`plugins/harness/skills/harness/SKILL.md`](./plugins/harness/skills/harness/SKILL.md) | 메타 스킬 정의 (11 Phase 워크플로우) |
+| [`plugins/harness/skills/harness/SKILL.md`](./plugins/harness/skills/harness/SKILL.md) | 메타 스킬 정의 (15 Phase 워크플로우 — 11 base + 4 self-critique) |
 | [`plugins/harness/skills/harness/references/permission-profiles.md`](./plugins/harness/skills/harness/references/permission-profiles.md) | MCP·도구 권한 카탈로그 main — §1 3-layer / §2 8 profile / §4 결정 트리 / §5-2·§5-3 합성 (P7 분리: §3 → permission-profiles-inventory.md / §5-1 → -synthesis.md / §10 → -dynamic-adoption.md) |
 | [`.claude/skills/memory-search/SKILL.md`](./.claude/skills/memory-search/SKILL.md) | 과거 메모리 LLM 검색 규칙 (3-tool progressive disclosure) |
 | [`CLAUDE.md`](./CLAUDE.md) | 저장소 구성 + CM 포인터 + In-session 가드라인 |

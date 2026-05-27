@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """PostToolUse hook — raw.jsonl append + 10KB 초과 시 _tool_outputs/에 원본 보존
 + dharness 도메인 이벤트 분류 후 observations 테이블에 INSERT.
 
@@ -26,6 +27,7 @@ from _schema import (
     REPO_ROOT,
     TELEMETRY_DIR,
     TOOL_OUTPUTS,
+    _get_conn,
     classify_dharness_event,
     ensure_migrations,
     read_session_id,
@@ -57,7 +59,7 @@ def _persist_dharness_event(
         return
     obs_id = f"{session_id}-{uuid.uuid4().hex[:8]}"
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _get_conn()
         try:
             with conn:
                 ensure_migrations(conn)
@@ -144,7 +146,7 @@ def _emit_agent_telemetry(
             }) + "\n")
 
 
-def main() -> int:
+def _main_impl() -> int:
     try:
         payload = json.loads(sys.stdin.read() or "{}")
     except json.JSONDecodeError:
@@ -187,9 +189,10 @@ def main() -> int:
 
     raw_dir = TOOL_OUTPUTS / session_id
     raw_dir.mkdir(parents=True, exist_ok=True)
-    n = sum(1 for _ in raw_dir.glob("*"))
     ext = {"WebFetch": "html", "Read": "txt", "Bash": "log"}.get(tool_name, "txt")
-    raw_path = raw_dir / f"{time.time_ns()}_{tool_name.lower()}_{n+1:03d}_{uuid.uuid4().hex[:4]}.{ext}"
+    # PO1 (2026-05-27): seq counter (raw_dir.glob "*" O(N)) 제거 — uuid 단독으로 고유성 충분.
+    # filename은 time.time_ns()로 정렬 가능 (ascending = capture order).
+    raw_path = raw_dir / f"{time.time_ns()}_{tool_name.lower()}_{uuid.uuid4().hex[:8]}.{ext}"
     raw_path.write_text(serialized, encoding="utf-8")
 
     TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
@@ -207,6 +210,30 @@ def main() -> int:
         file=sys.stderr,
     )
     return 0
+
+
+def main() -> int:
+    """Hook entry — uncaught 예외는 host 세션을 깨뜨리지 않도록 swallow + hook_crash telemetry.
+
+    Capture 실패는 관측성 손실이지 세션 정확성 손실이 아니다. 항상 0 반환.
+    """
+    try:
+        return _main_impl()
+    except Exception as e:
+        try:
+            now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            today = time.strftime("%Y-%m-%d", time.gmtime())
+            TELEMETRY_DIR.mkdir(parents=True, exist_ok=True)
+            with open(TELEMETRY_DIR / f"{today}.jsonl", "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({
+                    "ts": now_iso, "type": "hook_crash",
+                    "handler": "post_tool_use.py",
+                    "error": f"{type(e).__name__}: {e}"[:500],
+                }) + "\n")
+        except Exception:
+            pass
+        print(f"[CM PostToolUse] hook crash swallowed: {e}", file=sys.stderr)
+        return 0
 
 
 if __name__ == "__main__":

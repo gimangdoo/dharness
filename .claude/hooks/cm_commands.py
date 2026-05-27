@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """/cm-* 슬래시 커맨드 결정적 핸들러 (dharness self-host).
 
 사용법 (repo root에서):
@@ -8,6 +9,7 @@
     py .claude/hooks/cm_commands.py claudemd-list
     py .claude/hooks/cm_commands.py claudemd-apply <session_id>
     py .claude/hooks/cm_commands.py claudemd-discard [<session_id>]
+    py .claude/hooks/cm_commands.py reset-adapt-counter
 
 결정적 작업만 처리한다. DB·디렉토리 부트스트랩은 SessionStart 훅 또는 reset 시
 자동 수행되므로 별도 init 명령 없음.
@@ -17,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import os
 import re
 import shutil
 import sqlite3
@@ -34,15 +37,21 @@ from _schema import (
     DRAFTS_APPLIED,
     DRAFTS_DIR,
     DRAFTS_DISCARDED,
+    LAST_ADAPT_FILE,
     MEMORY_ROOT,
     REPO_ROOT,
     TELEMETRY_DIR,
     TOOL_OUTPUTS,
+    _get_conn,
+    touch_last_adapt,
 )
 
 PRUNE_DEFAULT_DAYS = 90  # 3개월 — memory-search 검색 속도와 history 잔존의 균형
 TELEMETRY_FILENAME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.jsonl$")
 DRAFT_FILENAME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})_[A-Za-z0-9]+\.md$")
+# session_id 형식: SessionStart가 발급하는 uuid hex 6/8/10/14/32자. glob 인자에
+# `..`, `/`, `*` 등이 끼면 traversal/와일드카드 폭발. 발급 alphabet만 허용.
+SID_RE = re.compile(r"^[A-Za-z0-9]{6,32}$")
 
 COUNT_TABLES = ("observations", "sessions")
 CHANGELOG_ROW_WARN_THRESHOLD = 40
@@ -56,7 +65,7 @@ HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 @contextlib.contextmanager
 def _connect() -> Iterator[sqlite3.Connection]:
     """close 보장 context manager. `with _connect() as conn:` 형태로 사용."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = _get_conn()
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -84,8 +93,12 @@ def _init_storage() -> list[tuple]:
     created.append((TOOL_OUTPUTS, existed))
 
     db_existed = DB_PATH.exists()
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.executescript(DDL)
+    conn = _get_conn()
+    try:
+        with conn:
+            conn.executescript(DDL)
+    finally:
+        conn.close()
     created.append((DB_PATH, db_existed))
     return created
 
@@ -109,6 +122,8 @@ def cmd_status() -> int:
     if history_rows is not None:
         warn = "  ⚠ 표가 길어졌습니다 — archive 검토 권장" if history_rows >= CHANGELOG_ROW_WARN_THRESHOLD else ""
         print(f"  CHANGELOG.md:        {history_rows} rows{warn}")
+    # PO5 (2026-05-27): adapt 카운터 reset 진입점 박제 (manual shell touch doctrine 대체).
+    print(f"  adapt counter reset: /cm-reset-adapt-counter")
     return 0
 
 
@@ -163,21 +178,34 @@ def cmd_reset(confirmed: bool) -> int:
 def _collect_prune_targets(cutoff_date: str) -> dict:
     """cutoff_date (YYYY-MM-DD) *이전* 데이터를 대상으로 삭제 후보 enumerate.
 
+    PT5 (2026-05-27): _tool_outputs/{sid}/ 디렉토리가 sessions 테이블에 *해당 행이 없으면*
+    orphan으로 간주, cutoff 무관하게 reap 후보. NULL date 세션도 함께 prune 대상에 포함
+    (sid race·hook crash 잔재).
+
     반환: {sessions: [(sid, date), ...], session_dirs: [Path, ...],
            tool_output_dirs: [Path, ...], telemetry_files: [Path, ...],
            applied_drafts: [Path, ...], discarded_drafts: [Path, ...],
+           orphan_tool_output_dirs: [Path, ...],
            observation_rows: int, session_rows: int}
     """
     targets = {
         "sessions": [], "session_dirs": [], "tool_output_dirs": [],
         "telemetry_files": [], "applied_drafts": [], "discarded_drafts": [],
+        "orphan_tool_output_dirs": [],
         "observation_rows": 0, "session_rows": 0,
     }
+    known_sids: set[str] = set()
     if not DB_PATH.exists():
+        # DB 부재 — orphan reaper만 수행 (테이블 없음 = 모든 dir이 orphan).
+        if TOOL_OUTPUTS.exists():
+            for p in sorted(TOOL_OUTPUTS.iterdir()):
+                if p.is_dir():
+                    targets["orphan_tool_output_dirs"].append(p)
         return targets
     with _connect() as conn:
+        # cutoff 이전 OR date NULL → prune 대상.
         rows = conn.execute(
-            "SELECT session_id, date FROM sessions WHERE date < ? ORDER BY date ASC",
+            "SELECT session_id, date FROM sessions WHERE date < ? OR date IS NULL ORDER BY date ASC",
             (cutoff_date,),
         ).fetchall()
         sids = [r["session_id"] for r in rows]
@@ -190,6 +218,8 @@ def _collect_prune_targets(cutoff_date: str) -> dict:
                 sids,
             ).fetchone()[0]
             targets["observation_rows"] = n
+        # 전체 sessions 테이블 sid 인덱스 — orphan 판정용.
+        known_sids = {r["session_id"] for r in conn.execute("SELECT session_id FROM sessions").fetchall()}
     # 디렉토리·파일 enumerate.
     sessions_root = MEMORY_ROOT / "sessions"
     for sid, _ in targets["sessions"]:
@@ -199,6 +229,11 @@ def _collect_prune_targets(cutoff_date: str) -> dict:
         t = TOOL_OUTPUTS / sid
         if t.exists():
             targets["tool_output_dirs"].append(t)
+    # PT5: orphan tool_output dirs — sessions 테이블에 행 없음.
+    if TOOL_OUTPUTS.exists():
+        for p in sorted(TOOL_OUTPUTS.iterdir()):
+            if p.is_dir() and p.name not in known_sids:
+                targets["orphan_tool_output_dirs"].append(p)
     # telemetry: filename에 박힌 date 비교.
     if TELEMETRY_DIR.exists():
         for p in sorted(TELEMETRY_DIR.glob("*.jsonl")):
@@ -221,13 +256,14 @@ def _format_prune_summary(targets: dict, cutoff_date: str, dry_run: bool) -> str
     head = "🔍 [dry-run] " if dry_run else "🗑️  "
     parts = [
         f"{head}prune (cutoff: {cutoff_date} *이전* 데이터)",
-        f"  sessions:           {targets['session_rows']:>4} rows",
-        f"  observations:       {targets['observation_rows']:>4} rows",
-        f"  session 디렉토리:    {len(targets['session_dirs']):>4} 개",
-        f"  tool_output 디렉토리: {len(targets['tool_output_dirs']):>4} 개",
-        f"  telemetry 파일:      {len(targets['telemetry_files']):>4} 개",
-        f"  applied 드래프트:    {len(targets['applied_drafts']):>4} 개",
-        f"  discarded 드래프트:  {len(targets['discarded_drafts']):>4} 개",
+        f"  sessions:             {targets['session_rows']:>4} rows",
+        f"  observations:         {targets['observation_rows']:>4} rows",
+        f"  session 디렉토리:      {len(targets['session_dirs']):>4} 개",
+        f"  tool_output 디렉토리:  {len(targets['tool_output_dirs']):>4} 개",
+        f"  orphan _tool_outputs: {len(targets['orphan_tool_output_dirs']):>4} 개",
+        f"  telemetry 파일:       {len(targets['telemetry_files']):>4} 개",
+        f"  applied 드래프트:     {len(targets['applied_drafts']):>4} 개",
+        f"  discarded 드래프트:   {len(targets['discarded_drafts']):>4} 개",
     ]
     return "\n".join(parts)
 
@@ -242,7 +278,8 @@ def cmd_prune(days: int, confirmed: bool) -> int:
     cutoff_date = cutoff_dt.strftime("%Y-%m-%d")
     targets = _collect_prune_targets(cutoff_date)
     total = (targets["session_rows"] + len(targets["telemetry_files"])
-             + len(targets["applied_drafts"]) + len(targets["discarded_drafts"]))
+             + len(targets["applied_drafts"]) + len(targets["discarded_drafts"])
+             + len(targets["orphan_tool_output_dirs"]))
     print(_format_prune_summary(targets, cutoff_date, dry_run=not confirmed))
     if total == 0:
         print("\n삭제할 데이터가 없습니다.")
@@ -257,6 +294,8 @@ def cmd_prune(days: int, confirmed: bool) -> int:
     for d in targets["session_dirs"]:
         shutil.rmtree(d, ignore_errors=True)
     for d in targets["tool_output_dirs"]:
+        shutil.rmtree(d, ignore_errors=True)
+    for d in targets["orphan_tool_output_dirs"]:
         shutil.rmtree(d, ignore_errors=True)
     for f in targets["telemetry_files"] + targets["applied_drafts"] + targets["discarded_drafts"]:
         try:
@@ -283,10 +322,22 @@ def _find_pending_drafts() -> list[Path]:
 
 
 def _draft_for_session(session_id: str) -> Path | None:
+    if not SID_RE.match(session_id):
+        return None
     if not DRAFTS_DIR.exists():
         return None
     matches = sorted(DRAFTS_DIR.glob(f"*_{session_id}.md"))
-    return matches[-1] if matches else None
+    if not matches:
+        return None
+    # 방어적 containment 체크 — glob이 symlink 등으로 DRAFTS_DIR 밖을 가리키면 reject.
+    drafts_resolved = DRAFTS_DIR.resolve()
+    candidate = matches[-1]
+    try:
+        if not candidate.resolve().is_relative_to(drafts_resolved):
+            return None
+    except (OSError, ValueError):
+        return None
+    return candidate
 
 
 def _extract_draft_row(text: str) -> str | None:
@@ -297,14 +348,30 @@ def _extract_draft_row(text: str) -> str | None:
     return m.group(1).strip()
 
 
-def _find_change_history_table(lines: list[str]) -> tuple[int, int] | None:
-    """changelog 파일의 "변경 이력" 섹션 표 범위 (header_idx, last_row_idx) 반환.
+# PO4 (2026-05-27): changelog anchor 다언어 지원. KR + EN 변형 + env override.
+# 우선순위: $CM_CHANGELOG_TABLE_HEADING (단일 override) > _CHANGELOG_ANCHORS (enum).
+_CHANGELOG_ANCHORS = ("변경 이력", "Change History", "Change history", "Changelog", "CHANGELOG")
 
-    "변경 이력" 키워드를 포함한 heading/strong 다음에 등장하는 첫 markdown 표를 찾는다.
+
+def _changelog_anchor_candidates() -> tuple[str, ...]:
+    override = os.environ.get("CM_CHANGELOG_TABLE_HEADING", "").strip()
+    if override:
+        return (override,)
+    return _CHANGELOG_ANCHORS
+
+
+def _find_change_history_table(lines: list[str]) -> tuple[int, int] | None:
+    """changelog 파일의 변경 이력 섹션 표 범위 (header_idx, last_row_idx) 반환.
+
+    anchor 후보 중 첫 매칭 heading/strong 다음에 등장하는 첫 markdown 표를 찾는다.
+    PO4 (2026-05-27): KR/EN heading + $CM_CHANGELOG_TABLE_HEADING env override.
     """
+    candidates = _changelog_anchor_candidates()
     anchor = -1
     for i, line in enumerate(lines):
-        if "변경 이력" in line and (line.startswith("#") or line.startswith("**")):
+        if not (line.startswith("#") or line.startswith("**")):
+            continue
+        if any(c in line for c in candidates):
             anchor = i
             break
     if anchor < 0:
@@ -398,6 +465,13 @@ def cmd_claudemd_apply(session_id: str, reason_parts: list[str]) -> int:
 
     DRAFTS_APPLIED.mkdir(parents=True, exist_ok=True)
     dest = DRAFTS_APPLIED / draft.name
+    try:
+        if not dest.resolve().parent.is_relative_to(DRAFTS_APPLIED.resolve()):
+            print(f"⚠️  unsafe draft destination: {dest}")
+            return 1
+    except (OSError, ValueError):
+        print(f"⚠️  draft destination resolve 실패: {dest}")
+        return 1
     draft.replace(dest)
 
     print(f"✅ CHANGELOG.md '변경 이력' 표에 행 추가됨.")
@@ -410,6 +484,19 @@ def cmd_claudemd_apply(session_id: str, reason_parts: list[str]) -> int:
     else:
         print("⚠️  사유 컬럼이 placeholder인 채로 추가됐습니다 — CHANGELOG.md를 직접 편집해 사유를 채우거나,")
         print("    다음 apply 때 '/cm-claudemd-apply <sid> <사유 텍스트>' 형식으로 인자를 넘기세요.")
+    return 0
+
+
+def cmd_reset_adapt_counter() -> int:
+    """PO5 (2026-05-27): `_last_adapt` 파일 mtime을 현재로 박제.
+
+    Phase 10 adapt 권장 alert 카운터를 reset. manual shell touch doctrine 대체.
+    """
+    new_ts = touch_last_adapt()
+    label = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(new_ts))
+    print(f"✅ _last_adapt mtime={label} (epoch={new_ts:.0f}).")
+    print(f"   path: {LAST_ADAPT_FILE.relative_to(REPO_ROOT)}")
+    print("   다음 SessionStart부터 adapt 카운터가 0에서 다시 누적됩니다.")
     return 0
 
 
@@ -452,6 +539,7 @@ def main() -> int:
     p_apply.add_argument("session_id")
     p_apply.add_argument("reason", nargs="*", help="optional 사유 텍스트 (생략 시 placeholder 유지)")
     p_discard = sub.add_parser("claudemd-discard"); p_discard.add_argument("session_id", nargs="?", default=None)
+    sub.add_parser("reset-adapt-counter")
 
     args = parser.parse_args()
     if args.cmd == "status":              return cmd_status()
@@ -461,6 +549,7 @@ def main() -> int:
     if args.cmd == "claudemd-list":       return cmd_claudemd_list()
     if args.cmd == "claudemd-apply":      return cmd_claudemd_apply(args.session_id, args.reason)
     if args.cmd == "claudemd-discard":    return cmd_claudemd_discard(args.session_id)
+    if args.cmd == "reset-adapt-counter": return cmd_reset_adapt_counter()
     return 2
 
 

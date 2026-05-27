@@ -186,7 +186,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 - `permission-profiles-synthesis.md` — §5-1 에이전트 frontmatter (a/b/c — Layer B / Layer A+B / 모델 by role Q2 doctrine)
 - `permission-profiles-dynamic-adoption.md` — §10 dynamic adoption 5-step + 10-4 rollback + 10-7 병렬 세션
 
-운영 함의(mid-session 미전파·uvx 절대경로·자동 install 금지·`tools:` allowlist는 inline 도구 카운트 무력)는 위 4 파일에 분산. 합성 직전 *후보 간 자동 점수화*(3축: 효율성·확장성·정확도) + top-K + R-7 confirm gate + §10 인계는 `references/mcp-recommendation.md`. 자동 install·`allow` 승급은 T0(무키·로컬) 한정. 진단(인벤토리·매트릭스·정합)은 `/harness:harness-mcp-status` (read-only). 도구 API 실 schema는 `references/team-tools-api.md` (TeamCreate / SendMessage / TaskCreate / TaskUpdate / TaskGet / TaskOutput 6 도구).
+운영 함의(mid-session 미전파·uvx 절대경로·자동 install 금지·`tools:` allowlist는 inline 도구 카운트 무력)는 위 4 파일에 분산. 합성 직전 *후보 간 자동 점수화*(3축: 효율성·확장성·정확도) + top-K + R-7 confirm gate + §10 인계는 `references/mcp-recommendation.md`. 자동 install·`allow` 승급은 T0(무키·로컬) 한정. 진단(인벤토리·매트릭스·정합)은 `/harness:harness-mcp-status` (read-only). 도구 API 의사 schema(TeamCreate / SendMessage / TaskCreate / TaskUpdate / TaskGet / TaskOutput 6 도구)는 `references/agent-design-patterns.md` 부록 (PB4 흡수, 2026-05-27).
 
 ### Phase 5.5: Self-Critique on Agent Definitions
 
@@ -467,7 +467,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > | Phase 8 | `output-checklist.md` (must 8 / should 9 catalog), `skill-testing-guide.md` (트리거 회귀) | 검증 |
 > | Phase 9 | (사용자 발화 종속 — case-by-case) | 진화 |
 > | Phase 10 | `runtime-adaptation.md` | telemetry drift 적응 |
-> | Sub-agent 활용 | `team-tools-api.md` | Phase 1/5/6/8 sub-agent 격리 시 |
+> | Sub-agent 활용 | `agent-design-patterns.md` (부록 §Team Tools API) | Phase 1/5/6/8 sub-agent 격리 시 |
 > | Doctrine 박제·갱신·refit | `doctrine-registry.md` | 신규 doctrine 박제, 기존 doctrine 갱신, plugin upgrade 후 refit 진단 |
 >
 > **trigger:** LLM은 phase 진입 시점에 위 매핑 표를 보고 *해당 phase에 대응하는 reference만* read. cross-phase 참조 필요 시 (예: Phase 5에서 Phase 2 intent profile 다시 read) 명시적으로 *재read* — silent prefetch 금지.
@@ -487,11 +487,13 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 - **Project Profile 스키마**: `references/project-profile-schema.md` — Phase 1 출력 표준 형식
 - **Project Inquiry 가이드**: `references/project-inquiry.md` — 두 브랜치별 채우기 전략, profile-finding → question 매핑 룰
 - **Intent Profile 스키마**: `references/intent-profile-schema.md` — Phase 2 출력 표준 형식 + greenfield/brownfield 인스턴스 예시
+- **Intent Profile Advisory** (PB5 분리, 2026-05-27): `references/intent-profile-advisory.md` — LLM-only 권장 룰 + cross-field 경고 3종 (Phase 2 합성 직전 final review)
+- **Advisor Integration** (PB6 분리, 2026-05-27): `references/advisor-integration.md` — methodology-advisor v0.3.x handoff 변환 룰 + cross-field invariant (advisor 위임 분기 시점만 read)
 - **Runtime Adaptation 가이드**: `references/runtime-adaptation.md` — Phase 10 telemetry schema, capture 신호, diagnostic 룰, adapt 룰, 승인 UX
 - **Permission Profiles (main)**: `references/permission-profiles.md` — §1 3-layer / §2 8 capability profile / §4 결정 트리 / §5-2 anti-pattern / §5-3 deny / §6 안전 정책
 - **Permission Profiles Inventory** (P7 분리): `references/permission-profiles-inventory.md` — §3 MCP 후보 인벤토리 + §3-0 verification_status + §3-1 T0 매트릭스
 - **Permission Profiles Synthesis** (P7 분리): `references/permission-profiles-synthesis.md` — §5-1 에이전트 frontmatter 합성 (a/b/c — Layer B / Layer A+B / 모델 by role Q2 doctrine)
 - **Permission Profiles Dynamic Adoption** (P7 분리): `references/permission-profiles-dynamic-adoption.md` — §10 5-step + §10-4 rollback + §10-7 multi-writer (P4)
 - **MCP Recommendation 엔진**: `references/mcp-recommendation.md` — Phase 5-2 합성 시 자동 추천 (신호 추출·후보 풀·3축 점수·캐시·거부 학습, 10 신호 S1~S10)
-- **Team Tools API**: `references/team-tools-api.md` — sub-agent 활용 시 TeamCreate / SendMessage / TaskCreate 등 도구 schema
+- **Heuristics Baseline** (PB2 통합, 2026-05-27): `references/heuristics-baseline.md` — Phase 1·5-2·6·8·10 휴리스틱 임계값 통합 catalog (4 doc 표 → 1 단일 출처). 원 doc 본문은 1줄 pointer만 보유
 - **Trigger Keyword Catalog**: `references/trigger-keyword-catalog.md` — 10 signal × Korean·English 키워드 단일 출처 (P6-8, 2026-05-14). Phase 5 description 작성 + Phase 5-2 signal 추출 시 should/NOT 예시 catalog

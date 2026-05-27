@@ -28,7 +28,7 @@ argument-hint: <도메인 한 문장> [--mode=single|derived]
 | baseline 위치 | `_workspace/_baseline/` (host root) | `{프로젝트}/_workspace/_baseline/` |
 | telemetry capture | host의 `.claude/hooks/post_tool_use.py` 자동 (CM 운영 중) | orchestrator LLM 직접 append (orchestrator-template.md §Phase 10 강제 블록) |
 | 변경 이력 적재 | `.claude/hooks/session_end.py`가 draft 자동 생성 + `/cm-claudemd-apply` | orchestrator가 `_workspace/_baseline/changelog.md`에 manual 1행 추가 + 사용자 직접 commit |
-| Phase 5-2 MCP install | `claude mcp add` 즉시 + 다음 세션부터 사용 가능 (mid-session 미전파 — empirical) | 동일 — host-agnostic |
+| Phase 5-2 MCP install | 합성 산출물에 `claude mcp add` 명령 *기록*만 — 실행은 사용자 confirm gate 통과 후 별도 단계 (mid-session 미전파, references/permission-profiles.md §6) | 동일 — host-agnostic |
 | Phase 8 트리거 회귀 검증 | should/should-NOT 8+8 권장 | should/should-NOT 8+8 *강제* (derived 환경은 self-host CM 가드 없음) |
 
 ## 컨텍스트

@@ -13,16 +13,8 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 
-
-class _ChainProxy:
-    def __getattr__(self, name: str):
-        mod = sys.modules.get("chain") or sys.modules["__main__"]
-        return getattr(mod, name)
-
-
-chain = _ChainProxy()
+from _chain_proxy import chain
 
 
 def _extract_dharness_version_from_baseline() -> str | None:

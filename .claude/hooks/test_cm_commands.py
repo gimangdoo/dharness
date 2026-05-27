@@ -153,6 +153,57 @@ class ChangelogTableLocate(HookTestBase):
         cc = self.hooks["cm_commands"]
         self.assertIsNone(cc._find_change_history_table(["# Other"]))
 
+    def test_english_anchor_change_history_matches(self):
+        """PO4 (2026-05-27): 'Change History' heading 매칭."""
+        cc = self.hooks["cm_commands"]
+        lines = [
+            "## Change History",
+            "",
+            "| Date | Change | Target | Reason |",
+            "|---|---|---|---|",
+            "| 2026-05-27 | x | y | z |",
+        ]
+        span = cc._find_change_history_table(lines)
+        self.assertEqual(span, (2, 4))
+
+    def test_english_anchor_changelog_matches(self):
+        cc = self.hooks["cm_commands"]
+        lines = [
+            "## Changelog",
+            "| Date | Change |",
+            "|---|---|",
+            "| 2026-05-27 | x |",
+        ]
+        span = cc._find_change_history_table(lines)
+        self.assertEqual(span, (1, 3))
+
+    def test_env_override_anchor(self):
+        """PO4: $CM_CHANGELOG_TABLE_HEADING이 anchor enum을 대체."""
+        import os
+        cc = self.hooks["cm_commands"]
+        lines = [
+            "## 변경 이력",
+            "| a | b |",
+            "|---|---|",
+            "| x | y |",
+            "",
+            "## My Custom Heading",
+            "| c | d |",
+            "|---|---|",
+            "| p | q |",
+        ]
+        prev = os.environ.get("CM_CHANGELOG_TABLE_HEADING")
+        os.environ["CM_CHANGELOG_TABLE_HEADING"] = "My Custom Heading"
+        try:
+            span = cc._find_change_history_table(lines)
+        finally:
+            if prev is None:
+                del os.environ["CM_CHANGELOG_TABLE_HEADING"]
+            else:
+                os.environ["CM_CHANGELOG_TABLE_HEADING"] = prev
+        # override 시 KR anchor 무시 → 두 번째 표 매칭.
+        self.assertEqual(span, (6, 8))
+
 
 class CmdClaudemdApply(HookTestBase):
     def _seed(self, sid: str, with_placeholder: bool = True) -> Path:
@@ -321,6 +372,65 @@ class CmdPrune(HookTestBase):
         rc, out = _captured(cc.cmd_prune, 30, True)
         self.assertEqual(rc, 0)
         self.assertIn("삭제할 데이터가 없습니다", out)
+
+    def test_orphan_tool_output_dir_reaped(self):
+        """PT5: sessions 테이블에 없는 _tool_outputs/{sid}/ → orphan reap."""
+        cc = self.hooks["cm_commands"]
+        # orphan: 디렉토리만 존재, sessions row 없음.
+        orphan = _schema.TOOL_OUTPUTS / "orph01"
+        orphan.mkdir(parents=True, exist_ok=True)
+        (orphan / "leftover.log").write_text("z", encoding="utf-8")
+        # dry-run에서 카운트 1.
+        rc, out = _captured(cc.cmd_prune, 30, False)
+        self.assertEqual(rc, 0)
+        self.assertIn("orphan _tool_outputs:", out)
+        self.assertTrue(orphan.exists())  # dry-run 보존.
+        # confirm 시 삭제.
+        rc, _ = _captured(cc.cmd_prune, 30, True)
+        self.assertEqual(rc, 0)
+        self.assertFalse(orphan.exists())
+
+    # sessions.date IS NULL prune 분기 — schema가 NOT NULL을 강제하므로 unit test
+    # 구성 불가. `OR date IS NULL` 절은 미래 schema 완화 대비 forward-compat 잔류.
+
+    def test_known_sid_tool_output_not_orphaned(self):
+        """sessions 테이블에 정상 row가 있으면 orphan 아님 (cutoff에 걸려야만 reap)."""
+        cc = self.hooks["cm_commands"]
+        self._seed_recent_session("recent02")
+        tool_dir = _schema.TOOL_OUTPUTS / "recent02"
+        tool_dir.mkdir(parents=True, exist_ok=True)
+        (tool_dir / "1.log").write_text("y", encoding="utf-8")
+        rc, _ = _captured(cc.cmd_prune, 30, True)
+        self.assertEqual(rc, 0)
+        # 최근 세션이므로 cutoff 안 걸림 + orphan 아님 → 보존.
+        self.assertTrue(tool_dir.exists())
+
+
+class CmdResetAdaptCounter(HookTestBase):
+    """PO5 (2026-05-27): /cm-reset-adapt-counter — `_last_adapt` mtime 박제."""
+
+    def test_creates_last_adapt_file_when_absent(self):
+        cc = self.hooks["cm_commands"]
+        # 파일 부재 확인 (HookTestBase가 깨끗한 TELEMETRY_DIR 보장).
+        if _schema.LAST_ADAPT_FILE.exists():
+            _schema.LAST_ADAPT_FILE.unlink()
+        rc, out = _captured(cc.cmd_reset_adapt_counter)
+        self.assertEqual(rc, 0)
+        self.assertTrue(_schema.LAST_ADAPT_FILE.exists())
+        self.assertIn("_last_adapt", out)
+
+    def test_refreshes_mtime_when_present(self):
+        import os
+        cc = self.hooks["cm_commands"]
+        _schema.LAST_ADAPT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _schema.LAST_ADAPT_FILE.write_text("", encoding="utf-8")
+        # mtime 인위적 과거 박제.
+        old = time.time() - 86400 * 30
+        os.utime(_schema.LAST_ADAPT_FILE, (old, old))
+        rc, _ = _captured(cc.cmd_reset_adapt_counter)
+        self.assertEqual(rc, 0)
+        new_mtime = _schema.LAST_ADAPT_FILE.stat().st_mtime
+        self.assertGreater(new_mtime, old + 100, f"mtime not refreshed: {new_mtime} vs {old}")
 
 
 class CmdClaudemdDiscard(HookTestBase):

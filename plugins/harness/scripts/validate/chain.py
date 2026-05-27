@@ -151,10 +151,22 @@ def find_dangling_in_orchestrator(orch_path: Path, valid_agents: set[str], valid
     return errors
 
 
+def _normalize_perm_token(tok: str) -> str:
+    """permission/tool 토큰을 비교용 base name으로 정규화.
+
+    `Bash(rm:*)` → `bash`, `mcp__github__create_issue` → `mcp__github__create_issue`.
+    소문자화 + 첫 `(`까지의 prefix만 추출.
+    """
+    base = tok.split("(", 1)[0].strip()
+    return base.lower()
+
+
 def check_agent_tools_vs_settings(valid_perms: set[str]) -> list[str]:
     errors: list[str] = []
     if not AGENTS_DIR.exists():
         return errors
+
+    norm_perms = {_normalize_perm_token(p) for p in valid_perms}
 
     for path in AGENTS_DIR.glob("*.md"):
         try:
@@ -167,13 +179,14 @@ def check_agent_tools_vs_settings(valid_perms: set[str]) -> list[str]:
         tools_raw = m.group(1).strip()
         tools = [t.strip().strip("'\"") for t in re.split(r"[,\[\]]", tools_raw) if t.strip()]
         for tool in tools:
-            if tool.lower() in {"read", "write", "edit", "glob", "grep", "bash", "powershell"}:
+            base = _normalize_perm_token(tool)
+            if base in {"read", "write", "edit", "glob", "grep", "bash", "powershell"}:
                 continue
-            if tool.lower().startswith("websearch") or tool.lower().startswith("webfetch"):
+            if base.startswith("websearch") or base.startswith("webfetch"):
                 continue
-            if not valid_perms:
+            if not norm_perms:
                 continue
-            if not any(tool in perm or perm in tool for perm in valid_perms):
+            if base not in norm_perms:
                 errors.append(f"{path.name}: `tools:` entry `{tool}` — settings*.json permissions 미정합 (warning)")
     return errors
 
@@ -211,11 +224,10 @@ def _has_glob(s: str) -> bool:
 def _single_star_overlap(a: str, b: str) -> bool:
     """단일 `*` glob 두 개의 교집합 비공집합 여부 결정적 판정.
 
-    A = prefix_A + '*' + suffix_A, B = prefix_B + '*' + suffix_B 일 때
-    겹치는 문자열 존재 조건:
-      (1) 한 prefix가 다른 prefix의 시작
-      (2) 한 suffix가 다른 suffix의 끝
-      (3) 결합 prefix + 결합 suffix가 서로 겹치지 않음 (길이 sufficient)
+    A = pa + '*' + sa, B = pb + '*' + sb일 때 동일 S에 매칭되려면:
+      - S가 양쪽 prefix 시작 (한 prefix는 다른 prefix를 포함하는 시작이어야 함)
+      - S가 양쪽 suffix 끝 (한 suffix는 다른 suffix를 포함하는 끝이어야 함)
+      - lp + ls가 단일 S에서 충돌하지 않음 (`*` ≥ 0 char이므로 |S| ≥ |lp|+|ls| 항상 가능)
     """
     if a.count("*") != 1 or b.count("*") != 1:
         return False
@@ -227,10 +239,6 @@ def _single_star_overlap(a: str, b: str) -> bool:
         return False
     if not (sa.endswith(sb) or sb.endswith(sa)):
         return False
-    # 결합 prefix·suffix 길이 합이 한 패턴 길이 -1 (자리 '*') 이하여야 매칭 가능
-    long_prefix = pa if len(pa) >= len(pb) else pb
-    long_suffix = sa if len(sa) >= len(sb) else sb
-    # 결합 string의 prefix와 suffix가 겹치면 (overlap 영역) — 그래도 일치 가능
     return True
 
 
@@ -393,18 +401,29 @@ def _extract_description(text: str) -> str | None:
         m = DESCRIPTION_LINE_PATTERN.match(line)
         if not m:
             continue
+        # description: 라인의 들여쓰기 (보통 0). block은 이보다 깊은 들여쓰기 라인 누적.
+        desc_indent = len(line) - len(line.lstrip(" "))
         raw = m.group(1).strip()
         # YAML block scalar — 다음 들여쓰기 라인들 join
         if raw in ("|", ">", "|-", ">-", "|+", ">+"):
             collected: list[str] = []
+            block_indent: int | None = None
             for sub in lines[i + 1:]:
                 if not sub.strip():
+                    collected.append("")
                     continue
-                if re.match(r"^\s+", sub) and not re.match(r"^\S", sub):
-                    collected.append(sub.strip())
-                    continue
-                if re.match(r"^\S", sub):
+                sub_indent = len(sub) - len(sub.lstrip(" "))
+                # block의 indent는 첫 content 라인이 결정. 이후 라인이 더 얕으면 block 종료.
+                if block_indent is None:
+                    if sub_indent <= desc_indent:
+                        break
+                    block_indent = sub_indent
+                elif sub_indent <= desc_indent:
                     break
+                collected.append(sub[block_indent:] if sub_indent >= block_indent else sub.strip())
+            # trailing empty lines strip (folded/literal 양쪽 동일 처리)
+            while collected and not collected[-1].strip():
+                collected.pop()
             sep = "\n" if raw.startswith("|") else " "
             return sep.join(collected) if collected else None
         # quoted 또는 plain inline
@@ -497,11 +516,19 @@ def check_agent_tools_mcp_consistency() -> list[str]:
     return errors
 
 
+_ALLOWED_AGENT_MODELS = {"opus", "sonnet", "haiku"}
+
+
 def check_agent_model_field() -> list[str]:
-    """frontmatter `model:` 필드 박제 확인 (Q2 doctrine, permission-profiles.md §5-1-c)."""
+    """frontmatter `model:` 필드 박제 + enum 검증 (Q2 doctrine, permission-profiles-synthesis.md §5-1-c).
+
+    필드 부재 + 허용 외 값(`opus`/`sonnet`/`haiku` 외) 모두 FAIL.
+    quoted 값(`"opus"`, `'opus'`)도 같은 enum으로 정규화.
+    """
     errors: list[str] = []
     if not AGENTS_DIR.exists():
         return errors
+    pattern = re.compile(r"^\s*model\s*:\s*['\"]?([\w-]+)['\"]?\s*$", re.MULTILINE)
     for path in AGENTS_DIR.glob("*.md"):
         rel = str(path.relative_to(REPO_ROOT))
         try:
@@ -511,8 +538,18 @@ def check_agent_model_field() -> list[str]:
         fm = _extract_frontmatter_block(text)
         if not fm:
             continue
-        if not re.search(r"^\s*model\s*:\s*\S+", fm, re.MULTILINE):
-            errors.append(f"{rel}: frontmatter `model:` 필드 누락 (Q2 doctrine — opus/sonnet 명시 필수)")
+        m = pattern.search(fm)
+        if not m:
+            errors.append(
+                f"{rel}: frontmatter `model:` 필드 누락 (Q2 doctrine — opus/sonnet/haiku 명시 필수)"
+            )
+            continue
+        value = m.group(1).lower()
+        if value not in _ALLOWED_AGENT_MODELS:
+            errors.append(
+                f"{rel}: frontmatter `model: {value}` 허용 외 값 — "
+                f"opus/sonnet/haiku 중 하나여야 함 (permission-profiles-synthesis.md §5-1-c)"
+            )
     return errors
 
 
@@ -530,6 +567,19 @@ INJECTION_GUARD_PATTERN = re.compile(
     r"입력\s*신뢰\s*경계|프롬프트\s*인젝션|인젝션\s*방어|injection\s*guard|untrusted\s*input|prompt\s*injection",
     re.IGNORECASE,
 )
+# PD4 — 가드 절 본문 semantic 검증. 절 anchor 이후 본문에서 distinct keyword ≥2 매칭 요구.
+# 단순 boilerplate 복붙 차단 (heading만 박제 + 빈 본문 회피).
+_INJECTION_SEMANTIC_KEYWORDS = (
+    re.compile(r"untrusted", re.IGNORECASE),
+    re.compile(r"injection", re.IGNORECASE),
+    re.compile(r"프롬프트"),
+    re.compile(r"sanitize", re.IGNORECASE),
+    re.compile(r"validate", re.IGNORECASE),
+    re.compile(r"신뢰\s*경계"),
+    re.compile(r"검증"),
+)
+# 가드 절 본문 추출 — anchor 매치 위치 이후 다음 heading (`##` 또는 `---`) 또는 ~800 char까지.
+_NEXT_HEADING_RE = re.compile(r"^\s*##\s|^\s*---\s*$", re.MULTILINE)
 
 
 def check_agent_injection_guard() -> list[str]:
@@ -563,19 +613,43 @@ def check_agent_injection_guard() -> list[str]:
             # `tools:` 필드 부재 = 전체 도구 상속 (Bash/Write 포함) — 인젝션 표면 존재
             surface = "tools: 필드 부재 → 전체 도구 상속"
         body = text.split("---", 2)[-1] if text.lstrip().startswith("---") else text
-        if not INJECTION_GUARD_PATTERN.search(body):
+        anchor = INJECTION_GUARD_PATTERN.search(body)
+        if not anchor:
             errors.append(
                 f"{rel}: 외부 입력·부작용 도구 보유({surface})하나 본문 인젝션 방어 절 부재 "
                 f"— '입력 신뢰 경계' 섹션 박제 필수 (N-C-1 doctrine)"
+            )
+            continue
+        # PD4 semantic gate — anchor 이후 가드 절 본문에서 distinct keyword ≥2 매칭.
+        rest = body[anchor.end():]
+        next_h = _NEXT_HEADING_RE.search(rest)
+        section_body = rest[: next_h.start()] if next_h else rest[:800]
+        matched = sum(1 for kw in _INJECTION_SEMANTIC_KEYWORDS if kw.search(section_body))
+        if matched < 2:
+            errors.append(
+                f"{rel}: 외부 입력·부작용 도구 보유({surface}) 가드 절 박제됐으나 본문 semantic 키워드 부족 "
+                f"(matched={matched}, 요구 ≥2 of untrusted/injection/프롬프트/sanitize/validate/신뢰 경계/검증) "
+                f"— boilerplate 복붙 의심 (PD4)"
             )
     return errors
 
 
 def _tokenize_description(desc: str) -> set[str]:
-    """description에서 trigger 키워드 후보 토큰화 — 한글/영문 단어 단위."""
-    # 한글 음절 연속 + 영문 단어 + 숫자 — 기호·공백 분리
-    tokens = re.findall(r"[가-힣]+|[A-Za-z][A-Za-z0-9_-]+", desc)
-    return {t.lower() for t in tokens if len(t) >= 2}
+    """description에서 trigger 키워드 후보 토큰화.
+
+    영문/숫자: word 단위 (소문자 정규화).
+    한글: 2-gram character n-gram만 사용 — Korean은 word boundary가 의미와 어긋나
+    (`데이터` ↔ `데이터베이스`처럼 substring 관계 흔함), word 단위는 검출 불가.
+    n-gram 토큰은 `kg2:` prefix로 영문 word 토큰과 namespace 분리.
+    """
+    tokens: set[str] = set()
+    for w in re.findall(r"[A-Za-z][A-Za-z0-9_-]+", desc):
+        if len(w) >= 2:
+            tokens.add(w.lower())
+    for block in re.findall(r"[가-힣]{2,}", desc):
+        for k in range(len(block) - 1):
+            tokens.add(f"kg2:{block[k:k + 2]}")
+    return tokens
 
 
 def check_skill_description_overlap(threshold: float = 0.5) -> list[str]:
@@ -637,9 +711,17 @@ def check_skill_signal_coverage() -> list[str]:
         hit_signals: list[str] = []
         for signal_id, keywords in _TRIGGER_SIGNAL_KEYWORDS.items():
             for kw in keywords:
-                if kw.lower() in desc_lower:
-                    hit_signals.append(signal_id)
-                    break
+                kw_l = kw.lower()
+                # ASCII 키워드는 word boundary 필요 — `inspect` ≠ `inspector`.
+                # 한글은 word boundary 효력 없음 — substring 매칭 + min len 3 (1~2자 noise 차단).
+                if re.search(r"[A-Za-z]", kw_l):
+                    if re.search(rf"\b{re.escape(kw_l)}\b", desc_lower):
+                        hit_signals.append(signal_id)
+                        break
+                else:
+                    if len(kw_l) >= 3 and kw_l in desc_lower:
+                        hit_signals.append(signal_id)
+                        break
         if not hit_signals:
             errors.append(
                 f"{rel}: description이 trigger-keyword-catalog 10 signal 어느 것도 hit 안 함 (Q11 signal coverage 0) — 트리거 약함"
@@ -759,7 +841,8 @@ from chain_registry import (  # noqa: E402
 def find_orchestrator() -> Path | None:
     if not SKILLS_DIR.exists():
         return None
-    for skill_dir in SKILLS_DIR.iterdir():
+    # FS iteration 순서는 비결정적 — sorted()로 박제. 다중 orchestrator-named 디렉토리가 있어도 결정적 첫 매치.
+    for skill_dir in sorted(SKILLS_DIR.iterdir()):
         if not skill_dir.is_dir():
             continue
         if "orchestrator" in skill_dir.name.lower():
@@ -777,9 +860,20 @@ def find_orchestrator() -> Path | None:
     return None
 
 
+def _parse_only_flag(argv: list[str]) -> set[str] | None:
+    """--only <name>[,<name>...] flag 파싱. 미지정 시 None (전체 실행)."""
+    for i, a in enumerate(argv):
+        if a == "--only" and i + 1 < len(argv):
+            return {n.strip() for n in argv[i + 1].split(",") if n.strip()}
+        if a.startswith("--only="):
+            return {n.strip() for n in a.split("=", 1)[1].split(",") if n.strip()}
+    return None
+
+
 def main(argv: list[str]) -> int:
     as_json = "--json" in argv
     strict = "--strict" in argv
+    only = _parse_only_flag(argv)
 
     if not (REPO_ROOT / ".claude").exists():
         msg = ".claude/ 미존재 — harness 미생성"
@@ -793,37 +887,54 @@ def main(argv: list[str]) -> int:
     valid_skills = collect_skills()
     valid_perms = collect_settings_permissions()
 
-    errors: list[str] = []
+    # check 이름 → callable 매핑. `--only <name>` flag 미지정 시 전체 실행.
+    checks: list[tuple[str, callable]] = [
+        ("check_orchestrator_dangling", lambda: find_dangling_in_orchestrator(
+            find_orchestrator(), valid_agents, valid_skills) if find_orchestrator() else []),
+        ("check_agent_tools_vs_settings", lambda: check_agent_tools_vs_settings(valid_perms)),
+        ("check_agent_name_uniqueness", check_agent_name_uniqueness),
+        ("check_agent_write_path_overlap", check_agent_write_path_overlap),
+        ("check_orchestrator_agent_coverage", check_orchestrator_agent_coverage),
+        ("check_skill_name_uniqueness", check_skill_name_uniqueness),
+        ("check_reference_links", check_reference_links),
+        ("check_plugin_internal_references", check_plugin_internal_references),
+        ("check_agent_tools_mcp_consistency", check_agent_tools_mcp_consistency),
+        ("check_agent_model_field", check_agent_model_field),
+        ("check_agent_injection_guard", check_agent_injection_guard),
+        ("check_skill_description_overlap", check_skill_description_overlap),
+        ("check_skill_signal_coverage", check_skill_signal_coverage),
+        ("check_intent_profile_grilling_log", check_intent_profile_grilling_log),
+        ("check_required_user_confirmed_fields", check_required_user_confirmed_fields),
+        ("check_doctrine_registry_fn_refs", check_doctrine_registry_fn_refs),
+        ("check_doctrine_registry_inverse_index", check_doctrine_registry_inverse_index),
+        ("check_intent_required_doc_sync", check_intent_required_doc_sync),
+        ("check_output_checklist_count_sync", check_output_checklist_count_sync),
+        ("check_command_count_sync", check_command_count_sync),
+        ("check_intent_profile_version", check_intent_profile_version),
+        ("check_intent_profile_project_type", check_intent_profile_project_type),
+        ("check_intent_profile_brownfield_inferred", check_intent_profile_brownfield_inferred),
+        ("check_intent_profile_greenfield_locked_in", check_intent_profile_greenfield_locked_in),
+        ("check_advisor_handoff_adapter_consistency", check_advisor_handoff_adapter_consistency),
+    ]
+    known = {name for name, _ in checks}
+    if only:
+        unknown = only - known
+        if unknown:
+            msg = f"unknown check name(s): {sorted(unknown)} — known: {sorted(known)}"
+            if as_json:
+                print(json.dumps({"status": "precondition_fail", "error": msg}, ensure_ascii=False))
+            else:
+                print(f"❌ {msg}")
+            return 2
+
     orch = find_orchestrator()
-    if orch:
-        errors.extend(find_dangling_in_orchestrator(orch, valid_agents, valid_skills))
+    errors: list[str] = []
+    for name, fn in checks:
+        if only and name not in only:
+            continue
+        errors.extend(fn())
 
-    errors.extend(check_agent_tools_vs_settings(valid_perms))
-    errors.extend(check_agent_name_uniqueness())
-    errors.extend(check_agent_write_path_overlap())
-    errors.extend(check_orchestrator_agent_coverage())
-    errors.extend(check_skill_name_uniqueness())
-    errors.extend(check_reference_links())
-    errors.extend(check_plugin_internal_references())
-    errors.extend(check_agent_tools_mcp_consistency())
-    errors.extend(check_agent_model_field())
-    errors.extend(check_agent_injection_guard())
-    errors.extend(check_skill_description_overlap())
-    errors.extend(check_skill_signal_coverage())
-    errors.extend(check_intent_profile_grilling_log())
-    errors.extend(check_required_user_confirmed_fields())
-    errors.extend(check_doctrine_registry_fn_refs())
-    errors.extend(check_doctrine_registry_inverse_index())
-    errors.extend(check_intent_required_doc_sync())
-    errors.extend(check_output_checklist_count_sync())
-    errors.extend(check_command_count_sync())
-    errors.extend(check_intent_profile_version())
-    errors.extend(check_intent_profile_project_type())
-    errors.extend(check_intent_profile_brownfield_inferred())
-    errors.extend(check_intent_profile_greenfield_locked_in())
-    errors.extend(check_advisor_handoff_adapter_consistency())
-
-    version_drift = check_dharness_version_drift()
+    version_drift = check_dharness_version_drift() if not only else {"message": None}
 
     status = "PASS" if not errors else "FAIL"
     report = {

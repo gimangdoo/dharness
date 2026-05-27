@@ -12,7 +12,7 @@ argument-hint: [--verbose 옵션]
 - **인자**: `$ARGUMENTS` (선택)
   - `--verbose`: 5섹션 풀 출력 (default는 단축 요약)
 - **입력**: `.claude/agents/`, `.claude/skills/`, `_workspace/_baseline/*.md`, `_workspace/_telemetry/*.jsonl`, `_workspace/_drafts/` (해당 시), `_workspace/_baseline/changelog.md`
-- **출력**: 5섹션 진단 보고 (콘솔 출력만, 파일 산출물 0)
+- **출력**: 4섹션 진단 보고 (콘솔 출력만, 파일 산출물 0)
 
 ## 선조건 검증
 
@@ -25,7 +25,7 @@ argument-hint: [--verbose 옵션]
 
 `/harness:harness-audit` (LLM 추론)·`/harness:harness-mcp-status` (MCP 진단)와 *상호 보완*. 본 명령은 **상위 요약** — 깊이 있는 진단은 audit / mcp-status로 위임.
 
-### 5섹션 출력
+### 4섹션 출력
 
 #### §1 인벤토리 (결정적)
 
@@ -87,20 +87,9 @@ argument-hint: [--verbose 옵션]
 - `_workspace/_drafts/*.md` (applied/discarded 제외) 카운팅
 - `_workspace/_baseline/changelog.md` "변경 이력" 표 마지막 row date parse
 
-#### §5 권고 행동 (LLM 합성 — advisory)
-
-```
-🎯 권고
-  1순위: {single most-impactful action — drift > baseline staleness > pending draft 우선}
-  2순위: {next}
-  3순위: {next}
-```
-
-§1~§4 신호로 단일 LLM 추론. **advisory only — 사용자가 결정.**
-
 ### --verbose 모드
 
-`--verbose` 인자 시 §1~§5 풀 출력. default는 §3 drift + §4 pending + §5 권고 3섹션 단축.
+`--verbose` 인자 시 §1~§4 풀 출력. default는 §3 drift + §4 pending 2섹션 단축. 권고 행동(LLM 합성) 영역은 `/harness:harness-audit`에 일원화 — `status`는 *결정적 가시성* 단일 진입점.
 
 ## 범위 외
 

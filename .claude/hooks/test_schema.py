@@ -198,6 +198,42 @@ class ClassifyBash(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["category"], "git_add")
 
+    def test_echo_quoted_git_not_matched(self):
+        # PX3: echo "git commit"은 quoting으로 보호 — false positive 차단.
+        self._check('echo "git commit -m fix"', None)
+        self._check("echo 'git push origin main'", None)
+
+    def test_heredoc_git_not_matched(self):
+        # PX3: heredoc 내부 git 키워드는 single-quoted string처럼 다뤄야 안전.
+        # shlex가 heredoc 자체는 모르지만, 일반적인 cat << EOF ... EOF 패턴에선
+        # quoted body 외부의 git 키워드가 없어야 false positive 없음.
+        self._check("cat 'git commit -m fix' > /tmp/x", None)
+
+    def test_comment_only_git_not_matched(self):
+        # PX3: shlex(comments=True)가 #로 시작하는 토큰을 주석으로 처리.
+        self._check("# git commit -m fix", None)
+
+    def test_pipe_left_of_git_not_matched(self):
+        # PX3: `echo foo | git ...` 같은 pipe는 right-of-pipe가 진짜 명령.
+        # 단, echo는 git이 아니므로 전체 결과는 매치 안 됨.
+        self._check("echo abc | grep xyz", None)
+
+    def test_pipe_right_of_git_matched(self):
+        # pipe 오른쪽이 git이면 chain 검출.
+        result = classify_dharness_event(
+            "Bash", {"command": "echo abc | git apply -"}
+        )
+        # git apply는 _GIT_RELEVANT에 없으므로 None.
+        self.assertIsNone(result)
+
+    def test_pipe_right_of_git_with_relevant_subcommand(self):
+        # right-of-pipe가 git push면 매치.
+        result = classify_dharness_event(
+            "Bash", {"command": "echo done | git push"}
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["category"], "git_push")
+
 
 class ClassifyMisc(unittest.TestCase):
     def test_non_recognized_tool(self):
@@ -206,111 +242,10 @@ class ClassifyMisc(unittest.TestCase):
         self.assertIsNone(classify_dharness_event("Read", {"file_path": "README.md"}))
 
 
-class HarnessNewGates(unittest.TestCase):
-    """anti-premature-judgment doctrine + Phase 1/2/5 entry 게이트 박제 회귀.
-
-    사용자 요구 2026-05-15: `/harness:harness-new` 진입 시 cwd 디렉토리 이름·파일 이름 단독
-    도메인 단정 차단. Phase 1 산출물 강제 + Phase 2 필수 5필드 사용자 답변 raw 인용 강제.
-
-    2026-05-23 P2-A split: doctrine 본문이 references/phase-entry-gates.md로 분리됨.
-    본 테스트는 (a) SKILL.md에 phase-entry-gates pointer 박제 + (b) references 본문에
-    doctrine 키워드 박제 — 두 조건 모두 검증한다.
-    """
-
-    REPO_ROOT = Path(__file__).resolve().parents[2]
-    SKILL_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
-    GATES_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references" / "phase-entry-gates.md"
-    CMD_MD = REPO_ROOT / "plugins" / "harness" / "commands" / "harness-new.md"
-
-    def _skill_pointer(self) -> str:
-        return self.SKILL_MD.read_text(encoding="utf-8-sig")
-
-    def _gates(self) -> str:
-        return self.GATES_MD.read_text(encoding="utf-8-sig")
-
-    def test_anti_premature_judgment_doctrine_present(self):
-        skill = self._skill_pointer()
-        gates = self._gates()
-        self.assertIn("phase-entry-gates.md", skill,
-                      "SKILL.md: phase-entry-gates.md pointer 미박제")
-        self.assertIn("Anti-premature-judgment doctrine", gates,
-                      "phase-entry-gates.md: Anti-premature-judgment doctrine 박스 미박제")
-        self.assertIn("cwd 디렉토리 이름", gates,
-                      "phase-entry-gates.md: 'cwd 디렉토리 이름' 단정 금지 doctrine 미박제")
-        self.assertIn("단정 허용 조건", gates,
-                      "phase-entry-gates.md: '단정 허용 조건' 게이트 미박제")
-
-    def test_phase1_entry_gate_present(self):
-        skill = self._skill_pointer()
-        gates = self._gates()
-        self.assertIn("phase-entry-gates.md", skill,
-                      "SKILL.md: phase-entry-gates.md pointer 미박제")
-        self.assertIn("Phase 1", gates)
-        self.assertIn("산출물 강제", gates,
-                      "phase-entry-gates.md: Phase 1 '산출물 강제' 문구 미박제")
-        self.assertIn("실 파일 read 강제", gates,
-                      "phase-entry-gates.md: Phase 1 '실 파일 read 강제' 문구 미박제")
-        self.assertIn("silent skip 차단", gates,
-                      "phase-entry-gates.md: 'silent skip 차단' 문구 미박제")
-
-    def test_phase2_entry_gate_present(self):
-        skill = self._skill_pointer()
-        gates = self._gates()
-        self.assertIn("phase-entry-gates.md", skill,
-                      "SKILL.md: phase-entry-gates.md pointer 미박제")
-        self.assertIn("Phase 2", gates)
-        self.assertIn("질문 폭격 강제", gates,
-                      "phase-entry-gates.md: Phase 2 '질문 폭격 강제' 문구 미박제")
-        self.assertIn("user_confirmed_fields", gates,
-                      "phase-entry-gates.md: Phase 2 meta.user_confirmed_fields 박제 doctrine 미박제")
-
-    def test_harness_new_command_synced(self):
-        text = self.CMD_MD.read_text(encoding="utf-8-sig")
-        self.assertIn("Anti-premature-judgment", text,
-                      "harness-new.md: 게이트 포인터 미동기화")
-        self.assertIn("entry 게이트 (2026-05-15)", text,
-                      "harness-new.md: 2026-05-15 entry 게이트 포인터 미박제")
-
-    def test_phase5_cardinality_gate_present(self):
-        skill = self._skill_pointer()
-        gates = self._gates()
-        self.assertIn("phase-entry-gates.md", skill,
-                      "SKILL.md: phase-entry-gates.md pointer 미박제")
-        self.assertIn("Cardinality justification", gates,
-                      "phase-entry-gates.md: Phase 5 'Cardinality justification' 문구 미박제")
-        self.assertIn("inline 대안 검토", gates,
-                      "phase-entry-gates.md: Phase 5 'inline 대안 검토' 컬럼 doctrine 미박제")
-        self.assertIn("single-use → inline", gates,
-                      "phase-entry-gates.md: Phase 5 'single-use → inline' 룰 미박제")
-        self.assertIn("이름 유일성 사전 점검", gates,
-                      "phase-entry-gates.md: Phase 5 '이름 유일성 사전 점검' doctrine 미박제")
-
-    def test_phase3_5_self_critique_present(self):
-        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
-        self.assertIn("Phase 3.5: Self-Critique on Domain Analysis", text,
-                      "SKILL.md: Phase 3.5 self-critique 섹션 미박제")
-        self.assertIn("single-pass silent error", text,
-                      "SKILL.md: Phase 3.5 'single-pass silent error' 검출 doctrine 미박제")
-        self.assertIn("_critique_phase3_", text,
-                      "SKILL.md: Phase 3.5 '_critique_phase3_' 산출물 박제 미명시")
-
-    def test_phase5_5_self_critique_present(self):
-        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
-        self.assertIn("Phase 5.5: Self-Critique on Agent Definitions", text,
-                      "SKILL.md: Phase 5.5 self-critique 섹션 미박제")
-        self.assertIn("역할 중복", text,
-                      "SKILL.md: Phase 5.5 '역할 중복' cross-review doctrine 미박제")
-        self.assertIn("_critique_phase5_", text,
-                      "SKILL.md: Phase 5.5 '_critique_phase5_' 산출물 박제 미명시")
-
-    def test_phase7_5_dry_run_present(self):
-        text = self.SKILL_MD.read_text(encoding="utf-8-sig")
-        self.assertIn("Phase 7.5: Orchestrator Dry-Run Simulation", text,
-                      "SKILL.md: Phase 7.5 dry-run 섹션 미박제")
-        self.assertIn("dead link", text,
-                      "SKILL.md: Phase 7.5 'dead link' 검출 doctrine 미박제")
-        self.assertIn("_critique_phase7_", text,
-                      "SKILL.md: Phase 7.5 '_critique_phase7_' 산출물 박제 미명시")
+# HarnessNewGates 박스 (anti-premature-judgment + Phase 1·2·5 entry + Phase 3.5/5.5/7.5
+# self-critique doctrine 박제 회귀) → PT1 (2026-05-27) 분리:
+# `plugins/harness/scripts/validate/lint_doctrine_strings.py`. markdown grep 24건은
+# 단위 테스트로 박제하지 않는다 (test 카운트 정직화).
 
 
 class ChainWritesAndCoverage(unittest.TestCase):

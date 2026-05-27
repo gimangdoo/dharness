@@ -158,6 +158,49 @@ class MainSkipNoSessionId(HookTestBase):
         self.assertEqual(rc, 0)
 
 
+class MainMalformedStdin(HookTestBase):
+    """PT3 (2026-05-27): JSONDecodeError fallback (`payload = {}`) 경로 회귀.
+
+    malformed stdin은 host 세션을 깨뜨리지 않고 silent skip 해야 한다. session_id
+    파일 부재면 즉시 return 0 (orphan capture 방지).
+    """
+
+    def _run_with_raw_stdin(self, raw: str) -> int:
+        import io
+        from contextlib import redirect_stderr
+        ptu = self.hooks["post_tool_use"]
+        stderr = io.StringIO()
+        orig_stdin = sys.stdin
+        sys.stdin = io.StringIO(raw)
+        try:
+            with redirect_stderr(stderr):
+                rc = ptu.main()
+        finally:
+            sys.stdin = orig_stdin
+        return rc
+
+    def test_empty_stdin_returns_0(self):
+        # payload = {} (sys.stdin.read() == "" → "" or "{}" → {}).
+        rc = self._run_with_raw_stdin("")
+        self.assertEqual(rc, 0)
+
+    def test_malformed_json_returns_0(self):
+        # `payload = {}` fallback. session_id 미설정 → return 0.
+        rc = self._run_with_raw_stdin("{ this is not valid json")
+        self.assertEqual(rc, 0)
+
+    def test_malformed_json_with_session_id_returns_0(self):
+        """session_id 파일이 있어도 payload empty → tool_name='unknown' 경로 회귀."""
+        self.write_session_id("ptmal1")
+        (_schema.MEMORY_ROOT / "sessions" / "ptmal1").mkdir(parents=True)
+        (_schema.MEMORY_ROOT / "sessions" / "ptmal1" / "raw.jsonl").touch()
+        rc = self._run_with_raw_stdin("garbage payload")
+        self.assertEqual(rc, 0)
+        # raw.jsonl에 tool='unknown' 라인 1건 박제 (silent skip 아닌 안전 기록).
+        raw = (_schema.MEMORY_ROOT / "sessions" / "ptmal1" / "raw.jsonl").read_text(encoding="utf-8")
+        self.assertIn('"tool": "unknown"', raw)
+
+
 class MainPersistsAndClassifies(HookTestBase):
     def test_small_output_appends_raw_only(self):
         ptu = self.hooks["post_tool_use"]
@@ -183,7 +226,8 @@ class MainPersistsAndClassifies(HookTestBase):
         self.write_session_id("test02")
         (_schema.MEMORY_ROOT / "sessions" / "test02").mkdir(parents=True)
         (_schema.MEMORY_ROOT / "sessions" / "test02" / "raw.jsonl").touch()
-        big = "x" * (11 * 1024)
+        # PT4 (2026-05-27): non-repeating payload — 압축/dedup이 우연히 통과하지 않게.
+        big = "".join(chr(0x30 + (i % 64)) for i in range(11 * 1024))
         rc = _run_with_stdin(ptu, {
             "tool_name": "Bash",
             "tool_input": {"command": "ls"},
@@ -194,6 +238,11 @@ class MainPersistsAndClassifies(HookTestBase):
         outputs = list((_schema.TOOL_OUTPUTS / "test02").glob("*"))
         self.assertEqual(len(outputs), 1)
         self.assertTrue(outputs[0].suffix == ".log")  # Bash → .log
+        # PT4: content == 원본 raw payload (truncate/compress/encoding loss 없음).
+        captured = outputs[0].read_text(encoding="utf-8")
+        self.assertEqual(len(captured), len(big),
+                         f"length mismatch: captured={len(captured)} original={len(big)}")
+        self.assertEqual(captured, big, "captured content ≠ original payload")
         # telemetry tool_output_captured emit 확인.
         today = time.strftime("%Y-%m-%d", time.gmtime())
         tel = (_schema.TELEMETRY_DIR / f"{today}.jsonl").read_text(encoding="utf-8")

@@ -12,16 +12,8 @@ circular import 안전.
 from __future__ import annotations
 
 import re
-import sys
 
-
-class _ChainProxy:
-    def __getattr__(self, name: str):
-        mod = sys.modules.get("chain") or sys.modules["__main__"]
-        return getattr(mod, name)
-
-
-chain = _ChainProxy()
+from _chain_proxy import chain
 
 
 _METHODOLOGY_ENUM = {

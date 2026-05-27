@@ -493,52 +493,22 @@ Phase 2 종료 시 intent_profile.md가 다음 룰을 통과해야 한다.
 | 필수 5개 필드 채워짐 | 위 [3장](#3-필수-vs-선택-필드) 참조 |
 | brownfield는 `inferred_fields` 비어있지 않음 | Code Research 결과가 반드시 1개 이상 추론 가능 |
 
-### 권장 룰 (실패 시 경고)
+### 권장 룰 + LLM-only cross-field 경고
 
-| 룰 | 의미 |
-|----|------|
-| `meta.explicit_assumptions` 1개 이상 | 모든 프로젝트는 가정이 있다. 비어있으면 사용자가 충분히 사고하지 않은 신호 |
-| `scope.out_of_scope` 1개 이상 | scope creep 방지를 위한 명시적 제외 항목 |
-| `vision.success_definition`이 측정 가능 | "사용자 만족도 향상" 같은 측정 불가 표현 회피 권장 |
+LLM-only 권장 룰(`meta.explicit_assumptions`/`scope.out_of_scope`/`vision.success_definition` 측정성) + cross-field 경고 3종(prod+test=none / solo+strict / regulated+empty-security) → `intent-profile-advisory.md` 단일 출처 (2026-05-27 PB5 분리). chain.py 비강제 — Phase 2 LLM 자기검증.
 
-### Cross-field 룰
+### Cross-field deterministic invariant
 
-> **정합 점검 채널 (cycle 4, 2026-05-25):** 아래 표 룰 중 **deterministic enforce**는 `chain.py` 결정적 검증으로 격상, **LLM-only annotation**은 Phase 2 합성 시 LLM이 판단하고 위반 시 `meta.explicit_assumptions`에 사용자 이유 박제 후 통과 — chain.py 비강제.
->
-> | 룰 | 채널 |
-> |---|---|
-> | C14-1 `version` 존재 | `chain.py:check_intent_profile_version` (deterministic) |
-> | C14-2 `project_type` enum | `chain.py:check_intent_profile_project_type` (deterministic) |
-> | C14-3 brownfield → `inferred_fields` 1+ | `chain.py:check_intent_profile_brownfield_inferred` (deterministic) |
-> | C15-1 prod+test=none | LLM-only annotation (경고, `meta.explicit_assumptions` 통과 허용) |
-> | C15-2 solo+strict | LLM-only annotation (경고) |
-> | C15-3 regulated+empty-security | LLM-only annotation (경고) |
-> | C15-4 greenfield+locked_in | `chain.py:check_intent_profile_greenfield_locked_in` (deterministic, 모순 invariant) |
-
-| 조합 | 룰 |
-|------|----|
-| `timeline.horizon = production` + `quality.test_rigor = none` | 경고: production에 테스트 없음은 위험 (C15-1, LLM-only) |
-| `team.size = solo` + `workflow.review_style = strict` | 경고: 1인이 strict 리뷰 불가능 (C15-2, LLM-only) |
-| `data_sensitivity = regulated` + `quality.security_requirements = []` | 경고: regulated 데이터인데 보안 요구사항 미정의 (C15-3, LLM-only) |
-| `project_type = greenfield` + `constraints.tech_stack.locked_in != []` | 모순: greenfield인데 locked-in이 있음 (C15-4, deterministic) |
-| `workflow.methodology_source = advisor` + `workflow.methodology_matrix_row = null` | 모순: advisor handoff 시 decision-matrix row id 필수 |
-| `workflow.methodology_source != advisor` + `workflow.methodology_matrix_row != null` | 모순: 비-advisor source는 matrix row id 보유 금지 |
-| `workflow.methodology_source = advisor` + `meta.advisor_handoff_version` 미박제 | 모순 (v0.12.1 adapter 룰): advisor 수신 시 원본 free-string source는 `meta.advisor_handoff_version`에 보존 박제 필수 — 재현성 손실 차단 |
-| `meta.advisor_secondary_methodologies != []` + `workflow.methodology_source != advisor` | 모순 (v0.12.1 adapter 룰): secondary list는 advisor 수신 시에만 박제 (사용자 직접 응답 시 list 합성 X) |
-| `workflow.methodology_source = advisor` + `workflow.methodology` non-enum-or-non-lowercase | 모순 (v0.12.1 adapter 룰): advisor 출력 list `["DDD", "TDD", ...]`는 dharness 수신 시 primary 첫 원소를 lowercase 정규화 강제. 비정규 값 박제 시 변환 step 누락 |
+| 조합 | 룰 | 채널 |
+|------|----|---|
+| `version` 존재 | C14-1 — frontmatter 최상위 `version: 1` | `chain_intent.py:check_intent_profile_version` |
+| `project_type` enum | C14-2 — `greenfield`/`brownfield` | `chain_intent.py:check_intent_profile_project_type` |
+| brownfield → `inferred_fields` 1+ | C14-3 — Code Research 결과 1+ | `chain_intent.py:check_intent_profile_brownfield_inferred` |
+| `project_type = greenfield` + `constraints.tech_stack.locked_in != []` | C15-4 모순 — greenfield인데 locked-in 보유 | `chain_intent.py:check_intent_profile_greenfield_locked_in` |
+| advisor cross-field invariant 5종 | → `advisor-integration.md §2` 단일 출처 (PB6 분리) | `chain_advisor.py:check_advisor_handoff_adapter_consistency` |
 
 검증 실패 시 사용자에게 해당 룰과 이유를 제시하고 응답을 요구한다. 사용자가 의도된 것이라 응답하면 `meta.explicit_assumptions`에 "{룰} 의도적 위반: {사용자 이유}"로 기록.
 
-### Advisor handoff 수신 시 변환 룰 (v0.12.1 adapter doctrine)
+### Advisor handoff 변환 룰
 
-methodology-advisor plugin v0.3.x 출력 yaml fragment를 dharness `intent_profile.md` frontmatter에 merge할 때 적용. dharness 측 단방향 변환 — advisor 측 출력 형식 변경 0.
-
-| advisor 출력 | dharness 변환 | 변환 대상 필드 |
-|---|---|---|
-| `workflow.methodology: ["DDD", "TDD", "Trunk-based"]` (mixed-case list) | primary = list[0] lowercase → scalar; secondary = list[1:] lowercase | `workflow.methodology` (scalar enum) + `meta.advisor_secondary_methodologies` (list) |
-| `workflow.methodology_source: "methodology-advisor v0.3.1"` (free string) | enum 정규화 `"advisor"` + 원본 메타 박제 | `workflow.methodology_source` (enum) + `meta.advisor_handoff_version` (string) |
-| `workflow.methodology_matrix_row: "R4"` 또는 `"matrix-miss"` sigil | 그대로 박제 | `workflow.methodology_matrix_row` (string\|null) |
-
-변환 강제 트리거: SKILL.md §Phase 2 advisor 위임 doctrine 1 단락 + grilling-loop.md §3-4 advisor delegation branch step 4 (yaml merge 직전).
-
-**카탈로그 외 방법론 처리:** advisor `[catalog-miss]` sigil 또는 dharness enum 11개 외 값 시 → `workflow.methodology: "unknown"` + secondary에 원 문자열 보존 + `meta.open_questions`에 "advisor 추천 '<원본>' dharness enum 외 — 진화 단계 재합성" 박제.
+methodology-advisor plugin v0.3.x 출력 yaml → dharness intent_profile frontmatter 단방향 변환 룰은 `advisor-integration.md §1` 단일 출처 (2026-05-27 PB6 분리).

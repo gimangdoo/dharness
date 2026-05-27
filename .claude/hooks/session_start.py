@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """SessionStart hook — 세션 부트스트랩 + dangling 세션 finalize + 의미적 inject.
 
 수행:
@@ -39,6 +40,7 @@ from _schema import (
     MEMORY_ROOT,
     REPO_ROOT,
     TELEMETRY_DIR,
+    _get_conn,
     adapt_alert_due,
     count_events_since_last_adapt,
     ensure_migrations,
@@ -47,7 +49,8 @@ from _schema import (
 )
 from _transcript_utils import flatten_to_transcript
 
-INJECT_BUDGET = 2000
+# PO3 (2026-05-27): char count, not token. token은 ~2× 추정 (한글 mixed, BPE).
+INJECT_CHAR_BUDGET = 2000
 GIT_STATUS_MAX_LINES = 12
 PRIOR_SESSIONS = 3
 PENDING_DRAFTS_MAX = 5
@@ -238,7 +241,7 @@ def main() -> int:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     backfilled: list[str] = []
     prior_sessions: list[dict] = []
-    conn = sqlite3.connect(DB_PATH)
+    conn = _get_conn()
     try:
         with conn:
             conn.executescript(DDL)
@@ -316,7 +319,7 @@ def main() -> int:
         git_lines=git_lines,
         pending_drafts=pending_drafts,
         adapt_alert=adapt_alert,
-        budget=INJECT_BUDGET,
+        budget=INJECT_CHAR_BUDGET,
     )
 
     print(json.dumps({

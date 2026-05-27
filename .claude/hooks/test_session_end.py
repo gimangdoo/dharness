@@ -75,6 +75,23 @@ class GenerateDraft(HookTestBase):
         self.assertIn("cm_hook_edit:1", text)
         self.assertIn(_schema.DRAFT_REASON_PLACEHOLDER, text)
 
+    def test_draft_collision_raises_file_exists_error(self):
+        """PO2 (2026-05-27): 동일 (date, sid) draft 이미 존재 → O_EXCL FileExistsError.
+
+        sid race·hook 재실행 시 silent overwrite 차단.
+        """
+        se = self.hooks["session_end"]
+        # 기존 draft 박제.
+        existing = _schema.DRAFTS_DIR / "2026-05-23_collide01.md"
+        existing.write_text("PRIOR DRAFT — DO NOT OVERWRITE", encoding="utf-8")
+        self.insert_observation("collide01", "harness_skill_edit", "skill",
+                                content="Edit foo.md")
+        with sqlite3.connect(_schema.DB_PATH) as conn:
+            with self.assertRaises(FileExistsError):
+                se.generate_draft(conn, "collide01", "2026-05-23", 5)
+        # 기존 draft 보존 — 덮어쓰기 안 됨.
+        self.assertEqual(existing.read_text(encoding="utf-8"), "PRIOR DRAFT — DO NOT OVERWRITE")
+
     def test_draft_targets_truncated(self):
         """8개 초과 시 (+N more)로 truncate (DRAFT_TARGETS_MAX=8)."""
         se = self.hooks["session_end"]

@@ -12,16 +12,8 @@ chain.PLUGIN_README / chain._DOCTRINE_REGISTRY는 runtime에 lookup하므로 cir
 from __future__ import annotations
 
 import re
-import sys
 
-
-class _ChainProxy:
-    def __getattr__(self, name: str):
-        mod = sys.modules.get("chain") or sys.modules["__main__"]
-        return getattr(mod, name)
-
-
-chain = _ChainProxy()
+from _chain_proxy import chain
 
 
 # S13 박제 — output-checklist.md 본문 카운트 ↔ 인용 박제 정합 검증 대상 파일.

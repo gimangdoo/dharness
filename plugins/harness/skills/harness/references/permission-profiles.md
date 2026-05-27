@@ -62,10 +62,10 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 | web-research | S1+S3 | fetch, memory | §3-1 행 2 |
 | external-integration | S2+S4+S5 | sqlite (+T1+ github) | §3-1 행 3 |
 | reasoning-aux | S6 | sequential-thinking, time | §3-1 행 4 |
-| ml-pipeline (2026-05-14) | S7 | filesystem + sqlite + memory + sequential-thinking + git | §3-1 행 5 |
-| devops-infra (2026-05-14) | S8 | git + filesystem + time + sequential-thinking | §3-1 행 6 |
-| mobile-native (2026-05-14) | S9 | filesystem + git + sequential-thinking (+T1 playwright/chrome-devtools) | §3-1 행 7 |
-| data-eng (2026-05-14) | S10 | sqlite + filesystem + git + memory + sequential-thinking | §3-1 행 8 |
+| ml-pipeline (2026-05-14) | S7 | filesystem + sqlite + memory + sequential-thinking + git | §3-1 박스 (4 범용 재조합, PB1 위임) |
+| devops-infra (2026-05-14) | S8 | git + filesystem + time + sequential-thinking | §3-1 박스 (4 범용 재조합, PB1 위임) |
+| mobile-native (2026-05-14) | S9 | filesystem + git + sequential-thinking (+T1 playwright/chrome-devtools) | §3-1 박스 (4 범용 재조합, PB1 위임) |
+| data-eng (2026-05-14) | S10 | sqlite + filesystem + git + memory + sequential-thinking | §3-1 박스 (4 범용 재조합, PB1 위임) |
 
 > **Signal S1~S10 정의**: mcp-recommendation.md §1.
 
@@ -105,7 +105,7 @@ Phase 5(에이전트 정의)에서 생성되는 에이전트에 빌트인 도구
 
 각 프로파일은 ① 빌트인 도구 ② MCP 후보 ③ 추천 toolset 필터 ④ 격리 권장 여부를 묶는다.
 
-> **8 profile 분류 doctrine (2026-05-14 P6-11 확장)**: §2-1~§2-4는 *범용 4종* (PoC 완료 매트릭스 §3-1 박제). §2-5~§2-8은 *도메인 4종* (2026-05-14 신설 — ml-pipeline / devops-infra / mobile-native / data-eng). 도메인 4종의 MCP 후보 다수는 PoC 미완 — §3-1 매트릭스 진입은 §10 dynamic adoption 절차로 cycle별 누적.
+> **8 profile 분류 doctrine (2026-05-14 P6-11 확장 / 2026-05-27 PB1 축소)**: §2-1~§2-4는 *범용 4종* (PoC 완료 매트릭스 §3-1 박제). §2-5~§2-8은 *도메인 4종* (ml-pipeline / devops-infra / mobile-native / data-eng — 2026-05-14 신설). 도메인 4종은 §3-1 매트릭스 행 박제 대상 *외* — 시그널 매핑(`trigger-keyword-catalog.md §1` S7~S10 → §2 profile) + 범용 4 profile 재조합 + 도메인 permission bucket 권고(§3-1 박스)로 합성. 도메인 전용 MCP 격상은 §10 dynamic adoption 절차로 cycle별 누적.
 
 ### 2-1. `code-test` — 테스트·코드 워크플로우
 - **빌트인:** `Bash`, `Read`, `Edit`, `Glob`, `Grep`, `Write`

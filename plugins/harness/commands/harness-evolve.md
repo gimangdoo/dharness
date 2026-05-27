@@ -1,5 +1,5 @@
 ---
-description: 피드백 반영 — 사용자 발화 한 줄로 에이전트·스킬 수정 + 변경 이력 누적 (Phase 9 수동 진화 진입점).
+description: 피드백 분류 + 위임 wrapper — 사용자 발화를 5유형으로 분류 후 소규모 텍스트 수정은 직접, 구조 변경은 add/remove/split/merge·audit·validate로 위임 (Phase 9 수동 진화 진입점).
 argument-hint: <피드백 한 문장 또는 단락>
 ---
 

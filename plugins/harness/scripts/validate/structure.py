@@ -46,6 +46,18 @@ SKILL_REQUIRED_SECTIONS = [
 ]
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
+_CODE_FENCE_RE = re.compile(r"```.*?(?:\n|$).*?(?:```|\Z)", re.DOTALL)
+
+
+def _strip_code_fences(text: str) -> str:
+    """fenced code block을 제거 — section 매칭이 코드 예시 안의 가짜 heading을 잡지 않도록 (PV6)."""
+    return _CODE_FENCE_RE.sub("", text)
+
+
+try:
+    import yaml as _yaml  # PyYAML
+except ImportError:
+    _yaml = None
 
 
 def parse_frontmatter(text: str) -> tuple[dict | None, str | None]:
@@ -53,6 +65,16 @@ def parse_frontmatter(text: str) -> tuple[dict | None, str | None]:
     if not m:
         return None, "frontmatter 미존재"
     body = m.group(1)
+    if _yaml is not None:
+        try:
+            data = _yaml.safe_load(body)
+        except _yaml.YAMLError as e:
+            return None, f"frontmatter YAML 파싱 실패 — {e}"
+        if not isinstance(data, dict):
+            return None, "frontmatter 최상위가 mapping이 아님"
+        # legacy 호환: 모든 값 stringify (이전 단순 split이 string만 반환)
+        return {k: (v if isinstance(v, str) else str(v) if v is not None else "") for k, v in data.items()}, None
+    # PyYAML 미설치 fallback — 단순 split (description의 colon 누락 위험)
     fields: dict = {}
     for line in body.splitlines():
         if ":" not in line:
@@ -81,8 +103,9 @@ def check_agent_file(path: Path) -> list[str]:
 
     m = FRONTMATTER_RE.match(text)
     body = text[m.end():] if m else text
+    scanned = _strip_code_fences(body)
     for section_re in AGENT_REQUIRED_SECTIONS:
-        if not re.search(section_re, body, re.IGNORECASE):
+        if not re.search(section_re, scanned, re.IGNORECASE):
             errors.append(f"{path.name}: 필수 섹션 누락 (pattern: `{section_re}`)")
 
     return errors
@@ -112,8 +135,9 @@ def check_skill_file(path: Path) -> list[str]:
             f"{path.relative_to(SKILLS_DIR)}: SKILL.md 본문 부재 — frontmatter만 존재 (빈 스킬, dangling 참조 유발)"
         )
         return errors
+    scanned = _strip_code_fences(body)
     for section_re in SKILL_REQUIRED_SECTIONS:
-        if not re.search(section_re, body, re.IGNORECASE):
+        if not re.search(section_re, scanned, re.IGNORECASE):
             errors.append(f"{path.relative_to(SKILLS_DIR)}: 필수 섹션 누락 (pattern: `{section_re}`)")
 
     return errors
@@ -152,7 +176,8 @@ def check_skills_dir() -> tuple[int, list[str]]:
 def find_orchestrator() -> Path | None:
     if not SKILLS_DIR.exists():
         return None
-    for skill_dir in SKILLS_DIR.iterdir():
+    # FS iteration 비결정 — sorted() 박제 (chain.py find_orchestrator 정합).
+    for skill_dir in sorted(SKILLS_DIR.iterdir()):
         if not skill_dir.is_dir():
             continue
         if "orchestrator" in skill_dir.name.lower():

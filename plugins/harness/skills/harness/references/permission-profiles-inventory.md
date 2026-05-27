@@ -105,14 +105,16 @@
 | **web-research** | `fetch` + `memory` | 4 + 9 | `permission-profiles-synthesis.md §5-1-a` Layer B 단독 (fetch/memory 모두 toolset 필터 미지원) | `fetch` 4종 `allow` (모두 read-only) / `memory` read 3종 `allow` + create/add 3종 `ask` + delete 3종 `deny` | ✅ 다음 세션부터 |
 | **external-integration** | `sqlite` (+ T1+ `github` 별도) | 6 | `permission-profiles-synthesis.md §5-1-a` Layer B 단독 (sqlite는 toolset 미지원) / `github`는 §5-1-b Layer A+B 결합 (env `GITHUB_TOOLSETS`) | `sqlite` read 3종 `allow` + write 3종 `deny` (read-only 강제) | ✅ 다음 세션부터 |
 | **reasoning-aux** | `sequential-thinking` + `time` | 1 + 2 | `permission-profiles-synthesis.md §5-1-a` Layer B 단독 (toolset 미지원, 둘 다 부수 효과 0) | 3종 모두 `allow` (read-only) | ✅ 다음 세션부터 |
-| **ml-pipeline** (2026-05-14 신설) | `filesystem` + `sqlite` + `memory` + `sequential-thinking` + `git` (T0만, cross-mapping 5종) | 14 + 6 + 9 + 1 + 12 = 42 | `permission-profiles-synthesis.md §5-1-a` Layer B 단독 (전부 toolset 미지원 — 5 MCP 동시 등록 부담 ↑ → *합성 시 도메인별로 2~3종 선별* 권장) | dataset read `allow` / 모델 write·실험 DB write `ask` / git commit `ask` | ✅ 다음 세션부터 (전용 MCP huggingface/wandb 등은 §10 진입 후 추가) |
-| **devops-infra** (2026-05-14 신설) | `git` + `filesystem` + `time` + `sequential-thinking` (T0 4종) | 12 + 14 + 2 + 1 = 29 | `permission-profiles-synthesis.md §5-1-a` Layer B 단독 | git 12종 `ask` (commit/checkout/reset 부수 효과) / filesystem write `deny` (IaC 변경은 명시 confirm) / time 2종 `allow` / `kubectl`/`terraform` 등은 `Bash` 빌트인으로 — 변경 도구 패턴 매칭 `ask` | ✅ 다음 세션부터 (kubernetes/terraform/aws MCP는 §10 진입 후 추가) |
-| **mobile-native** (2026-05-14 신설) | `filesystem` + `git` + `sequential-thinking` (T0 3종) + `playwright`/`chrome-devtools` (T1, derived 프로젝트별) | 14 + 12 + 1 + 23 + 44 | `permission-profiles-synthesis.md §5-1-a` Layer B 단독 (T0) / §5-1-b Layer A+B (playwright caps 필터) | filesystem write iOS/Android root 격리 / git `ask` / playwright `browser_run_code_unsafe` `deny` (RCE-equivalent) / chrome-devtools `install_extension`/`execute_*` `deny` | ✅ 다음 세션부터 (Appium/Xcode MCP는 §10 진입 후 추가) |
-| **data-eng** (2026-05-14 신설) | `sqlite` + `filesystem` + `git` + `memory` + `sequential-thinking` (T0 5종) | 6 + 14 + 12 + 9 + 1 = 42 | `permission-profiles-synthesis.md §5-1-a` Layer B 단독 | sqlite `read_query` `allow` / `write_query` `ask` / `create_table`/`drop_table` `deny` (마이그레이션은 dedicated agent) / filesystem data lake path-root 격리 | ✅ 다음 세션부터 (postgres T2~ + snowflake/bigquery/databricks/dbt MCP는 §10 진입 후 추가) |
+
+> **본 매트릭스는 범용 4 profile 전용 (2026-05-27 PB1 축소).** 도메인 profile 4종(ml-pipeline/devops-infra/mobile-native/data-eng)은 *전용 T0 MCP가 거의 없음* → 본 4 범용 행 재조합 + 시그널 매핑(`trigger-keyword-catalog.md §1` S7~S10 → §2 profile)으로 합성. 도메인 permission bucket 권고:
+> - **ml-pipeline (S7)**: dataset read `allow` / 모델 write·실험 DB write `ask` / git commit `ask`
+> - **devops-infra (S8)**: git 12종 `ask` / filesystem write `deny` (IaC 변경은 명시 confirm) / `kubectl`/`terraform`은 `Bash` 빌트인 변경 도구 패턴 매칭 `ask`
+> - **mobile-native (S9)**: filesystem write iOS/Android root 격리 / git `ask` / playwright `browser_run_code_unsafe` `deny` / chrome-devtools `install_extension`/`execute_*` `deny`
+> - **data-eng (S10)**: sqlite `read_query` `allow` / `write_query` `ask` / `create_table`/`drop_table` `deny` / filesystem data lake path-root 격리
+>
+> 전용 MCP(huggingface/kubernetes/appium/snowflake/wandb/dbt/postgres T2 등)는 PoC 미완 — `permission-profiles-dynamic-adoption.md §10` dynamic adoption 진입 후 본 매트릭스 행 추가 시점에 정식 박제.
 
 > **매트릭스의 권고는 *제안*이지 default 강제가 아님** — `permission-profiles.md §4` 결정 트리의 사용자 confirm 게이트가 항상 우선. 사용자 도메인이 매트릭스 외 조합을 요구하면 (예: web-research에 `git` 필요) `permission-profiles-dynamic-adoption.md §10` dynamic adoption 절차로 후보 확장.
-
-> **도메인 4종 cross-mapping doctrine (2026-05-14):** 도메인 profile 4종(ml-pipeline/devops-infra/mobile-native/data-eng)은 *전용 T0 MCP가 거의 없음* — T0 5종(`filesystem`/`sqlite`/`memory`/`git`/`sequential-thinking`/`time`)을 도메인 시그널 매칭에 따라 *재조합*하는 형태. 전용 MCP(huggingface/kubernetes/appium/snowflake 등)는 PoC 미완 — `permission-profiles-dynamic-adoption.md §10` dynamic adoption 진입 후 §3 행 추가 → 본 매트릭스 행 갱신. PoC 미완 항목은 "후보 풀에서 *옵션*"이지 default 합성 사용 X.
 
 ### 채택 패턴 권고 — 7 MCPs 통합 inline `mcpServers:` (참고 예시)
 
