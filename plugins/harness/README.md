@@ -5,7 +5,7 @@
 
 ## 무엇인가
 
-Claude Code용 메타 스킬 플러그인. 도메인/프로젝트 설명을 입력하면 15-phase 워크플로우(11 base + 4 self-critique)로 에이전트 정의(`.claude/agents/`)와 스킬 세트(`.claude/skills/`)를 자동 생성한다.
+Claude Code용 메타 스킬 플러그인. 도메인/프로젝트 설명을 입력하면 15-phase 워크플로우(12 base + 3 critique/sim)로 에이전트 정의(`.claude/agents/`)와 스킬 세트(`.claude/skills/`)를 자동 생성한다.
 
 다른 단일 에이전트/프롬프트 프레임워크와 달리 **팀 아키텍처 팩토리** — 6가지 사전 정의된 팀 패턴 중 도메인에 맞는 것을 선택하고 에이전트 협업 프로토콜을 함께 설계한다.
 

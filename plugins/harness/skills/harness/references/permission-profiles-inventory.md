@@ -81,11 +81,11 @@
 
 > ⚠️ **"install 명령" 컬럼의 용도 — 합성 산출물용 default 아님**
 >
-> 본 컬럼의 `claude mcp add ...` 명령은 *PoC enumeration·검증 환경 install* 형태이며, `~/.claude.json` projects.{cwd}.mcpServers (= scope `local`) 또는 `.mcp.json` (= scope `project`) 적재 = **parent 컨텍스트에 도구 정의 적재**. 이 경로는 `permission-profiles.md §5-2`의 anti-pattern과 동일한 토큰 비용을 부담한다.
+> 본 컬럼의 `claude mcp add ...` 명령은 *PoC enumeration·검증 환경 install* 형태이며, `~/.claude.json` projects.{cwd}.mcpServers (= scope `local`) 또는 `.mcp.json` (= scope `project`) 적재 = **parent 컨텍스트에 도구 정의 적재**. 이 경로는 `permission-profiles-synthesis.md §5-2`의 anti-pattern과 동일한 토큰 비용을 부담한다.
 >
 > **합성 산출물에서는 §5-1 inline `mcpServers:`가 default** — 본 컬럼의 install 명령에서 *동일 패키지명·인자*를 추출해 inline `command:`/`args:`/`env:` 필드로 옮기되, 등록 자체(`claude mcp add`)는 **생략**한다. 예: `claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=... -e GITHUB_TOOLSETS=pull_requests -- npx -y @modelcontextprotocol/server-github` → §5-1-b의 inline `mcpServers.github` 블록으로 변환.
 >
-> 본 컬럼을 그대로 실행해도 되는 경우는 (1) 본 PoC처럼 도구 enumeration 검증 (2) `permission-profiles.md §5-2`의 3 예외 조건 — *그 외에는 §5-1 변환*.
+> 본 컬럼을 그대로 실행해도 되는 경우는 (1) 본 PoC처럼 도구 enumeration 검증 (2) `permission-profiles-synthesis.md §5-2`의 3 예외 조건 — *그 외에는 §5-1 변환*.
 
 ---
 
@@ -95,7 +95,7 @@
 
 **검증 완료 카운트:**
 - `fetch` 4 + `sequential-thinking` 1 + `git` 12 + `sqlite` 6 + `filesystem` 14 + `time` 2 + `memory` 9 = **48 도구** (+ github toolset 카탈로그 19 enum)
-- 모두 `permission-profiles.md §8-3 stdio JSON-RPC tools/list 핑`으로 source-grep 100% 일치 검증 (`fixtures/probe_*.js`)
+- 모두 `permission-profiles-empirical.md §8-3 stdio JSON-RPC tools/list 핑`으로 source-grep 100% 일치 검증 (`fixtures/probe_*.js`)
 
 ### 매트릭스
 

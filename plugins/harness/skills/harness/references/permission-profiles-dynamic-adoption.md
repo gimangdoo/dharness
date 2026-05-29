@@ -2,7 +2,9 @@
 
 > **Read at phase:** Phase 9 baseline drift 후 신규 capability 등장 시 / Phase 5-2 합성 시 인벤토리 미충족 시 / 사용자 명시 MCP 채택 요청 시. `/harness:harness-mcp-adopt` 슬래시 커맨드 본문.
 >
-> P7 분리(2026-05-23) — `permission-profiles.md` §10 (10-1~10-7)을 본 파일로 흡수. main 본문엔 pointer만 잔존.
+> P7 분리(2026-05-23) — `permission-profiles.md` §10 (10-A~10-G)을 본 파일로 흡수. main 본문엔 pointer만 잔존.
+>
+> 2026-05-28 anchor rename — 의미 anchor (A. 트리거 / B. 5-step / C. 프로젝트 유형 / D. Rollback / E. inline update / F. 자동화 한계 / G. 병렬 세션). 이전 숫자 anchor (10-1~10-7)은 audit2 PA4 정정 대상이었음.
 
 ## §10. Dynamic MCP Adoption — 프로젝트 진행에 따른 MCP 신규 채택
 
@@ -10,7 +12,7 @@
 
 > **적용 경계:** 본 §10 절차는 *derived 프로젝트의 `.claude/`* (= 사용자가 본 메타 스킬로 새로 합성한 프로젝트)를 대상으로 한다. **plugin host 본 저장소 자체는 self-host CM 격리 영역**(운영 중인 경우) — `plugins/harness/`는 read-only invariant이고, host 본 저장소의 `.claude/`는 (운영 시) host self-host CM의 자체 진화 기록자라 §10 채택 대상이 아니다. 단, 본 PoC를 위해 plugin host 프로젝트에서 MCP를 install·검증하는 행위는 *예외적 검증 환경* — `~/.claude.json` `projects.{host}.mcpServers`에 격리되며 derived 프로젝트로 누수되지 않음.
 
-### 10-1. 트리거 신호 (3종)
+### 10-A. 트리거 신호 (3종)
 
 | # | 신호 | 발생 위치 | 자동 감지 가능? |
 |---|------|---------|---------------|
@@ -18,7 +20,7 @@
 | T2 | **에이전트 합성 시 인벤토리 미충족** — `permission-profiles.md §4` 결정 트리 분기 `c)` 발동 | Phase 5-2 | ✅ `claude mcp list` 결과 vs profile 후보 차집합 |
 | T3 | **사용자 명시 요청** — "Slack 알림 보내는 에이전트", "DB 마이그레이션 검증" 등 | 임의 시점 | ❌ 항상 사용자 발화 기반 |
 
-### 10-2. 5-step 채택 절차 (모든 트리거 공통)
+### 10-B. 5-step 채택 절차 (모든 트리거 공통)
 
 ```
 Step 1. Discover — 후보 식별
@@ -27,7 +29,7 @@ Step 1. Discover — 후보 식별
   - 3차 출처: npm 레지스트리 검색 (`mcp-server-*`, `@*/mcp-*`), awesome-mcp-servers 류 큐레이션
   - LLM 환각 방지: 후보 이름은 반드시 위 3개 출처 중 하나에서 *원문 발췌* (URL 동봉)
 
-Step 2. Pre-install probe — install 없이 도구 enumerate (`permission-profiles.md §8-3` 기법 재사용)
+Step 2. Pre-install probe — install 없이 도구 enumerate (`permission-profiles-empirical.md §8-3` 기법 재사용)
   - **패키지 출처 검증 (필수, §8-3 안전 룰)**:
       1. trusted source 확인 — github.com/modelcontextprotocol/servers / permission-profiles-inventory.md §3 ✓ 항목 / 사용자 명시 trust 중 하나
       2. 미trust 패키지면 probe 실행 금지 — 사용자에게 출처 확인 요청
@@ -62,10 +64,10 @@ Step 5. Reflect — 4 산출물 동시 패치 (atomicity 분계 주의)
   c. **`.claude/settings.json` `permissions.{allow,ask,deny}`** — Tier 정책 반영 (T0=allow / T1·T2=ask / 민감 도구=deny)
   d. **변경 이력** (`_workspace/_baseline/changelog.md`) — Phase 7-4 형식 1행: `| {date} | MCP 채택: {name} | {tier}/{category} | {trigger 사유} |`
 
-  **atomic 적용 범위:** (b)·(c)·(d) 3개만 atomic 묶음. 셋 중 하나라도 실패하면 전부 rollback (§10-4 절차로). (a)는 plugin host 본 저장소 편집이라 별도 트랙 — atomic 그룹에 포함되지 않음. 도입자 권한 부재 시 (a) 권고 메시지만 남기고 (b)(c)(d) atomic 진행.
+  **atomic 적용 범위:** (b)·(c)·(d) 3개만 atomic 묶음. 셋 중 하나라도 실패하면 전부 rollback (§10-D 절차로). (a)는 plugin host 본 저장소 편집이라 별도 트랙 — atomic 그룹에 포함되지 않음. 도입자 권한 부재 시 (a) 권고 메시지만 남기고 (b)(c)(d) atomic 진행.
 ```
 
-### 10-3. 프로젝트 유형별 채택 패턴 (참고)
+### 10-C. 프로젝트 유형별 채택 패턴 (참고)
 
 | 프로젝트 유형 | phase별 자주 등장하는 MCP |
 |--------------|----------------------|
@@ -77,7 +79,7 @@ Step 5. Reflect — 4 산출물 동시 패치 (atomicity 분계 주의)
 
 > 위 매트릭스는 *제안 후보군*일 뿐 강제 아님. 사용자 confirm 게이트는 모든 케이스 동일.
 
-### 10-4. Rollback 절차
+### 10-D. Rollback 절차
 
 기존 채택을 되돌릴 때 (성능 문제·정책 위반·미사용):
 
@@ -89,9 +91,9 @@ Step 5. Reflect — 4 산출물 동시 패치 (atomicity 분계 주의)
 5. _workspace/_baseline/changelog.md 변경 이력 1행: `| {date} | MCP 회수: {name} | {원래 채택일} | {회수 사유} |`
 ```
 
-### 10-5. inline 정의 갱신 절차 (rollback 아님)
+### 10-E. inline 정의 갱신 절차 (rollback 아님)
 
-채택은 유지하되 *inline `mcpServers:` 정의*를 수정해야 할 때 (DB 경로 변경 / uvx 경로 환경 차이 / toolset 확장·축소 / 환경 변수 키 이름 변경 등). rollback이 아니므로 §10-4와 별도 절차.
+채택은 유지하되 *inline `mcpServers:` 정의*를 수정해야 할 때 (DB 경로 변경 / uvx 경로 환경 차이 / toolset 확장·축소 / 환경 변수 키 이름 변경 등). rollback이 아니므로 §10-D와 별도 절차.
 
 **갱신 트리거 (5종):**
 
@@ -111,7 +113,7 @@ Step 1. Locate — 영향 받는 inline 정의 위치 식별
   - 같은 서버를 inline로 가진 agent가 N개면 N개 모두 동기화 대상
 
 Step 2. Pre-update probe (선택, U2/U5에 권고)
-  - 새 command/args/env 조합으로 `permission-profiles.md §8-3` stdio 핑 1회 — 도구 enumeration이 *기존 카탈로그와 동일*인지 확인
+  - 새 command/args/env 조합으로 `permission-profiles-empirical.md §8-3` stdio 핑 1회 — 도구 enumeration이 *기존 카탈로그와 동일*인지 확인
   - U3(toolset 확장)이면 도구 카운트 변화 사전 확인 가능
   - 출처 검증은 §10 Step 2와 동일 (trusted source 확인)
 
@@ -132,17 +134,18 @@ Step 5. Reflect — 갱신 사실 박제
 
 **rollback과의 차이:**
 
-| | rollback (§10-4) | update (§10-5) |
+| | rollback (§10-D) | update (§10-E) |
 |---|---|---|
 | 채택 자체 | 회수 (`claude mcp remove`) | 유지 |
 | agent `tools:` allowlist | 해당 `mcp__<name>__*` 제거 | 변경 없음 (U3이면 추가 가능) |
 | settings.json permissions | 정리 | 변경 없음 (U3 toolset 확장 시 부분 갱신 가능) |
 | 변경 이력 (`changelog.md`) | "MCP 회수" | "MCP 정의 갱신" |
+| 참조 anchor | §10-D | §10-E |
 | 인벤토리 §3 | "(rolled back)" 부기 | 변경 없음 (footnote만) |
 
 **자동화 한계:** Step 1·2는 자동(grep·probe), Step 3·4는 사용자 게이트. Step 5는 자동 작성 후 사용자 확인.
 
-### 10-6. 자동화 한계와 권장 진입점
+### 10-F. 자동화 한계와 권장 진입점
 
 | 자동화 가능 | 자동화 금지 (사용자 게이트) |
 |------------|------------------------|
@@ -153,9 +156,9 @@ Step 5. Reflect — 갱신 사실 박제
 
 **권장 진입점:** Phase 5-2 합성 시 자연 발화 (T2 트리거) → 사용자 confirm → 채택. 별도 슬래시 커맨드 `/harness:harness-mcp-adopt` 본문에서 본 §10을 호출한다.
 
-### 10-7. 병렬 세션 운용 패턴 (Pattern A — 단일 writer + 외부 측정)
+### 10-G. 병렬 세션 운용 패턴 (Pattern A — 단일 writer + 외부 측정)
 
-§10·`permission-profiles.md §11`의 측정·채택 작업을 *복수 세션 병렬*로 진행하려는 경우의 운영 doctrine. 13차 사이클 closure 직후 plugin host 운영 결정으로 채택 (host self-host CM 운영 시 doctrine — 외부 install user는 단일 writer 권장만 따르면 됨).
+§10·`permission-profiles-empirical.md §11`의 측정·채택 작업을 *복수 세션 병렬*로 진행하려는 경우의 운영 doctrine. 13차 사이클 closure 직후 plugin host 운영 결정으로 채택 (host self-host CM 운영 시 doctrine — 외부 install user는 단일 writer 권장만 따르면 됨).
 
 **공유 자원 충돌 분석:**
 

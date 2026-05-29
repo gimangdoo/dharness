@@ -55,7 +55,7 @@ $env:BRAVE_API_KEY="<key>"; node plugins\harness\skills\harness\references\fixtu
 
 | 주제 | 위치 |
 |------|------|
-| §10 dynamic adoption 5-step | [`../permission-profiles.md` §10](../permission-profiles.md#10-dynamic-mcp-adoption--프로젝트-진행에-따른-mcp-신규-채택) |
-| §8-3 재사용 검증 기법 (stdio JSON-RPC probe 패턴) | [`../permission-profiles.md` §8-3](../permission-profiles.md#8-3-재사용-가능한-검증-기법) |
-| §3 MCP 인벤토리 (Tier 분류 + install 명령) | [`../permission-profiles.md` §3](../permission-profiles.md#3-mcp-후보-인벤토리-tier-분류) |
-| §3-1 T0 MCP × capability profile 매트릭스 | [`../permission-profiles.md` §3-1](../permission-profiles.md#3-1-검증-완료-t0-mcp--capability-profile-매트릭스) |
+| §10 dynamic adoption 5-step | [`../permission-profiles-dynamic-adoption.md` §10](../permission-profiles-dynamic-adoption.md#10-dynamic-mcp-adoption--프로젝트-진행에-따른-mcp-신규-채택) |
+| §8-3 재사용 검증 기법 (stdio JSON-RPC probe 패턴) | [`../permission-profiles-empirical.md` §8-3](../permission-profiles-empirical.md#8-3-재사용-가능한-검증-기법) |
+| §3 MCP 인벤토리 (Tier 분류 + install 명령) | [`../permission-profiles-inventory.md` §3](../permission-profiles-inventory.md#3-mcp-후보-인벤토리-tier-분류) |
+| §3-1 T0 MCP × capability profile 매트릭스 | [`../permission-profiles-inventory.md` §3-1](../permission-profiles-inventory.md#3-1-검증-완료-t0-mcp--capability-profile-매트릭스) |

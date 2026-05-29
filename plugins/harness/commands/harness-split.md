@@ -1,6 +1,7 @@
 ---
 description: 에이전트·스킬 분할 — 1개를 책임별 2개 이상으로 나누고 분리 기준 4축 검증 + 참조 갱신.
 argument-hint: <agent|skill> <원본 이름> <분할 결과 2개 이상, 공백 구분>
+allowed-tools: Read, Glob, Grep, Write, Edit
 ---
 
 # Harness — Split Agent or Skill
@@ -70,7 +71,7 @@ argument-hint: <agent|skill> <원본 이름> <분할 결과 2개 이상, 공백 
    - frontmatter `name:` 갱신
    - `model:` 원본 유지 (기본 `opus`)
    - 필수 섹션: 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업, 팀 통신 프로토콜
-   - **Phase 5-2 (도구·MCP)**: 원본 `tools:` allowlist를 책임별로 분할. capability profile 재매칭 — `references/permission-profiles.md` §3-1 매트릭스. 결과 에이전트 중 일부가 신규 profile에 해당하면 사용자 confirm 후 MCP 추가 install 검토 (단 본 명령 범위 외 — `/harness:harness-mcp-adopt`로 안내).
+   - **Phase 5-2 (도구·MCP)**: 원본 `tools:` allowlist를 책임별로 분할. capability profile 재매칭 — `references/permission-profiles-inventory.md` §3-1 매트릭스. 결과 에이전트 중 일부가 신규 profile에 해당하면 사용자 confirm 후 MCP 추가 install 검토 (단 본 명령 범위 외 — `/harness:harness-mcp-adopt`로 안내).
 3. **결과 에이전트 간 통신 프로토콜**: 원본이 단독 처리하던 데이터 흐름을 결과 에이전트 N개의 `SendMessage` 프로토콜로 분산. orchestrator-template.md "팀원 간 통신 규칙" 패턴 적용.
 
 **스킬 분할 시:**

@@ -1,6 +1,7 @@
 ---
 description: 하네스 신규 구축 — 도메인 한 문장에서 에이전트 팀·스킬·CLAUDE.md·관측 인프라까지 일괄 생성 (Phase 0-8 + Phase 10). single/derived 모드 양쪽 지원.
 argument-hint: <도메인 한 문장> [--mode=single|derived]
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash(claude mcp list:*)
 ---
 
 # Harness — New

@@ -335,7 +335,8 @@ class CheckAgentInjectionGuard(_ChainTestBase):
         self._write_agent("a1", fm, body="## 핵심 역할\n분석한다.")
         errors = chain.check_agent_injection_guard()
         self.assertEqual(len(errors), 1)
-        self.assertIn("Bash", errors[0])
+        # A1 fix: surface는 _classify_external_tool 정규화 결과 (lowercase).
+        self.assertIn("bash", errors[0])
         self.assertIn("입력 신뢰 경계", errors[0])
 
     def test_safe_tools_only_passes(self):
@@ -360,12 +361,32 @@ class CheckAgentInjectionGuard(_ChainTestBase):
         self._write_agent("a1", fm, body="## 핵심 역할\n조사한다.")
         errors = chain.check_agent_injection_guard()
         self.assertEqual(len(errors), 1)
-        self.assertIn("WebSearch", errors[0])
+        self.assertIn("websearch", errors[0])  # A1 fix: normalized lowercase
 
-    def test_mcp_tool_only_passes(self):
+    def test_mcp_tool_without_guard_fails(self):
+        # A1 fix (audit2 2026-05-27): mcp__* 도구는 외부 surface 분류 필수.
+        # 이전 silent bypass 회귀 차단 — mcp__github__x 보유에도 가드 절 없으면 FAIL.
         fm = "name: a1\ndescription: desc\nmodel: opus\ntools:\n  - Read\n  - mcp__github__x\n"
         self._write_agent("a1", fm, body="## 핵심 역할\n분석한다.")
+        errors = chain.check_agent_injection_guard()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("mcp", errors[0])
+        self.assertIn("입력 신뢰 경계", errors[0])
+
+    def test_mcp_tool_with_guard_passes(self):
+        # A1 fix (audit2 2026-05-27): mcp__* + 가드 절 박제 시 PASS.
+        fm = "name: a1\ndescription: desc\nmodel: opus\ntools:\n  - Read\n  - mcp__github__x\n"
+        self._write_agent("a1", fm, body=self.GUARD)
         self.assertEqual(chain.check_agent_injection_guard(), [])
+
+    def test_mcp_tool_classification_helper(self):
+        # A1 fix (audit2 2026-05-27): _classify_external_tool 단위 검증.
+        self.assertEqual(chain._classify_external_tool("mcp__brave__search"), "mcp")
+        self.assertEqual(chain._classify_external_tool("Bash"), "bash")
+        self.assertEqual(chain._classify_external_tool("WebSearch"), "websearch")
+        self.assertEqual(chain._classify_external_tool("Bash(rm:*)"), "bash")
+        self.assertIsNone(chain._classify_external_tool("Read"))
+        self.assertIsNone(chain._classify_external_tool("Grep"))
 
     def test_english_guard_phrase_passes(self):
         fm = "name: a1\ndescription: desc\nmodel: opus\ntools:\n  - Write\n"
@@ -391,14 +412,14 @@ class CheckAgentInjectionGuard(_ChainTestBase):
         self._write_agent("a1", fm, body="## 핵심 역할\n수정한다.")
         errors = chain.check_agent_injection_guard()
         self.assertEqual(len(errors), 1)
-        self.assertIn("MultiEdit", errors[0])
+        self.assertIn("multiedit", errors[0])  # A1 fix: normalized lowercase
 
     def test_notebookedit_without_guard_fails(self):
         fm = "name: a1\ndescription: desc\nmodel: opus\ntools:\n  - Read\n  - NotebookEdit\n"
         self._write_agent("a1", fm, body="## 핵심 역할\n수정한다.")
         errors = chain.check_agent_injection_guard()
         self.assertEqual(len(errors), 1)
-        self.assertIn("NotebookEdit", errors[0])
+        self.assertIn("notebookedit", errors[0])  # A1 fix: normalized lowercase
 
     def test_multiedit_with_guard_passes(self):
         fm = "name: a1\ndescription: desc\nmodel: opus\ntools:\n  - Read\n  - MultiEdit\n"
@@ -816,19 +837,27 @@ class CheckIntentRequiredDocSync(_ChainTestBase):
 
 
 class IntentRequiredSchemaAlias(unittest.TestCase):
-    """W3 정본 — chain.py _INTENT_USER_CONFIRMED_REQUIRED가 schema.py INTENT_REQUIRED alias."""
+    """W3·I2 정본 — chain.py alias가 schema.py 분리 list 추종 (2026-05-28 audit2 PA8 격상).
 
-    def test_alias_equals_schema(self):
-        # 정본 schema.py 변경 시 chain.py가 자동 추종 — drift 영구 차단.
+    INTENT_REQUIRED = USER_CONFIRMED (5) + LLM_STAMPED (1). chain._INTENT_USER_CONFIRMED_REQUIRED
+    alias는 USER_CONFIRMED만 — meta.dharness_version은 LLM 박제이므로 사용자 raw 답변 강제 X.
+    """
+
+    def test_alias_equals_user_confirmed_subset(self):
+        # alias는 USER_CONFIRMED 5필드만 — meta.* 제외.
         self.assertEqual(
-            tuple(chain.INTENT_REQUIRED),
+            tuple(chain.INTENT_REQUIRED_USER_CONFIRMED),
             chain._INTENT_USER_CONFIRMED_REQUIRED,
         )
 
-    def test_real_repo_doc_sync_no_drift(self):
-        # 실 repo SKILL.md/phase-entry-gates.md/intent-profile-schema.md에 5필드 모두 박제.
-        errors = chain.check_intent_required_doc_sync()
-        self.assertEqual(errors, [], f"doc sync drift detected: {errors}")
+    def test_intent_required_is_superset(self):
+        # 전체 INTENT_REQUIRED는 USER_CONFIRMED + LLM_STAMPED superset.
+        self.assertEqual(len(chain.INTENT_REQUIRED), 6)
+        for f in chain.INTENT_REQUIRED_USER_CONFIRMED:
+            self.assertIn(f, chain.INTENT_REQUIRED)
+        self.assertIn("meta.dharness_version", chain.INTENT_REQUIRED)
+
+    # PA15: test_real_repo_doc_sync_no_drift → smoke_test_doctrine_registry.py 이전
 
 
 class CheckAdvisorHandoffAdapterConsistency(_ChainTestBase):
@@ -959,15 +988,7 @@ class CheckAdvisorHandoffAdapterConsistency(_ChainTestBase):
         self.assertEqual(chain.check_advisor_handoff_adapter_consistency(), [])
 
 
-class CheckAdvisorHandoffAdapterRealRepo(unittest.TestCase):
-    """실 repo intent_profile.md(존재 시) ↔ adapter doctrine 회귀.
-
-    dharness self-host에는 _workspace/_baseline/ 부재 — silent skip PASS.
-    """
-
-    def test_repo_intent_profile_advisor_consistency(self):
-        errors = chain.check_advisor_handoff_adapter_consistency()
-        self.assertEqual(errors, [], f"adapter doctrine 위반: {errors}")
+# PA15: CheckAdvisorHandoffAdapterRealRepo → smoke_test_doctrine_registry.py 이전
 
 
 class CheckOutputChecklistCountSync(_ChainTestBase):
@@ -1045,12 +1066,7 @@ class CheckOutputChecklistCountSync(_ChainTestBase):
         self.assertEqual(len(errors), 2)
 
 
-class CheckOutputChecklistCountSyncRealRepo(unittest.TestCase):
-    """실 repo output-checklist.md ↔ SKILL.md/harness-new.md 인용 동기 회귀."""
-
-    def test_real_repo_no_count_drift(self):
-        errors = chain.check_output_checklist_count_sync()
-        self.assertEqual(errors, [], f"output-checklist count drift: {errors}")
+# PA15: CheckOutputChecklistCountSyncRealRepo → smoke_test_doctrine_registry.py 이전
 
 
 class CheckCommandCountSync(_ChainTestBase):
@@ -1130,12 +1146,203 @@ class CheckCommandCountSync(_ChainTestBase):
         self.assertEqual(len(errors), 2)
 
 
-class CheckCommandCountSyncRealRepo(unittest.TestCase):
-    """실 repo commands/harness-*.md ↔ README 카탈로그 + doctrine-registry R4 동기 회귀."""
+# PA15: CheckCommandCountSyncRealRepo → smoke_test_doctrine_registry.py 이전
 
-    def test_real_repo_no_command_count_drift(self):
-        errors = chain.check_command_count_sync()
-        self.assertEqual(errors, [], f"command count drift: {errors}")
+
+class CheckTriggerCatalogPythonSync(_ChainTestBase):
+    """S15 doctrine doc sync — trigger-keyword-catalog.md §1 ↔ chain._TRIGGER_SIGNAL_KEYWORDS (2026-05-28 audit2 PA6)."""
+
+    def setUp(self):
+        super().setUp()
+        self._saved_refs = chain.PLUGIN_REFERENCES_DIR
+        self._saved_dict = chain._TRIGGER_SIGNAL_KEYWORDS
+        self.refs = self.root / "references"
+        self.refs.mkdir()
+        chain.PLUGIN_REFERENCES_DIR = self.refs
+
+    def tearDown(self):
+        chain.PLUGIN_REFERENCES_DIR = self._saved_refs
+        chain._TRIGGER_SIGNAL_KEYWORDS = self._saved_dict
+        super().tearDown()
+
+    def _write_catalog(self, rows: list[tuple[str, str, str]]) -> None:
+        """rows: list of (signal_id, korean_csv, english_csv) — §1 단일 표 합성."""
+        body = [
+            "# Trigger Keyword Catalog",
+            "",
+            "## 1. 전체 카탈로그",
+            "",
+            "| Signal | Profile | Korean | English | 강도 |",
+            "|---|---|---|---|---|",
+        ]
+        for sid, ko, en in rows:
+            body.append(f"| **{sid} test** | profile | {ko} | {en} | strong |")
+        (self.refs / "trigger-keyword-catalog.md").write_text("\n".join(body) + "\n", encoding="utf-8")
+
+    def test_no_catalog_passes(self):
+        self.assertEqual(chain.check_trigger_catalog_python_sync(), [])
+
+    def test_parse_fail_reports(self):
+        (self.refs / "trigger-keyword-catalog.md").write_text("# 표 없음\n본문만\n", encoding="utf-8")
+        errors = chain.check_trigger_catalog_python_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("row parse 실패", errors[0])
+
+    def test_full_sync_passes(self):
+        self._write_catalog([("S1", "분석, 검토", "analyze, review")])
+        chain._TRIGGER_SIGNAL_KEYWORDS = {"S1": ("분석", "검토", "analyze", "review")}
+        self.assertEqual(chain.check_trigger_catalog_python_sync(), [])
+
+    def test_catalog_only_signal_fails(self):
+        self._write_catalog([
+            ("S1", "분석", "analyze"),
+            ("S2", "생성", "create"),
+        ])
+        chain._TRIGGER_SIGNAL_KEYWORDS = {"S1": ("분석", "analyze")}
+        errors = chain.check_trigger_catalog_python_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("S2", errors[0])
+        self.assertIn("dict 미등록", errors[0])
+
+    def test_code_only_signal_fails(self):
+        self._write_catalog([("S1", "분석", "analyze")])
+        chain._TRIGGER_SIGNAL_KEYWORDS = {
+            "S1": ("분석", "analyze"),
+            "S99": ("xxx",),
+        }
+        errors = chain.check_trigger_catalog_python_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("S99", errors[0])
+        self.assertIn("미박제", errors[0])
+
+    def test_catalog_only_keyword_fails(self):
+        self._write_catalog([("S1", "분석, 검토", "analyze")])
+        chain._TRIGGER_SIGNAL_KEYWORDS = {"S1": ("분석", "analyze")}
+        errors = chain.check_trigger_catalog_python_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("검토", errors[0])
+        self.assertIn("_TRIGGER_SIGNAL_KEYWORDS[S1] 미등록", errors[0])
+
+    def test_code_only_keyword_fails(self):
+        self._write_catalog([("S1", "분석", "analyze")])
+        chain._TRIGGER_SIGNAL_KEYWORDS = {"S1": ("분석", "analyze", "extra")}
+        errors = chain.check_trigger_catalog_python_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("extra", errors[0])
+        self.assertIn("미박제", errors[0])
+
+    def test_suffix_in_signal_label_parses(self):
+        # 실 repo 패턴: `**S7 ml-aux** (2026-05-14)` — `**` 닫힘 후 부속 텍스트.
+        body = [
+            "# Trigger Keyword Catalog",
+            "",
+            "## 1. 전체 카탈로그",
+            "",
+            "| Signal | Profile | Korean | English | 강도 |",
+            "|---|---|---|---|---|",
+            "| **S7 ml-aux** (2026-05-14) | ml | 모델 | model | strong |",
+        ]
+        (self.refs / "trigger-keyword-catalog.md").write_text("\n".join(body) + "\n", encoding="utf-8")
+        chain._TRIGGER_SIGNAL_KEYWORDS = {"S7": ("모델", "model")}
+        self.assertEqual(chain.check_trigger_catalog_python_sync(), [])
+
+
+# PA15: CheckTriggerCatalogPythonSyncRealRepo → smoke_test_doctrine_registry.py 이전
+
+
+class CheckPhaseCountSync(_ChainTestBase):
+    """S16 doctrine doc sync — SKILL.md `### Phase` 헤더 카운트 ↔ 4 ad 위치 (2026-05-28 audit2 PA9)."""
+
+    def setUp(self):
+        super().setUp()
+        self._saved_skill = chain.PLUGIN_SKILL_MD
+        self._saved_readme = chain.PLUGIN_README
+        self.skill = self.root / "SKILL.md"
+        self.market = self.root / ".claude-plugin" / "marketplace.json"
+        self.pjson = self.root / "plugins" / "harness" / ".claude-plugin" / "plugin.json"
+        self.plugin_readme = self.root / "plugins" / "harness" / "README.md"
+        self.root_readme = self.root / "README.md"
+        for p in (self.market, self.pjson, self.plugin_readme, self.root_readme):
+            p.parent.mkdir(parents=True, exist_ok=True)
+        chain.PLUGIN_SKILL_MD = self.skill
+        chain.PLUGIN_README = self.plugin_readme
+
+    def tearDown(self):
+        chain.PLUGIN_SKILL_MD = self._saved_skill
+        chain.PLUGIN_README = self._saved_readme
+        super().tearDown()
+
+    def _write_skill(self, base: int, critique_x5: int) -> None:
+        """base = 정수 phase 수 + (Pre-flight 0.5 포함 시 +1 — 본 helper는 base에 0.5 포함 후 카운트).
+        critique_x5 = 3.5/5.5/7.5 등 X.5 critique phase 수.
+        """
+        lines = ["# SKILL\n"]
+        # 정수 phase 0~base-1 (0.5 별도)
+        int_phases = base - 1 if base >= 1 else 0
+        for i in range(int_phases):
+            lines.append(f"### Phase {i}: stub\n\n")
+        if base >= 1:
+            lines.append("### Phase 0.5: Pre-flight Clarification\n\n")
+        for i in range(critique_x5):
+            n = (i + 1) * 2 + 1  # 3, 5, 7 → 3.5/5.5/7.5
+            lines.append(f"### Phase {n}.5: Self-Critique\n\n")
+        self.skill.write_text("\n".join(lines), encoding="utf-8")
+
+    def _write_ad(self, path, total: int, base: int, critique: int, form: str = "parens-en") -> None:
+        if form == "parens-en":
+            body = f"# foo\n{total}-phase factory workflow ({base} base + {critique} critique/sim).\n"
+        elif form == "parens-ko":
+            body = f"# foo\n{total}-phase 워크플로우({base} base + {critique} critique/sim).\n"
+        elif form == "emdash":
+            body = f"# foo\n({total} Phase 워크플로우 — {base} base + {critique} critique/sim).\n"
+        elif form == "korean-stage":
+            body = f"# foo\n{total}단계로 동작합니다 ({base} 본 phase + {critique} critique/sim phase).\n"
+        else:
+            raise ValueError(form)
+        path.write_text(body, encoding="utf-8")
+
+    def test_no_skill_passes(self):
+        self.assertEqual(chain.check_phase_count_sync(), [])
+
+    def test_full_sync_passes(self):
+        # SKILL: 11 정수 phase (0~10) + 0.5 + 3 critique (3.5/5.5/7.5) = 12 base + 3 critique = 15 total
+        self._write_skill(base=12, critique_x5=3)
+        self._write_ad(self.market, 15, 12, 3, "parens-en")
+        self._write_ad(self.pjson, 15, 12, 3, "parens-en")
+        self._write_ad(self.plugin_readme, 15, 12, 3, "parens-ko")
+        self._write_ad(self.root_readme, 15, 12, 3, "korean-stage")
+        self.assertEqual(chain.check_phase_count_sync(), [])
+
+    def test_emdash_form_parses(self):
+        self._write_skill(base=12, critique_x5=3)
+        self._write_ad(self.market, 15, 12, 3, "parens-en")
+        self._write_ad(self.pjson, 15, 12, 3, "parens-en")
+        self._write_ad(self.plugin_readme, 15, 12, 3, "parens-en")
+        self._write_ad(self.root_readme, 15, 12, 3, "emdash")
+        self.assertEqual(chain.check_phase_count_sync(), [])
+
+    def test_ad_drift_detected(self):
+        self._write_skill(base=12, critique_x5=3)
+        self._write_ad(self.market, 14, 11, 3, "parens-en")  # drift
+        self._write_ad(self.pjson, 15, 12, 3, "parens-en")
+        self._write_ad(self.plugin_readme, 15, 12, 3, "parens-en")
+        self._write_ad(self.root_readme, 15, 12, 3, "parens-en")
+        errors = chain.check_phase_count_sync()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("marketplace.json", errors[0])
+        self.assertIn("14-phase", errors[0])
+        self.assertIn("15-phase", errors[0])
+
+    def test_pre_flight_05_classified_as_base(self):
+        # SKILL: 0/1/0.5만 = 3 total, base = 3 (0.5는 base), critique = 0
+        lines = ["### Phase 0: a\n\n", "### Phase 0.5: Pre-flight\n\n", "### Phase 1: b\n\n"]
+        self.skill.write_text("\n".join(lines), encoding="utf-8")
+        self._write_ad(self.market, 3, 3, 0, "parens-en")
+        # 다른 3 위치 없음 — silent skip (파일 부재).
+        self.assertEqual(chain.check_phase_count_sync(), [])
+
+
+# PA15: CheckPhaseCountSyncRealRepo → smoke_test_doctrine_registry.py 이전
 
 
 # ────────────────────────────────────────────────────────────────────────

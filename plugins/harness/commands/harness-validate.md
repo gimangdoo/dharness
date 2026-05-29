@@ -1,6 +1,7 @@
 ---
 description: 결정적 검증 — 하네스 구조·스키마·체인(chain) 일관성을 LLM 없이 스크립트로 점검 (host 무관).
 argument-hint: [--json 옵션] [--strict 옵션]
+allowed-tools: Bash(py *:*)
 ---
 
 # Harness — Validate

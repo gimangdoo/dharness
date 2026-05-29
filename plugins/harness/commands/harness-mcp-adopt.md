@@ -1,6 +1,7 @@
 ---
 description: MCP 신규 채택 — 발견→탐침→확인→설치→반영 5단계 (프로젝트 진행 중 런타임 채택 진입점, permission-profiles §10).
 argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
+allowed-tools: Read, Edit, Write, Bash(claude mcp:*), Bash(npm:*), Bash(npx:*)
 ---
 
 # Harness — MCP Adopt
@@ -12,7 +13,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (예: "playwright로 e2e 테스트 자동화 필요", "github MCP로 PR 메타데이터 조회", "tavily로 외부 리서치")
 - **입력**: 기존 derived 프로젝트 (`.claude/agents/`, `CLAUDE.md`, 선택적 `.claude/settings.json`·`.mcp.json` 또는 `~/.claude.json`)
-- **출력**: §10 Step 5 4 산출물 — `permission-profiles.md` §3 footnote / `.claude/agents/<name>.md` frontmatter 갱신 / `.claude/settings.json` permissions / `_workspace/_baseline/changelog.md` 변경 이력 1행
+- **출력**: §10 Step 5 4 산출물 — `permission-profiles-inventory.md` §3 footnote / `.claude/agents/<name>.md` frontmatter 갱신 / `.claude/settings.json` permissions / `_workspace/_baseline/changelog.md` 변경 이력 1행
 
 ## 선조건 검증 (먼저 실행)
 
@@ -30,7 +31,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
   - 매칭이면: Tier·capability profile·install 명령·도구 enumeration 즉시 사용.
   - 미매칭이면: github.com/modelcontextprotocol/servers 또는 외부 카탈로그 검색 후 후보 1~3개 사용자에게 제시.
 - **§3-1 매트릭스 우선 발췌 (14차 사이클):** `$ARGUMENTS`로부터 capability profile 추정 가능하면 §3-1의 4 profile 행 중 매핑 후보를 *§3 grep보다 먼저* 발췌 — 검증 완료 T0 MCP 7종(48 도구)이 default 권한 bucket까지 박제되어 Step 3 confirm 입력으로 그대로 이전 가능. 멀티 inline 패턴(N개 MCP 동시 등재) 후보 또한 §3-1 "채택 패턴 권고" YAML 참조.
-- **§10-1 트리거 신호 분류:** `$ARGUMENTS`가 (a) baseline-diff (b) profile-mismatch (c) 사용자-요청 중 어느 것인지 판정 → §10 Step 5 사유 컬럼 input.
+- **§10-A 트리거 신호 분류:** `$ARGUMENTS`가 (a) baseline-diff (b) profile-mismatch (c) 사용자-요청 중 어느 것인지 판정 → §10 Step 5 사유 컬럼 input.
 
 ### Step 2 — Pre-install probe
 
@@ -71,7 +72,7 @@ argument-hint: <채택 사유 한 문장 또는 검토 대상 MCP명>
 
 | | 대상 | 내용 |
 |---|------|------|
-| (a) | `permission-profiles.md` §3 sqlite/playwright/... 행 | 도구 enumeration 채움 + install 명령 footnote (Step 2 결과 그대로) |
+| (a) | `permission-profiles-inventory.md` §3 sqlite/playwright/... 행 | 도구 enumeration 채움 + install 명령 footnote (Step 2 결과 그대로) |
 | (b) | `<derived>/.claude/agents/<agent-name>.md` frontmatter | `tools:` allowlist에 신규 `mcp__<server>__*` 추가 — Step 3 user confirm 결과만 |
 | (c) | `<derived>/.claude/settings.json` | `permissions.allow` / `permissions.ask` 갱신 (deep merge — 기존 키 보존) |
 | (d) | `<derived>/_workspace/_baseline/changelog.md` 변경 이력 표 | 1행 추가. 형식은 `references/fixtures/synthesis_example/<scenario>/changelog_row.md` 참조 (`web-research` / `data-analyst` / `code-test` / `reasoning-aux`) |
@@ -98,7 +99,7 @@ Step 4 완료 직후 다음 사실을 사용자에게 *반드시* 명시 (LLM이
 
 ## Rollback
 
-채택 후 부적합 판정 시 §10-4 절차:
+채택 후 부적합 판정 시 §10-D 절차:
 
 1. `claude mcp remove <server>` — 등록 해제
 2. (b) frontmatter `tools:`에서 해당 `mcp__<server>__*` 제거

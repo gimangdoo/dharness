@@ -188,12 +188,12 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 
 ## Skill 워크플로우 15단계
 
-`harness` 메타 스킬은 다음 15단계로 동작합니다 (11 본 phase + 4 self-critique phase):
+`harness` 메타 스킬은 다음 15단계로 동작합니다 (12 본 phase + 3 critique/sim phase):
 
 | Phase | 이름 | 출력 |
 |-------|------|------|
 | 0 | Pre-flight 감사 | 신규/확장/유지보수 분기 |
-| 0.5 | Domain Clarification self-critique | premature-judgment 차단 게이트 |
+| 0.5 | Domain Clarification (Pre-flight) | premature-judgment 차단 게이트 |
 | 1 | Code Research | 프로젝트 baseline (코드 인벤토리 + 도메인 sense) |
 | 2 | Project Inquiry | 사용자 의도 + 도메인 sense 정합 |
 | 3 | 도메인 분석 | 작업 유형 + 충돌 분석 |
@@ -517,7 +517,7 @@ findstr /C:"tool_output_captured" _workspace\_telemetry\*.jsonl
 
 | 문서 | 용도 |
 |------|------|
-| [`plugins/harness/skills/harness/SKILL.md`](./plugins/harness/skills/harness/SKILL.md) | 메타 스킬 정의 (15 Phase 워크플로우 — 11 base + 4 self-critique) |
+| [`plugins/harness/skills/harness/SKILL.md`](./plugins/harness/skills/harness/SKILL.md) | 메타 스킬 정의 (15 Phase 워크플로우 — 12 base + 3 critique/sim) |
 | [`plugins/harness/skills/harness/references/permission-profiles.md`](./plugins/harness/skills/harness/references/permission-profiles.md) | MCP·도구 권한 카탈로그 main — §1 3-layer / §2 8 profile / §4 결정 트리 / §5-2·§5-3 합성 (P7 분리: §3 → permission-profiles-inventory.md / §5-1 → -synthesis.md / §10 → -dynamic-adoption.md) |
 | [`.claude/skills/memory-search/SKILL.md`](./.claude/skills/memory-search/SKILL.md) | 과거 메모리 LLM 검색 규칙 (3-tool progressive disclosure) |
 | [`CLAUDE.md`](./CLAUDE.md) | 저장소 구성 + CM 포인터 + In-session 가드라인 |

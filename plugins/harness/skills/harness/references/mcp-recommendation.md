@@ -5,7 +5,7 @@
 > **Cross-doc 인용 규약 (M3 단일 출처 — 2026-05-14, P7 분리 갱신 2026-05-23):** 본 문서의 bare `§N`은 permission-profiles 군 (main + inventory + synthesis + dynamic-adoption) §N을 가리킨다. P7 분리 후 매핑:
 > - `§3`·`§3-0`·`§3-1` → `permission-profiles-inventory.md` 진입
 > - `§5-1`·`§5-1-a`·`§5-1-b`·`§5-1-c` → `permission-profiles-synthesis.md` 진입
-> - `§10`·`§10-1`~`§10-7` → `permission-profiles-dynamic-adoption.md` 진입
+> - `§10`·`§10-A`~`§10-G` → `permission-profiles-dynamic-adoption.md` 진입
 > - 그 외 `§N` (§1·§2·§4·§5-2·§5-3·§6·§7·§8·§9·§11) → `permission-profiles.md` main 진입
 >
 > 본 문서 *자체* 섹션 자기 인용은 `본 §1`·`본 §3` 형식으로 명시 또는 *섹션 헤더 인근*에서만 bare 사용. 예외(다른 doc 참조)는 인라인 명시.
@@ -65,7 +65,7 @@ Phase 5-2가 합성하는 에이전트 `.md` frontmatter `description:` + 본문
 
 `permission-profiles.md` §3 + §3-1 매트릭스 — probe 완료 + 도구 enumeration 박제됨. **default 1차 출처.** 점수 가중 ×1.0.
 
-> **R0 필터 (P6-9 — 2026-05-14):** R0 후보 풀은 `permission-profiles.md §3-0` `verification_status = probe-verified` (✓ symbol)만 포함. `docs-only` (📜) 행은 R1로 강등 — `pending` (⚠️) 행은 후보 풀 제외 (§10 dynamic adoption 진입 안내만).
+> **R0 필터 (P6-9 — 2026-05-14):** R0 후보 풀은 `permission-profiles-inventory.md §3-0` `verification_status = probe-verified` (✓ symbol)만 포함. `docs-only` (📜) 행은 R1로 강등 — `pending` (⚠️) 행은 후보 풀 제외 (§10 dynamic adoption 진입 안내만).
 
 ### Tier R1: 공식 reference
 
@@ -119,7 +119,7 @@ clamp [0, 10].
 
 목적 도구 매핑 정확도 + 검증 상태. 높을수록 hallucination/spoof 위험 낮음.
 
-> **verification_status 단일 출처:** 다음 표의 `probe ✓` / `docs only` / `pending` 분류는 `permission-profiles.md §3-0` (P6-9 — 2026-05-14)의 status enum 박제. 본 표 갱신 시 §3-0 동시 적용 필수.
+> **verification_status 단일 출처:** 다음 표의 `probe ✓` / `docs only` / `pending` 분류는 `permission-profiles-inventory.md §3-0` (P6-9 — 2026-05-14)의 status enum 박제. 본 표 갱신 시 §3-0 동시 적용 필수.
 
 | 항목 | 점수 |
 |------|------|
@@ -183,7 +183,7 @@ R0 tier_weight=1.0 / R1=0.7 / R2=0.4
 
 ```
 R-1. 신호 추출 — 본 §1 10 신호 (S1~S10) LLM 추론, 매칭 신호 집합 박제
-R-2. R0 검색 — `permission-profiles.md §3·§3-1`에서 신호별 후보 grep
+R-2. R0 검색 — `permission-profiles-inventory.md §3·§3-1`에서 신호별 후보 grep
 R-3. R0 매칭 부족 시 R1 cascade — modelcontextprotocol/servers README WebFetch
 R-4. (선택) R2 cascade — 사용자 명시 동의 시 npm/큐레이션 WebSearch
 R-5. 후보별 §3 점수 산출 (E, S, A) — probe 미완 후보는 A 페널티
@@ -191,7 +191,7 @@ R-6. top-K 표 출력 + 권고 조합 1줄
 R-7. AskUserQuestion confirm gate → 채택 결정은 §10 Step 3·4·5로 인계
 ```
 
-> **자동화 한계 (§10-6과 동일 doctrine):**
+> **자동화 한계 (§10-F와 동일 doctrine):**
 > - R-1 ~ R-6 자동 (LLM 추론 + grep + WebFetch + 점수)
 > - R-7 confirm 사용자 게이트 — *추천 채택*도 명시 동의 필요
 > - 외부 install·키 등록·permissions 갱신은 §10이 처리
@@ -252,7 +252,7 @@ Phase 5-2 합성 시작
  "decision": "rejected", "reason": "T2~ quota 부담"}
 ```
 
-§10-4 rollback과 별개 — 채택 *전* 거부는 본 jsonl, 채택 *후* 회수는 §10-4 변경 이력 표.
+§10-D rollback과 별개 — 채택 *전* 거부는 본 jsonl, 채택 *후* 회수는 §10-D 변경 이력 표.
 
 ---
 
@@ -267,7 +267,7 @@ Phase 5-2 합성 시작
 
 ## 10. 참고
 
-- `permission-profiles.md` §3·§3-1·§4·§10 — 단일 출처 인벤토리·매핑·채택 절차
+- `permission-profiles-inventory.md` §3·§3-1 (인벤토리) + `permission-profiles.md` §4 (결정 트리) + `permission-profiles-dynamic-adoption.md` §10 (채택 절차) — 단일 출처 인벤토리·매핑·채택 절차
 - `/harness:harness-mcp-recommend` — on-demand 진입점 (합성 후 추가 에이전트 점검용)
 - `/harness:harness-mcp-adopt` — 채택 5-step 진입점
 - `/harness:harness-mcp-status` — 채택 후 정합 진단

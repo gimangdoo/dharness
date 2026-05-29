@@ -14,6 +14,13 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    import yaml  # type: ignore
+    _HAS_YAML = True
+except ImportError:
+    yaml = None  # type: ignore
+    _HAS_YAML = False
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 else:
@@ -27,13 +34,20 @@ PROJECT_PROFILE = BASELINE_DIR / "project_profile.md"
 INTENT_PROFILE = BASELINE_DIR / "intent_profile.md"
 
 PROJECT_REQUIRED = ["stack", "architecture", "convention", "maturity", "pain_points"]
-INTENT_REQUIRED = [
+# W3 doctrine — Phase 2 사용자 raw 답변 강제 5필드. chain_intent.py:check_required_user_confirmed_fields가 본 list로 prefix 매칭.
+INTENT_REQUIRED_USER_CONFIRMED = [
     "constraints.tech_stack",
     "constraints.team.size",
     "constraints.timeline.horizon",
     "architecture.deployment_target",
     "quality.test_rigor",
 ]
+# I2 doctrine — LLM이 합성 시점 plugin version 자동 박제 (사용자 raw 답변 불요). 2026-05-28 audit2 PA8 격상.
+INTENT_REQUIRED_LLM_STAMPED = [
+    "meta.dharness_version",
+]
+# 전체 필수 6필드 superset — schema.py existence check + chain_intent.py:check_intent_required_doc_sync 정본.
+INTENT_REQUIRED = INTENT_REQUIRED_USER_CONFIRMED + INTENT_REQUIRED_LLM_STAMPED
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
@@ -48,8 +62,38 @@ def extract_yaml_body(text: str) -> str:
     return text
 
 
-def has_dotted_field(yaml_text: str, dotted: str) -> bool:
-    parts = dotted.split(".")
+def _has_dotted_field_yaml(yaml_text: str, parts: list[str]) -> bool:
+    """PyYAML 위임 경로 — yaml.safe_load 후 nested dict/list walk.
+
+    list 요소는 dotted path 분기점에서 *임의 원소 hit*면 True (inferred_fields 같은
+    `- field: X` 구조 등의 array containment 패턴 수용).
+    """
+    if not _HAS_YAML:
+        return False
+    try:
+        root = yaml.safe_load(yaml_text)
+    except yaml.YAMLError:
+        return False
+    if root is None:
+        return False
+
+    def walk(node: object, path: list[str]) -> bool:
+        if not path:
+            return node is not None
+        head, *rest = path
+        if isinstance(node, dict):
+            if head in node:
+                return walk(node[head], rest)
+            return False
+        if isinstance(node, list):
+            return any(walk(item, [head, *rest]) for item in node)
+        return False
+
+    return walk(root, parts)
+
+
+def _has_dotted_field_manual(yaml_text: str, parts: list[str]) -> bool:
+    """Regex/indent 기반 fallback — PyYAML 부재 또는 parse 실패 시."""
     stack: list[tuple[int, str]] = []
     key_re = re.compile(r"([A-Za-z0-9_.-]+)\s*:")
     for raw in yaml_text.splitlines():
@@ -70,6 +114,18 @@ def has_dotted_field(yaml_text: str, dotted: str) -> bool:
             return True
         stack.append((indent, key))
     return False
+
+
+def has_dotted_field(yaml_text: str, dotted: str) -> bool:
+    """dotted path 존재 여부. PyYAML 위임 우선, 실패/부재 시 manual fallback (PA13)."""
+    parts = dotted.split(".")
+    if _HAS_YAML:
+        try:
+            if _has_dotted_field_yaml(yaml_text, parts):
+                return True
+        except Exception:
+            pass
+    return _has_dotted_field_manual(yaml_text, parts)
 
 
 def find_inferred_fields_without_source(yaml_text: str) -> list[str]:

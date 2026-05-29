@@ -1,6 +1,7 @@
 ---
 description: 에이전트·스킬 통합 — 2개 이상을 1개로 합치고 책임 중복·통신 비용 진단 + 참조 갱신.
 argument-hint: <agent|skill> <통합본 이름> <원본 2개 이상, 공백 구분>
+allowed-tools: Read, Glob, Grep, Write, Edit
 ---
 
 # Harness — Merge Agents or Skills

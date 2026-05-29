@@ -1,17 +1,18 @@
 ---
 description: MCP 상태 진단 — 등록 MCP·에이전트 도구 매트릭스·토큰 비용·인벤토리 정합·trigger 신호 한눈에 (읽기 전용).
 argument-hint: [--verbose 옵션]
+allowed-tools: Read, Bash(claude mcp list:*)
 ---
 
 # Harness — MCP Status
 
 기존 derived 프로젝트의 MCP·도구·권한 상태를 *읽기 전용*으로 진단한다. `/harness:harness-mcp-adopt`(쓰기)와 한 쌍을 이루는 진입점이며, `permission-profiles.md` §10 trigger 신호 자동 감지 + parent vs subagent 적재 토큰 비용 추정으로 채택 시점·격리 정합 판정을 보조한다. description 매칭이 아닌 명시적 호출.
 
-> **Cross-doc 인용 규약 (M3 단일 출처 — 2026-05-14):** 본 문서의 bare `§N`은 `references/permission-profiles.md §N`을 가리킨다. 본 명령 *자체 보고* 섹션은 `섹션 N`으로 표기 (cross-doc과 구분). 예외(다른 doc 참조)는 인라인 명시.
+> **Cross-doc 인용 규약 (M3 통합 출처, main: `permission-profiles.md` §0-2 — 2026-05-14):** 본 문서의 bare `§N`은 `references/permission-profiles.md §N`을 가리킨다 (분리된 6 파일 중 main이 진입 매트릭스 단일 navigator). 본 명령 *자체 보고* 섹션은 `섹션 N`으로 표기 (cross-doc과 구분). 예외(다른 doc 참조)는 인라인 명시.
 
 ## 컨텍스트
 - **인자**: `$ARGUMENTS` (없거나 `--verbose` — verbose면 §3 인벤토리 전체와 도구 enumeration까지 출력)
-- **입력**: derived 프로젝트의 `.claude/agents/`, `.claude/settings.json` (있으면), `claude mcp list` 출력, `plugins/harness/skills/harness/references/permission-profiles.md` §3 (host repo 또는 install된 plugin 경로)
+- **입력**: derived 프로젝트의 `.claude/agents/`, `.claude/settings.json` (있으면), `claude mcp list` 출력, `plugins/harness/skills/harness/references/permission-profiles-inventory.md` §3 (host repo 또는 install된 plugin 경로)
 - **출력**: 텍스트 보고서 5섹션 (변경 0). 모든 발견은 *권고 수준* — 자동 수정 없음.
 
 ## 선조건 검증 (먼저 실행)
@@ -51,7 +52,7 @@ claude mcp list
 
 ### 섹션 3 — §3 인벤토리 vs 실제 비교
 
-`permission-profiles.md` §3에 박제된 후보 MCP vs `claude mcp list` 결과 diff:
+`permission-profiles-inventory.md` §3에 박제된 후보 MCP vs `claude mcp list` 결과 diff:
 
 - **§3 박제 + 미설치**: 의도적일 수 있음 (보고만, 권고 없음).
 - **설치 + §3 미박제**: §3 추가 권고 (host repo 도입자가 추후 채택 시 참조 자료로). host repo 측 편집 권한이 있으면 사용자에게 1행 추가 제안.
@@ -78,7 +79,7 @@ claude mcp list
 
 ### 섹션 5 — §10 Trigger 신호 자동 감지
 
-§10-1 트리거 3종 중 (a)·(b)는 자동 감지 가능:
+§10-A 트리거 3종 중 (a)·(b)는 자동 감지 가능:
 
 - **(a) baseline-diff**: `_workspace/_baseline/project_profile.md` (있으면) detection_signals 리스트 vs 현재 코드 grep — 새 키워드(예: `package.json`에 `playwright` 추가, `requirements.txt`에 `sqlalchemy` 등장) 검출 시 후보 MCP 제안.
   - **baseline 부재 fallback**: `_workspace/_baseline/project_profile.md`이 없으면 (= 사용자가 harness 메타 스킬 없이 손으로 만든 derived 프로젝트) 본 (a) 분기를 *skip*하고 메시지에 표기:
@@ -150,7 +151,7 @@ Claude Code 현 빌드는 MCP 도구를 *deferred tool pool*로 관리한다. Se
 - 정합 결손(섹션 4) 정정: 사용자가 `.claude/settings.json` / agent frontmatter 직접 수정 (자동 수정 금지)
 - §3 미박제 보고가 있고 host repo 접근 가능하면: 사용자에게 footnote 추가 안내
 - 섹션 6의 parent 적재 ⚠️ 항목 정정: §5-2 예외 조건 미충족이면 해당 MCP를 §5-1 inline 패턴으로 이전 (사용자 수동 — 자동 수정 금지)
-- **🆕 섹션 4 deny 누락 정정**: strict read-only 의도면 settings.json `permissions.deny`에 advertise 도구 중 부수 효과 후보 박제 (사용자 도메인 지식 기반 최종 판정 — 자동 추가 금지). 합성 시점이라면 §10-5 inline 정의 갱신 절차 5-step으로 처리.
+- **🆕 섹션 4 deny 누락 정정**: strict read-only 의도면 settings.json `permissions.deny`에 advertise 도구 중 부수 효과 후보 박제 (사용자 도메인 지식 기반 최종 판정 — 자동 추가 금지). 합성 시점이라면 §10-E inline 정의 갱신 절차 5-step으로 처리.
 
 ## 범위 외
 

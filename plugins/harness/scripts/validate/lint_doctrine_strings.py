@@ -21,6 +21,7 @@ unit test로 박제하지 않는다.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -28,6 +29,8 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 SKILL_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "SKILL.md"
 GATES_MD = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references" / "phase-entry-gates.md"
 CMD_MD = REPO_ROOT / "plugins" / "harness" / "commands" / "harness-new.md"
+DOCTRINE_REGISTRY = REPO_ROOT / "plugins" / "harness" / "skills" / "harness" / "references" / "doctrine-registry.md"
+VALIDATE_DIR = REPO_ROOT / "plugins" / "harness" / "scripts" / "validate"
 
 
 def _read(path: Path) -> str:
@@ -63,6 +66,85 @@ _CHECKS: list[tuple[str, Path, str]] = [
 ]
 
 
+_REGISTRY_ID_ROW_RE = re.compile(r"^\|\s*([WRSPI]\d+)\s*\|")
+_CODE_DOCTRINE_ID_RE = re.compile(r"\b([WRSPI]\d+)\b(?!-)")
+_CODE_TARGETS: tuple[str, ...] = (
+    "chain.py", "chain_advisor.py", "chain_doc_sync.py", "chain_intent.py",
+    "chain_registry.py", "chain_version.py", "_chain_proxy.py",
+    "schema.py", "structure.py",
+)
+# 코드 본문 내 NON-doctrine 의미 — `[WRSPI]\d+` 패턴은 매치되나 doctrine 색인 대상 아님.
+# - S1~S10: trigger signal id (catalog namespace, docstring/주석에서도 사용 — registry §3의 동명 doctrine id와 우연 겹침)
+# - SQLite·PySQLite 등 라이브러리명 일부는 패턴 미적합이라 제외 무필요.
+_CODE_DOCTRINE_IGNORE: frozenset[str] = frozenset({
+    "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
+})
+
+
+def _load_registry_doctrine_ids() -> set[str]:
+    ids: set[str] = set()
+    if not DOCTRINE_REGISTRY.exists():
+        return ids
+    for raw in DOCTRINE_REGISTRY.read_text(encoding="utf-8-sig").splitlines():
+        m = _REGISTRY_ID_ROW_RE.match(raw)
+        if m:
+            ids.add(m.group(1))
+    return ids
+
+
+def _iter_comment_segments(text: str):
+    """py source line-by-line iter — comment 또는 docstring 영역 substring만 yield.
+
+    docstring tracking: 라인의 triple-quote 카운트가 홀수면 토글. 라인 내 시작·끝이 같은 라인이면
+    내부는 docstring으로 간주 (간단 휴리스틱, 모듈/함수 docstring 대부분 cover).
+    string literal 내 hash로 인한 false-positive는 일부 있으나 본 lint는 over-strict 허용 (Phase 4 PA16).
+    """
+    in_docstring = False
+    for line in text.splitlines():
+        triple_count = line.count('"""') + line.count("'''")
+        starts_in = in_docstring
+        if triple_count % 2 == 1:
+            in_docstring = not in_docstring
+        if starts_in or in_docstring:
+            yield line
+            continue
+        idx = line.find("#")
+        if idx == -1:
+            continue
+        # 일부 string literal 내 #를 더 강하게 회피하려면 quote balance를 봐야 하나, 단순화.
+        yield line[idx + 1:]
+
+
+def _check_code_doctrine_refs() -> list[str]:
+    """PA16 — chain*.py/schema.py/structure.py 주석·docstring 내 `[WRSPI]\\d+` doctrine id가
+    doctrine-registry.md 표 본문에 등재됐는지 cross-check. 미등재 → registry 박제 누락 알림.
+    """
+    failures: list[str] = []
+    valid = _load_registry_doctrine_ids()
+    if not valid:
+        failures.append(f"doctrine-registry.md 파싱 실패 ({DOCTRINE_REGISTRY.relative_to(REPO_ROOT)})")
+        return failures
+    for name in _CODE_TARGETS:
+        path = VALIDATE_DIR / name
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8-sig")
+        missing: dict[str, set[int]] = {}
+        for line_no, segment in enumerate(_iter_comment_segments(text), start=1):
+            for m in _CODE_DOCTRINE_ID_RE.finditer(segment):
+                did = m.group(1)
+                if did in _CODE_DOCTRINE_IGNORE:
+                    continue
+                if did not in valid:
+                    missing.setdefault(did, set()).add(line_no)
+        for did in sorted(missing):
+            lines = ",".join(str(n) for n in sorted(missing[did])[:3])
+            failures.append(
+                f"{name}: 주석/docstring doctrine id `{did}` 미등재 (registry §1~§5 행 없음, hits L{lines})"
+            )
+    return failures
+
+
 def run() -> int:
     cache: dict[Path, str] = {}
     failures: list[str] = []
@@ -74,12 +156,14 @@ def run() -> int:
             cache[path] = _read(path)
         if needle not in cache[path]:
             failures.append(f"{label}: '{needle}' 미박제")
+    code_failures = _check_code_doctrine_refs()
+    failures.extend(code_failures)
     if failures:
         print(f"[lint_doctrine_strings] {len(failures)}건 미박제:", file=sys.stderr)
         for f in failures:
             print(f"  · {f}", file=sys.stderr)
         return 1
-    print(f"[lint_doctrine_strings] {len(_CHECKS)}건 doctrine 박제 확인.")
+    print(f"[lint_doctrine_strings] {len(_CHECKS)}건 doctrine 박제 + {len(_CODE_TARGETS)}개 코드 파일 doctrine ref 확인.")
     return 0
 
 

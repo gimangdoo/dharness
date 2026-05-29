@@ -14,7 +14,7 @@ step 1에서 `_workspace/_baseline/` 또는 `_workspace/_critique_phase*_*.md`�
 2. **사용자 게이트**: "이전 구축이 Phase {N}까지 완료됨 — Phase {N+1}부터 재개할까, 처음부터 다시 할까?"를 제시한다.
 3. **handoff 문서 불요**: phase 산출물(`_workspace/_baseline/*.md`, `_critique_phase*`)이 구조화된 채 박제돼 있어 그 자체가 handoff다 — 별도 요약 문서를 만들지 않는다. 재개 세션은 해당 파일을 *재read*하여 컨텍스트를 복원한다.
 
-**이유:** 15-phase factory(11 base + 4 self-critique)는 긴 워크플로우 — context 한계로 중간 종료 시 처음부터 재실행은 Phase 1·2 재분석 비용 낭비. 산출물이 이미 파일로 박제돼 있으므로 재개가 정답. mattpocock `handoff` 스킬의 "대화 → handoff 문서" 개념을 factory에 적용하되, 산출물 파일이 이미 handoff 역할을 하므로 별도 문서 생성은 생략.
+**이유:** 15-phase factory(12 base + 3 critique/sim)는 긴 워크플로우 — context 한계로 중간 종료 시 처음부터 재실행은 Phase 1·2 재분석 비용 낭비. 산출물이 이미 파일로 박제돼 있으므로 재개가 정답. mattpocock `handoff` 스킬의 "대화 → handoff 문서" 개념을 factory에 적용하되, 산출물 파일이 이미 handoff 역할을 하므로 별도 문서 생성은 생략.
 
 ---
 
@@ -54,9 +54,9 @@ step 1에서 `_workspace/_baseline/` 또는 `_workspace/_critique_phase*_*.md`�
 
 Phase 1 산출물 `project_profile.md` 미존재 시 본 Phase **진입 차단** — Phase 1로 회귀. 진입 후 다음 강제 회로:
 
-1. **필수 5필드 사용자 답변 raw 인용 강제**: `constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor` (정본 `scripts/validate/schema.py:INTENT_REQUIRED`) — *모든* 필드에 대해 LLM이 사용자에게 *명시적 질문*을 출력하고, 사용자 raw 답변을 `meta.user_confirmed_fields` 리스트에 등록. brownfield의 자동 추론 결과는 *제시만* 가능, 사용자 확인 답변 없이 user_confirmed_fields에 등록 금지.
-2. **질문 폭격 강제**: 필수 5필드 미답변 상태에서 Phase 3 진입 차단. 사용자가 "다 알아서 하라" 등 답변 거부 시 → 추론값으로 채우되 `meta.inferred_fields`에 박제 + 별도 confirm 게이트(추론값 표 출력 → "이대로 진행?" 명시 인가 후만 Phase 3).
-3. **단정 표현 금지 (Phase 2 미완 상태에서)**: Phase 1과 동일 — `domain: X` 단정 출력 금지. Phase 2 완료(모든 필수 5필드 `user_confirmed_fields` 등록 — `chain.py:check_required_user_confirmed_fields` 결정적 검증)된 후에만 Phase 3에서 단정 표현 허용. brownfield 자동 추론값은 별도 confirm 게이트(추론값 표 출력 → "이대로 진행?" 명시 인가) 통과 시 그 답변이 user_confirmed_fields 등록 트리거.
+1. **필수 6필드 사용자 답변 raw 인용 강제**: `constraints.tech_stack`, `constraints.team.size`, `constraints.timeline.horizon`, `architecture.deployment_target`, `quality.test_rigor`, `meta.dharness_version` (정본 `scripts/validate/schema.py:INTENT_REQUIRED`) — 사용자 raw 답변 5필드 + LLM 박제 1필드 (`meta.dharness_version` = 합성 시점 `plugins/harness/.claude-plugin/plugin.json` `version` 자동 박제, 2026-05-28 audit2 PA8 격상). 사용자 raw 답변 5필드는 `meta.user_confirmed_fields` 리스트 등록 — brownfield 자동 추론 결과는 *제시만* 가능, 사용자 확인 답변 없이 user_confirmed_fields에 등록 금지.
+2. **질문 폭격 강제**: 필수 6필드 (사용자 raw 5 + LLM 박제 1) 미답변 상태에서 Phase 3 진입 차단. 사용자가 "다 알아서 하라" 등 답변 거부 시 → 추론값으로 채우되 `meta.inferred_fields`에 박제 + 별도 confirm 게이트(추론값 표 출력 → "이대로 진행?" 명시 인가 후만 Phase 3).
+3. **단정 표현 금지 (Phase 2 미완 상태에서)**: Phase 1과 동일 — `domain: X` 단정 출력 금지. Phase 2 완료(필수 5필드 `user_confirmed_fields` 등록 + `meta.dharness_version` LLM 박제 — `chain.py:check_required_user_confirmed_fields` 결정적 검증)된 후에만 Phase 3에서 단정 표현 허용. brownfield 자동 추론값은 별도 confirm 게이트(추론값 표 출력 → "이대로 진행?" 명시 인가) 통과 시 그 답변이 user_confirmed_fields 등록 트리거.
 4. **brownfield 4단계 강제 순서**: 자동 추론 → *사용자 확인* → 갭 → 코드 grounded 질문. 1단계(자동 추론)만 수행하고 2단계 skip 금지.
 5. **Grilling 모드 분기**: `meta.confidence_low` 항목 ≥1 OR 필수 5필드 1차 거부 시 `references/grilling-loop.md` 1q-at-a-time + recommended answer 패턴 적용. cap 5 question, 초과 시 batch 자동 fallback. 추천 답안 출처는 `project_profile.md` signals ≥2 또는 §3-1 직접 매핑만 허용 — 디렉토리·파일 이름 단독 추천 doctrine 위반.
 

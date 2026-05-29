@@ -17,7 +17,7 @@
 
 | 산출물 | 파일 | 위치(derived 프로젝트 기준) | 비고 |
 |--------|------|---------------------------|------|
-| (a) 카탈로그 footnote | (메타) | `plugins/harness/skills/harness/references/permission-profiles.md` §3 fetch/memory 행 | §3-1 매트릭스 `web-research` 행과 동시 갱신 |
+| (a) 카탈로그 footnote | (메타) | `plugins/harness/skills/harness/references/permission-profiles-inventory.md` §3 fetch/memory 행 | §3-1 매트릭스 `web-research` 행과 동시 갱신 |
 | (b) 에이전트 정의 | [`web-research.agent.md`](./web-research.agent.md) | `.claude/agents/web-research.md` | inline `mcpServers:` 멀티 패턴 (fetch + memory) |
 | (c) 권한 게이트 | [`settings.json`](./settings.json) | `.claude/settings.json` | fetch 4종 allow + memory 7종(read 3 allow / create+add 3 ask / delete 3 deny) |
 | (d) 변경 이력 1행 | [`changelog_row.md`](./changelog_row.md) | derived 프로젝트의 `_workspace/_baseline/changelog.md` "변경 이력" 표 | 멀티 inline 패턴 표기 ("MCP 채택: fetch + memory") |

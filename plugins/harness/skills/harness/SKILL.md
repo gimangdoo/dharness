@@ -181,7 +181,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 > 정의 템플릿과 실제 파일 전문은 `references/agent-design-patterns.md` + `references/team-examples.md`. QA 상세 가이드는 `references/qa-agent-guide.md`.
 
 **도구·MCP 자동 할당 (Phase 5-2):** 에이전트 `tools:` allowlist + `.claude/settings.json`·`.mcp.json` 합성은 *제안 후 사용자 confirm*. 단일 출처는 `references/permission-profiles*.md` 4 파일 (P7 분리, 2026-05-23):
-- `permission-profiles.md` main — §1 3-layer 모델 / §2 8 capability profile / §4 결정 트리 / §5-2 anti-pattern / §5-3 permissions deny / §6 안전 정책
+- `permission-profiles.md` main — §1 3-layer 모델 / §4 결정 트리 / §6 안전 정책 / §9 plugin subagent 제약 (§2/§5/§7/§8/§11은 모두 분리 — profiles·synthesis·empirical)
 - `permission-profiles-inventory.md` — §3 MCP 후보 인벤토리 + §3-0 verification_status + §3-1 검증 완료 T0 매트릭스
 - `permission-profiles-synthesis.md` — §5-1 에이전트 frontmatter (a/b/c — Layer B / Layer A+B / 모델 by role Q2 doctrine)
 - `permission-profiles-dynamic-adoption.md` — §10 dynamic adoption 5-step + 10-4 rollback + 10-7 병렬 세션
@@ -490,10 +490,12 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 - **Intent Profile Advisory** (PB5 분리, 2026-05-27): `references/intent-profile-advisory.md` — LLM-only 권장 룰 + cross-field 경고 3종 (Phase 2 합성 직전 final review)
 - **Advisor Integration** (PB6 분리, 2026-05-27): `references/advisor-integration.md` — methodology-advisor v0.3.x handoff 변환 룰 + cross-field invariant (advisor 위임 분기 시점만 read)
 - **Runtime Adaptation 가이드**: `references/runtime-adaptation.md` — Phase 10 telemetry schema, capture 신호, diagnostic 룰, adapt 룰, 승인 UX
-- **Permission Profiles (main)**: `references/permission-profiles.md` — §1 3-layer / §2 8 capability profile / §4 결정 트리 / §5-2 anti-pattern / §5-3 deny / §6 안전 정책
+- **Permission Profiles (main)**: `references/permission-profiles.md` — §0 진입 매트릭스 + §1 3-layer / §4 결정 트리 / §6 안전 정책 / §9 plugin subagent 제약 (분리 본문은 profiles/inventory/synthesis/dynamic-adoption/empirical)
+- **Permission Profiles Profiles** (PA5 분리, 2026-05-28): `references/permission-profiles-profiles.md` — §2 8 capability profile 본문 (code-test / web-research / external-integration / reasoning-aux + ml-pipeline / devops-infra / mobile-native / data-eng)
+- **Permission Profiles Empirical** (PA5 분리, 2026-05-28): `references/permission-profiles-empirical.md` — §8 검증 상태 (공식 docs ✓ + empirical ✓✓ + 외부 의제) + §8-3 stdio probe 기법 + §11-1~§11-4 실증 reproducer fixture
 - **Permission Profiles Inventory** (P7 분리): `references/permission-profiles-inventory.md` — §3 MCP 후보 인벤토리 + §3-0 verification_status + §3-1 T0 매트릭스
 - **Permission Profiles Synthesis** (P7 분리): `references/permission-profiles-synthesis.md` — §5-1 에이전트 frontmatter 합성 (a/b/c — Layer B / Layer A+B / 모델 by role Q2 doctrine)
-- **Permission Profiles Dynamic Adoption** (P7 분리): `references/permission-profiles-dynamic-adoption.md` — §10 5-step + §10-4 rollback + §10-7 multi-writer (P4)
+- **Permission Profiles Dynamic Adoption** (P7 분리): `references/permission-profiles-dynamic-adoption.md` — §10 5-step + §10-D rollback + §10-G multi-writer (P4)
 - **MCP Recommendation 엔진**: `references/mcp-recommendation.md` — Phase 5-2 합성 시 자동 추천 (신호 추출·후보 풀·3축 점수·캐시·거부 학습, 10 신호 S1~S10)
 - **Heuristics Baseline** (PB2 통합, 2026-05-27): `references/heuristics-baseline.md` — Phase 1·5-2·6·8·10 휴리스틱 임계값 통합 catalog (4 doc 표 → 1 단일 출처). 원 doc 본문은 1줄 pointer만 보유
 - **Trigger Keyword Catalog**: `references/trigger-keyword-catalog.md` — 10 signal × Korean·English 키워드 단일 출처 (P6-8, 2026-05-14). Phase 5 description 작성 + Phase 5-2 signal 추출 시 should/NOT 예시 catalog

@@ -1,5 +1,6 @@
 ---
 description: 추론 영역 감사 — 책임 중복·트리거·통신 프로토콜·워크플로우 일관성 LLM 점검 (결정적 검증은 `/harness:harness-validate`, 자동 수정 없음).
+allowed-tools: Read, Glob, Grep
 ---
 
 # Harness — Audit (LLM 추론 영역)

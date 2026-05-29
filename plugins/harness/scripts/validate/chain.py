@@ -16,7 +16,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from schema import INTENT_REQUIRED  # noqa: E402  W3 doctrine 단일 출처
+from schema import (  # noqa: E402  W3·I2 doctrine 단일 출처
+    INTENT_REQUIRED,
+    INTENT_REQUIRED_USER_CONFIRMED,
+)
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -58,27 +61,30 @@ MCP_SERVER_LINE_PATTERN = re.compile(r"^\s*-\s+([\w-]+)\s*:\s*$", re.MULTILINE)
 # Q11 — trigger-keyword-catalog.md 단일 출처. signal_id → [keywords]
 # 본 catalog는 plugin 합성 결과를 검증 — derived `.claude/agents|skills/*.md`의 description이
 # *최소 1 signal*을 hit해야 trigger 명확성 확보. catalog 갱신 시 본 dict도 동기.
+# S15 doctrine (2026-05-28): chain_doc_sync.py:check_trigger_catalog_python_sync가 본 dict ↔
+# trigger-keyword-catalog.md §1 표 sync 결정적 검증 — catalog가 단일 출처(doctrine S11) 이므로
+# 본 dict는 catalog 키워드 superset 또는 equal (catalog → code 누락 시 FAIL).
 _TRIGGER_SIGNAL_KEYWORDS: dict[str, tuple[str, ...]] = {
     "S1": ("분석", "검토", "리서치", "요약", "조회", "검색", "탐색", "탐사", "진단", "감사", "점검",
            "analyze", "review", "research", "summarize", "query", "search", "explore", "audit", "inspect", "investigate"),
     "S2": ("생성", "작성", "편집", "수정", "커밋", "마이그레이션", "배포", "적용", "등록", "갱신",
            "create", "write", "edit", "modify", "commit", "migrate", "deploy", "apply", "register", "update"),
-    "S3": ("웹", "외부 API", "스크래핑", "크롤링", "fetch", "페이지", "URL",
-           "web", "external API", "scrape", "crawl", "search engine", "HTTP"),
-    "S4": ("DB", "데이터베이스", "쿼리", "스키마", "테이블", "인덱스", "JOIN",
-           "database", "schema", "migration", "table", "index", "SQL"),
-    "S5": ("PR", "issue", "리뷰", "CI", "CD", "릴리즈", "브랜치", "머지", "워크플로우",
-           "release", "branch", "merge", "pipeline", "workflow"),
+    "S3": ("웹", "외부 API", "스크래핑", "크롤링", "검색 엔진", "fetch", "페이지", "URL",
+           "web", "external API", "scrape", "crawl", "search engine", "page", "HTTP"),
+    "S4": ("DB", "데이터베이스", "쿼리", "스키마", "마이그레이션", "테이블", "인덱스", "JOIN",
+           "database", "query", "schema", "migration", "table", "index", "SQL"),
+    "S5": ("PR", "issue", "리뷰", "CI", "CD", "릴리즈", "브랜치", "머지", "커밋 그래프", "워크플로우",
+           "review", "release", "branch", "merge", "pipeline", "workflow"),
     "S6": ("단계별", "추론", "사고 과정", "장기 메모리", "시간", "타임존", "KG", "지식 그래프",
-           "step-by-step", "reasoning", "chain-of-thought", "long-term memory", "timezone", "knowledge graph"),
+           "step-by-step", "reasoning", "chain-of-thought", "long-term memory", "time", "timezone", "knowledge graph"),
     "S7": ("모델", "학습", "평가", "하이퍼파라미터", "실험 추적", "inference", "feature", "dataset", "라벨", "분류", "회귀", "추천",
-           "model", "training", "evaluation", "hyperparameter", "experiment tracking", "classification", "regression", "recommendation"),
-    "S8": ("Kubernetes", "k8s", "Terraform", "SRE", "oncall", "롤백", "helm", "IaC", "observability",
-           "infrastructure", "monitoring", "rollback"),
-    "S9": ("iOS", "Android", "Swift", "Kotlin", "Flutter", "React Native", "Xcode", "Gradle", "emulator",
+           "model", "training", "evaluation", "hyperparameter", "experiment tracking", "label", "classification", "regression", "recommendation"),
+    "S8": ("배포", "CI/CD", "인프라", "모니터링", "Kubernetes", "k8s", "Terraform", "SRE", "oncall", "롤백", "helm", "IaC", "observability",
+           "deploy", "infrastructure", "monitoring", "rollback"),
+    "S9": ("iOS", "Android", "Swift", "Kotlin", "Flutter", "React Native", "Xcode", "Gradle", "emulator", "build",
            "IPA", "APK", "모바일", "mobile"),
-    "S10": ("ETL", "ELT", "data pipeline", "Airflow", "dbt", "Spark", "data warehouse", "data lake", "ingestion", "lineage", "DAG",
-            "스키마 변환"),
+    "S10": ("ETL", "ELT", "data pipeline", "Airflow", "dbt", "Spark", "스키마 변환", "data warehouse", "data lake", "ingestion", "lineage", "DAG",
+            "schema transform"),
 }
 
 
@@ -563,6 +569,22 @@ EXTERNAL_INPUT_TOOLS = {
     "websearch",
     "powershell",
 }
+
+
+def _classify_external_tool(token: str) -> str | None:
+    """tool token → external surface category. external이면 category 반환, 아니면 None.
+
+    A1 fix (audit2 2026-05-27): `mcp__*` 도구는 분류 누락 (이전 코드는 `split("__", 1)[0]` →
+    literal `"mcp"` → EXTERNAL_INPUT_TOOLS 미매칭 → mcp surface 보유 에이전트가 가드 절 없어도
+    PASS 되는 silent bypass. mcp prefix 검출 분기 명시화.
+    """
+    norm = token.strip().lower()
+    if norm.startswith("mcp__"):
+        return "mcp"
+    head = norm.split("(", 1)[0].split("__", 1)[0]
+    if head in EXTERNAL_INPUT_TOOLS:
+        return head
+    return None
 INJECTION_GUARD_PATTERN = re.compile(
     r"입력\s*신뢰\s*경계|프롬프트\s*인젝션|인젝션\s*방어|injection\s*guard|untrusted\s*input|prompt\s*injection",
     re.IGNORECASE,
@@ -603,9 +625,7 @@ def check_agent_injection_guard() -> list[str]:
             continue
         if TOOLS_LINE_PATTERN.search(fm):
             tools = _extract_tools_list(fm)
-            held = sorted(
-                {t for t in tools if t.split("__", 1)[0].strip().lower() in EXTERNAL_INPUT_TOOLS}
-            )
+            held = sorted({c for c in (_classify_external_tool(t) for t in tools) if c})
             if not held:
                 continue
             surface = ", ".join(held)
@@ -634,6 +654,27 @@ def check_agent_injection_guard() -> list[str]:
     return errors
 
 
+# Korean stopword set — dharness 도메인 공통 어휘. trigger 충돌 신호 아님 (PA11).
+# 8 stopword에서 추출된 2-gram이 description 유사도를 부풀려 false positive 양산.
+_KO_STOPWORDS: frozenset[str] = frozenset({
+    "에이전트", "스킬", "검증", "관리", "도구", "하네스", "오케스트", "프로젝트",
+})
+
+
+def _build_ko_stopword_bigrams(words: frozenset[str]) -> frozenset[str]:
+    bigrams: set[str] = set()
+    for w in words:
+        if len(w) == 2:
+            bigrams.add(w)
+        else:
+            for k in range(len(w) - 1):
+                bigrams.add(w[k:k + 2])
+    return frozenset(bigrams)
+
+
+_KO_STOPWORD_BIGRAMS: frozenset[str] = _build_ko_stopword_bigrams(_KO_STOPWORDS)
+
+
 def _tokenize_description(desc: str) -> set[str]:
     """description에서 trigger 키워드 후보 토큰화.
 
@@ -641,6 +682,7 @@ def _tokenize_description(desc: str) -> set[str]:
     한글: 2-gram character n-gram만 사용 — Korean은 word boundary가 의미와 어긋나
     (`데이터` ↔ `데이터베이스`처럼 substring 관계 흔함), word 단위는 검출 불가.
     n-gram 토큰은 `kg2:` prefix로 영문 word 토큰과 namespace 분리.
+    한글 stopword set의 2-gram은 제외 (PA11 — 도메인 공통 어휘 false positive 차단).
     """
     tokens: set[str] = set()
     for w in re.findall(r"[A-Za-z][A-Za-z0-9_-]+", desc):
@@ -648,11 +690,14 @@ def _tokenize_description(desc: str) -> set[str]:
             tokens.add(w.lower())
     for block in re.findall(r"[가-힣]{2,}", desc):
         for k in range(len(block) - 1):
-            tokens.add(f"kg2:{block[k:k + 2]}")
+            bg = block[k:k + 2]
+            if bg in _KO_STOPWORD_BIGRAMS:
+                continue
+            tokens.add(f"kg2:{bg}")
     return tokens
 
 
-def check_skill_description_overlap(threshold: float = 0.5) -> list[str]:
+def check_skill_description_overlap(threshold: float = 0.65) -> list[str]:
     """skill description 트리거 키워드 *pairwise* Jaccard 유사도 검출 (Q5).
 
     threshold 초과 쌍은 트리거 충돌 가능성 — Phase 8-4 should-NOT regression 사전 감지.
@@ -732,8 +777,10 @@ def check_skill_signal_coverage() -> list[str]:
 # W3 doctrine (phase-entry-gates.md:§Phase 2). 5필드 모두 사용자 raw 답변으로
 # meta.user_confirmed_fields 등록 필수. brownfield 자동 추론도 사용자 확인 답변
 # 받아야 user_confirmed_fields 등록 — inferred_fields 등록만으로 doctrine 불충족.
-# 정본은 schema.py:INTENT_REQUIRED — 본 alias로 의도 명시.
-_INTENT_USER_CONFIRMED_REQUIRED = tuple(INTENT_REQUIRED)
+# 정본은 schema.py:INTENT_REQUIRED_USER_CONFIRMED — 본 alias로 의도 명시.
+# 2026-05-28 audit2 PA8: INTENT_REQUIRED 6필드로 격상되며 meta.dharness_version은
+# LLM 박제 (I2 doctrine), 사용자 raw 답변 불요 → alias는 USER_CONFIRMED 5만 포함.
+_INTENT_USER_CONFIRMED_REQUIRED = tuple(INTENT_REQUIRED_USER_CONFIRMED)
 
 
 def _strip_quotes(value: str) -> str:
@@ -828,6 +875,8 @@ from chain_version import check_dharness_version_drift  # noqa: E402
 from chain_doc_sync import (  # noqa: E402
     check_command_count_sync,
     check_output_checklist_count_sync,
+    check_phase_count_sync,
+    check_trigger_catalog_python_sync,
 )
 
 
@@ -910,6 +959,8 @@ def main(argv: list[str]) -> int:
         ("check_intent_required_doc_sync", check_intent_required_doc_sync),
         ("check_output_checklist_count_sync", check_output_checklist_count_sync),
         ("check_command_count_sync", check_command_count_sync),
+        ("check_trigger_catalog_python_sync", check_trigger_catalog_python_sync),
+        ("check_phase_count_sync", check_phase_count_sync),
         ("check_intent_profile_version", check_intent_profile_version),
         ("check_intent_profile_project_type", check_intent_profile_project_type),
         ("check_intent_profile_brownfield_inferred", check_intent_profile_brownfield_inferred),

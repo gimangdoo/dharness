@@ -1,6 +1,7 @@
 ---
 description: 에이전트 1명 추가 — baseline 재분석 없이 기존 하네스에 새 역할 박제 (Phase 1·2·3 SKIP).
 argument-hint: <새 에이전트 역할 한 줄>
+allowed-tools: Read, Glob, Grep, Write, Edit
 ---
 
 # Harness — Add Agent
@@ -39,13 +40,13 @@ argument-hint: <새 에이전트 역할 한 줄>
    - **빌트인 타입(`general-purpose`/`Explore`/`Plan`)이라도 파일 생성 필수**
    - `model: "opus"` 명시
    - 필수 섹션: 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업, 팀 통신 프로토콜
-   - **Phase 5-2 (도구·MCP 자동 할당)** — 절차·doctrine 단일 출처: `permission-profiles.md` §0-2 진입 매트릭스 + `mcp-recommendation.md` §1·§5 (Mg1 통합 — 2026-05-14).
+   - **Phase 5-2 (도구·MCP 자동 할당)** — 절차·doctrine 통합 출처 (2 파일 합성, main: `permission-profiles.md` §0-2 진입 매트릭스 + 보조: `mcp-recommendation.md` §1·§5; Mg1 통합 — 2026-05-14).
      - **본 명령 진입 시 read 순서** (`permission-profiles.md` §0-2 표 발췌):
        1. `mcp-recommendation.md` §1 (signal 10종 S1~S10 추출)
-       2. `permission-profiles.md` §2 (8 capability profile 매칭)
-       3. `permission-profiles.md` §3·§3-1 (T0 7종 매트릭스 1차 후보)
+       2. `permission-profiles-profiles.md` §2 (8 capability profile 매칭)
+       3. `permission-profiles-inventory.md` §3·§3-1 (T0 7종 매트릭스 1차 후보)
        4. `permission-profiles.md` §4 결정 트리 (profile → MCP 매핑 + 분기 a/b/c/d)
-       5. `permission-profiles.md` §5-1 (inline `mcpServers:` 합성) + §5-3 (permissions deny 강제)
+       5. `permission-profiles-synthesis.md` §5-1 (inline `mcpServers:` 합성) + §5-3 (permissions deny 강제)
      - **사용자 confirm gate**: profile 확정 + MCP 후보 표 (§3-1 + mcp-recommendation §3 점수) 동봉. `claude mcp list`로 install 여부 확인.
      - **본 명령 *범위 외* (별도 진입점 위임)**:
        - 런타임 MCP 채택 (§4 분기 c 발화 — MCP 미install) → `/harness:harness-mcp-adopt <사유>` (§10 5-step). 본 명령 *합성 즉시 중단* + 사용자 안내 출력 후 응답 종료. **자동 install 금지** (§6).

@@ -1,6 +1,7 @@
 ---
 description: MCP 후보 추천 — 효율성·확장성·정확도 3축 점수로 후보 정렬 (읽기 전용 + 외부 검색 가능, 실제 채택은 `/harness:harness-mcp-adopt`).
 argument-hint: <에이전트명 또는 역할 한 문장> [--refresh] [--cascade=R0|R1|R2] [--weights=E,S,A]
+allowed-tools: Read, Grep, WebFetch, WebSearch
 ---
 
 # Harness — MCP Recommend
@@ -16,7 +17,7 @@ argument-hint: <에이전트명 또는 역할 한 문장> [--refresh] [--cascade
   - `--refresh`: `_workspace/_baseline/mcp_catalog.jsonl` 캐시 강제 갱신
   - `--cascade=R0|R1|R2`: 후보 풀 cascade 깊이 (default R0 매칭 부족 시 R1, 명시 시 강제)
   - `--weights=E,S,A`: 가중 override (예: `--weights=0.5,0.2,0.3`), 합=1.0
-- **입력**: derived 프로젝트의 `.claude/agents/<name>.md` (있으면) + `permission-profiles.md` §3·§3-1 + `mcp-recommendation.md` 엔진 + (캐시) `_workspace/_baseline/mcp_catalog.jsonl`
+- **입력**: derived 프로젝트의 `.claude/agents/<name>.md` (있으면) + `permission-profiles-inventory.md` §3·§3-1 + `mcp-recommendation.md` 엔진 + (캐시) `_workspace/_baseline/mcp_catalog.jsonl`
 - **출력**: top-K 추천 표 + 권고 조합 + AskUserQuestion confirm gate → confirm 시 `/harness:harness-mcp-adopt` 1줄 명령 출력 (자동 실행 금지)
 
 ## 선조건 검증
@@ -50,7 +51,7 @@ argument-hint: <에이전트명 또는 역할 한 문장> [--refresh] [--cascade
 ### R-4. R2 cascade (사용자 명시 `--cascade=R2` 시에만)
 
 - WebSearch `mcp-server npm` / `awesome-mcp-servers` — 후보 5~10개 발췌
-- 모든 후보에 **출처 verify gate**: npm Author + GitHub org cross-check 필수 (mcp-recommendation.md §2 R2 doctrine + permission-profiles.md §8-3 안전 룰)
+- 모든 후보에 **출처 verify gate**: npm Author + GitHub org cross-check 필수 (mcp-recommendation.md §2 R2 doctrine + permission-profiles-empirical.md §8-3 안전 룰)
 - spoof 의심 후보는 점수 산정 *전*에 사용자에게 표시 후 trust 받기
 
 ### R-5. 점수 산출
@@ -123,7 +124,7 @@ cascade: R0 + R1 (R0 매칭 2건 / R1 보강 1건)
 
 ## Rollback / 거부 학습
 
-- 채택 후 회수: `/harness:harness-mcp-adopt` §10-4 절차
+- 채택 후 회수: `/harness:harness-mcp-adopt` §10-D 절차
 - 본 추천에서 *거부*: R-7 옵션 4 — `_workspace/_telemetry/_mcp_recommendation.jsonl` 1행 누적. 동일 에이전트에 동일 후보 ≥2회 거부 시 차회 추천에서 -2점 페널티 (mcp-recommendation.md §8)
 
 ## 범위 외

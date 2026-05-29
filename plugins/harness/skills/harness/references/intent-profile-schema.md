@@ -113,11 +113,13 @@ grilling_entry:
 required:                               # P6-10 / M2 (2026-05-14) — 다운스트림 hard-code 신뢰 박제
                                         # 정본: scripts/validate/schema.py:INTENT_REQUIRED.
                                         # doc ↔ schema sync은 chain.py:check_intent_required_doc_sync 결정적 검증.
+                                        # 2026-05-28 audit2 PA8 — meta.dharness_version 필수 격상 (I2 anchor 강제).
   - constraints.tech_stack
   - constraints.team.size
   - constraints.timeline.horizon
   - architecture.deployment_target
   - quality.test_rigor
+  - meta.dharness_version
 ```
 
 ### Enum 값 의미 보충
@@ -140,7 +142,7 @@ required:                               # P6-10 / M2 (2026-05-14) — 다운스�
 
 ## 3. 필수 vs 선택 필드
 
-### 필수 5개 (스킵 불가)
+### 필수 6개 (스킵 불가)
 
 다운스트림 Phase가 이 값 없이는 결정을 내릴 수 없는 핵심 필드:
 
@@ -151,8 +153,9 @@ required:                               # P6-10 / M2 (2026-05-14) — 다운스�
 | `constraints.timeline.horizon` | Phase 5 QA 에이전트 강도, Phase 8 검증 깊이 결정 |
 | `architecture.deployment_target` | Phase 4 에이전트 분리 축 결정 |
 | `quality.test_rigor` | Phase 5 QA 에이전트 포함 여부 결정 |
+| `meta.dharness_version` | I2 doctrine drift refit anchor — `harness-validate`/`harness-status`가 upgrade 진단의 t=0 기준 (2026-05-28 audit2 PA8 격상) |
 
-이 5개가 비어 있으면 Phase 2를 종료하지 않고 재질문한다.
+이 6개가 비어 있으면 Phase 2를 종료하지 않고 재질문한다. `meta.dharness_version`은 `harness-new`/`harness-baseline`이 합성 시점 plugin version으로 자동 박제 — 사용자 raw 답변 불요 (LLM 박제).
 
 ### 선택 필드
 

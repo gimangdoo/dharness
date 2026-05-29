@@ -1,6 +1,7 @@
 ---
 description: 에이전트·스킬 1개 제거 — 잔여 참조(dangling reference) 자동 정리 포함.
 argument-hint: <agent|skill> <이름>
+allowed-tools: Read, Glob, Grep, Write, Edit
 ---
 
 # Harness — Remove Agent or Skill

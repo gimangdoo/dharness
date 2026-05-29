@@ -74,13 +74,50 @@ def parse_frontmatter(text: str) -> tuple[dict | None, str | None]:
             return None, "frontmatter 최상위가 mapping이 아님"
         # legacy 호환: 모든 값 stringify (이전 단순 split이 string만 반환)
         return {k: (v if isinstance(v, str) else str(v) if v is not None else "") for k, v in data.items()}, None
-    # PyYAML 미설치 fallback — 단순 split (description의 colon 누락 위험)
+    # PyYAML 미설치 fallback — PV7 패턴 확장 (PA14): block scalar `|`/`>` 다중 라인 누적 +
+    # 다음 top-level key 또는 dedent 시 종료. flow scalar는 기존 단순 split 유지.
     fields: dict = {}
-    for line in body.splitlines():
-        if ":" not in line:
+    lines = body.splitlines()
+    i = 0
+    block_re = re.compile(r"^([A-Za-z0-9_.-]+)\s*:\s*([|>])[-+]?\s*$")
+    flow_re = re.compile(r"^([A-Za-z0-9_.-]+)\s*:(.*)$")
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        if not stripped or stripped.startswith("#"):
+            i += 1
             continue
-        k, _, v = line.partition(":")
-        fields[k.strip()] = v.strip().strip('"').strip("'")
+        bm = block_re.match(line)
+        if bm and indent == 0:
+            key, indicator = bm.group(1), bm.group(2)
+            i += 1
+            buf: list[str] = []
+            base_indent: int | None = None
+            while i < len(lines):
+                sub = lines[i]
+                sub_stripped = sub.lstrip()
+                sub_indent = len(sub) - len(sub_stripped)
+                if not sub_stripped:
+                    buf.append("")
+                    i += 1
+                    continue
+                if sub_indent == 0:
+                    break
+                if base_indent is None:
+                    base_indent = sub_indent
+                if sub_indent < base_indent:
+                    break
+                buf.append(sub[base_indent:])
+                i += 1
+            joined = ("\n".join(buf) if indicator == "|" else " ".join(s.strip() for s in buf if s.strip()))
+            fields[key] = joined
+            continue
+        fm_line = flow_re.match(line) if indent == 0 else None
+        if fm_line:
+            key, val = fm_line.group(1), fm_line.group(2)
+            fields[key] = val.strip().strip('"').strip("'")
+        i += 1
     return fields, None
 
 

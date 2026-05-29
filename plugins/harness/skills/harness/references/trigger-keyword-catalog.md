@@ -120,7 +120,7 @@
 2. **키워드 set 박제** — Korean + English 양 언어 + 매칭 강도 (strong/medium/weak)
 3. **should/NOT 예시 4건 박제** (§3 패턴)
 4. **mcp-recommendation.md §1 신호 표 갱신**
-5. **permission-profiles.md §2-N 신설 + §3-1 매트릭스 행 추가**
+5. **permission-profiles-profiles.md §2-N 신설 + permission-profiles-inventory.md §3-1 매트릭스 행 추가**
 6. **qa-agent-guide.md §6 도메인 카탈로그 신설** (해당 도메인 경계면 패턴 박제)
 
 > **트리거**: derived 프로젝트에서 기존 10 signal로 분류 안 되는 에이전트 description 발화 ≥3건 누적 시 신규 signal 의제 (Phase 9 evolve 또는 Phase 10 adapt).
@@ -130,6 +130,6 @@
 ## 6. cross-reference
 
 - 매칭 룰·점수화 → `mcp-recommendation.md` §1·§3
-- profile 매핑 → `permission-profiles.md` §2·§3-1·§4
+- profile 매핑 → `permission-profiles-profiles.md` §2 + `permission-profiles-inventory.md` §3-1 + `permission-profiles.md` §4
 - 도메인 경계면 catalog → `qa-agent-guide.md` §6
 - 합성 시 자연어 트리거 doctrine → `skill-writing-guide.md` (description 작성 룰)

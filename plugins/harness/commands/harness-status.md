@@ -1,6 +1,7 @@
 ---
 description: 하네스 현황 보기 — 구성·기준선 신선도·drift 점수·대기 작업·MCP 상태 한눈에 (읽기 전용).
 argument-hint: [--verbose 옵션]
+allowed-tools: Read, Glob, Grep, Bash(ls:*), Bash(claude mcp list:*)
 ---
 
 # Harness — Status

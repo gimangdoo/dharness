@@ -12,8 +12,8 @@
         "path": "plugins/harness",
         "ref": "main"
       },
-      "description": "Meta-skill that turns a domain description into an agent team and skill set. 6 team patterns, 15-phase factory workflow (11 base + 4 self-critique).",
-      "version": "0.15.3",
+      "description": "Meta-skill that turns a domain description into an agent team and skill set. 6 team patterns, 15-phase factory workflow (12 base + 3 critique/sim).",
+      "version": "0.16.3",
       "author": {
         "name": "gimangdoo"
       },

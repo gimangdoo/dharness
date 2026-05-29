@@ -1,5 +1,7 @@
 ---
 description: 기준선(baseline) 갱신 — 코드·의도 프로파일을 다시 수집해 새 anchor로 박제 + CLAUDE.md HOW 섹션 재초안 + 영향 받는 에이전트·스킬 점검.
+argument-hint: [--allow-self-host]
+allowed-tools: Read, Glob, Grep, Write, Edit
 ---
 
 # Harness — Baseline Refresh
@@ -19,6 +21,14 @@ Phase 0 매트릭스의 "baseline 갱신" 행 트리거:
 - **출력**: 갱신된 `_workspace/_baseline/project_profile.md`, `intent_profile.md`. 기존 baseline은 `_workspace/_baseline_prev/`로 이동하여 보존. 영향 분석 리포트 `_workspace/_baseline/_drift_{ts}.md`. 사용자 승인 시 CLAUDE.md `## HOW` 섹션 삽입/갱신.
 
 ## 선조건 검증
+
+0. **self-host 영역 검출** (A2 audit2 fix, 2026-05-28): cwd에 `.harness-host` marker 존재하는가?
+
+   **존재 시:** 본 명령은 **dharness 자체** `_workspace/_baseline/`를 덮어쓸 위험. 의도된 self-host dogfood가 아니면 즉시 중단. 두 경로 중 선택:
+   - dharness 자체 baseline 갱신 의도 → `$ARGUMENTS`에 `--allow-self-host` 명시 후 재호출.
+   - 사용자 derived 프로젝트 baseline 갱신 의도 → 해당 프로젝트 디렉토리로 `cd` 후 재호출 (해당 위치엔 `.harness-host` 부재).
+
+   `--allow-self-host` 미명시 + marker 존재 → 즉시 중단, 위 안내 출력.
 
 1. `_workspace/_baseline/project_profile.md`가 존재하는가? (없으면 신규 분석으로 분기)
 2. `.claude/agents/`에 에이전트가 1개 이상 있는가?

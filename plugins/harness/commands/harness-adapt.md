@@ -1,5 +1,6 @@
 ---
 description: 관측 기반 적응(Phase 10) — 누적 telemetry vs 기준선 차이 검출 → 변경안 제시 → 사용자 승인 후 적용 (자동 적용 없음).
+allowed-tools: Read, Glob, Grep, Edit, Write
 ---
 
 # Harness — Adapt (telemetry drift 진입점)

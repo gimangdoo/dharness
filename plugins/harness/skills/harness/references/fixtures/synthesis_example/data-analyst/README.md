@@ -17,7 +17,7 @@
 
 | 산출물 | 파일 | 위치(derived 프로젝트 기준) | 비고 |
 |--------|------|---------------------------|------|
-| (a) 카탈로그 footnote | (메타) | `plugins/harness/skills/harness/references/permission-profiles.md` §3 sqlite 행 | 본 fixture에는 텍스트만 — 실제 갱신은 §10 적용 시점 |
+| (a) 카탈로그 footnote | (메타) | `plugins/harness/skills/harness/references/permission-profiles-inventory.md` §3 sqlite 행 | 본 fixture에는 텍스트만 — 실제 갱신은 §10 적용 시점 |
 | (b) 에이전트 정의 | [`data-analyst.agent.md`](./data-analyst.agent.md) | `.claude/agents/data-analyst.md` | inline `mcpServers:` 패턴 |
 | (c) 권한 게이트 | [`settings.json`](./settings.json) | `.claude/settings.json` | sqlite read 3종 allow / write 3종 deny (8차 사이클 갱신) |
 | (d) 변경 이력 1행 | [`changelog_row.md`](./changelog_row.md) | derived 프로젝트의 `_workspace/_baseline/changelog.md` "변경 이력" 표 | 1행 그대로 복사 가능 |

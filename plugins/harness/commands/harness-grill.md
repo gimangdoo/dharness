@@ -1,6 +1,7 @@
 ---
 description: 추궁(grilling) 모드 진입 — 모호 답안을 한 문항씩 추천 답 제시 후 사용자 확정 (4 step 진입점).
 argument-hint: "<domain|inquiry|agents|feedback> [필드명 옵션]"
+allowed-tools: Read
 ---
 
 # Harness — Grilling Mode 진입

@@ -38,6 +38,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | R3 | 사용자 확정 doctrine (도메인 단정·중요 합성 결정은 사용자 명시 confirm 후만) | `harness-new.md:§모드 분기`, `harness-remove.md:§사용자 확정`, `harness-merge.md`, `harness-split.md`, `harness-status.md`, `harness-validate.md` | 2026-05-14 | manual (각 명령 confirm gate) |
 | R4 | 명령 분기 (README 표 — 변경 유형별 16 슬래시 커맨드 매핑) | `README.md:§명령 분기 doctrine` | 2026-05-14, 2026-05-23 v0.11.0 추가 | manual |
 | R5 | P2 self-host (`chain.py`는 harness plugin 본체 내부 cross-reference만 검증 — derived 프로젝트 검증은 별도 산출) | `chain.py:check_plugin_internal_references` | 2026-05-15 | `chain.py` 본체 |
+| R6 | chain.py 모듈 분할 self-host — `chain_intent.py`/`chain_advisor.py`/`chain_doc_sync.py`/`chain_registry.py`/`chain_version.py` 분할 후 path constant(`_DOCTRINE_REGISTRY` 등)는 chain.py에 잔류 (sub-cycle ζ, 분할 모듈에서 `chain._DOCTRINE_REGISTRY` 참조 + test_chain monkey-patch 호환) | `chain.py:_DOCTRINE_REGISTRY`, 5 분할 모듈 import | 2026-05-25 sub-cycle ζ | manual (모듈 분할 시 path constant 유지) |
 
 ## §3. 합성·구조 doctrine (Phase 4·5·5-2·6·7 산출물 invariant)
 
@@ -59,6 +60,8 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | S12 | P0-2 빈 스킬 금지 — 스킬 디렉토리 생성 = `SKILL.md` 본문까지 채워 박제 (디렉토리만/frontmatter만 금지) | `SKILL.md:§Phase 6`, `skill-writing-guide.md:§최소 본문 골격` | 2026-05-22 P0 | `structure.py:check_skills_dir` |
 | S13 | output-checklist 인용 카운트 sync — `output-checklist.md` 본문 must/should `- [ ]` 항목 카운트 정본 ↔ 헤더·SKILL.md·harness-new.md 인용 박제 동기 (체크리스트 항목 추가/삭제 시 cross-doc drift 차단) | `output-checklist.md`, `SKILL.md:§Phase 8`, `harness-new.md` | 2026-05-25 cycle 1 stale count 정합 | `chain_doc_sync.py:check_output_checklist_count_sync` |
 | S14 | 슬래시 커맨드 카탈로그 sync — `plugins/harness/commands/harness-*.md` glob count 정본 ↔ `README.md` `Slash command 카탈로그 (N개)` 헤더 ↔ `doctrine-registry.md` R4 본문 `N 슬래시 커맨드` 인용 (명령 추가/제거 시 cross-doc drift 차단, R4 manual → deterministic 격상) | `README.md:§Slash command 카탈로그`, `doctrine-registry.md:§2 R4` | 2026-05-25 cycle 1' command count 결정적 sync | `chain_doc_sync.py:check_command_count_sync` |
+| S15 | trigger-keyword catalog ↔ python dict sync — `trigger-keyword-catalog.md §1` 10 signal 표 ↔ chain.py 내 trigger signal dict 양방향 sync (catalog가 단일 출처 doctrine S11, code dict 누락/추가 결정적 차단) | `trigger-keyword-catalog.md:§1` | 2026-05-28 audit2 PA6 | `chain_doc_sync.py:check_trigger_catalog_python_sync` |
+| S16 | Phase count sync — `SKILL.md` `### Phase` 헤더 카운트 정본 ↔ 4 ad 위치 (`SKILL.md`/`README.md`/`harness-new.md`/`harness-baseline.md` phase 광고) 결정적 sync, phase 추가/삭제 시 cross-doc drift 차단 | `SKILL.md` 헤더, 4 ad 위치 | 2026-05-28 audit2 PA9 | `chain_doc_sync.py:check_phase_count_sync` |
 
 ## §4. 보안·회수 doctrine (Phase 5-2 MCP·permission 합성)
 
@@ -66,10 +69,10 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 
 | id | doctrine | 박제 위치 | 박제 commit | 정합 점검 |
 |---|---|---|---|---|
-| P1 | default 권한 (per-profile) — dataset read `allow`, model write `ask`, 외부 hub fetch `ask`; production 변경 `ask`/`deny`; mobile signing/upload `ask`; db drop/truncate dry-run+confirm 2단 | `permission-profiles.md:§2-5/2-6/2-7/2-8` | 2026-05-14 P6-11 | manual (Phase 5-2 합성) |
-| P2 | 회수 불가 명령 — `kubectl delete` / `terraform destroy` / `drop`·`truncate`·`delete` 등 비가역은 사전 dry-run gate 필수 (rollback 회수 불가) | `permission-profiles.md:§2-6, §2-8` | 2026-05-14 P6-11 | manual |
-| P3 | mcp 출처 verify gate (R2) — 모든 MCP 후보 npm Author + GitHub org cross-check 필수 | `mcp-recommendation.md:§2 R2 doctrine`, `permission-profiles.md:§8-3` | 2026-05-14 P6-9 | manual (Phase 5-2 R-7 gate) |
-| P4 | multi-writer 운영 (§10-7) — CM 자체 세션 병렬 시 단일 writer 강제 (host self-host 한정, 외부 install user는 단일 writer 권장만) | `permission-profiles-dynamic-adoption.md:§10-7` (P7 분리, 2026-05-23) | 2026-05-14 13차 cycle | manual |
+| P1 | default 권한 (per-profile) — dataset read `allow`, model write `ask`, 외부 hub fetch `ask`; production 변경 `ask`/`deny`; mobile signing/upload `ask`; db drop/truncate dry-run+confirm 2단 | `permission-profiles-profiles.md:§2-5/2-6/2-7/2-8` (PA5 분리, 2026-05-28) | 2026-05-14 P6-11 | manual (Phase 5-2 합성) |
+| P2 | 회수 불가 명령 — `kubectl delete` / `terraform destroy` / `drop`·`truncate`·`delete` 등 비가역은 사전 dry-run gate 필수 (rollback 회수 불가) | `permission-profiles-profiles.md:§2-6, §2-8` (PA5 분리, 2026-05-28) | 2026-05-14 P6-11 | manual |
+| P3 | mcp 출처 verify gate (R2) — 모든 MCP 후보 npm Author + GitHub org cross-check 필수 | `mcp-recommendation.md:§2 R2 doctrine`, `permission-profiles-empirical.md:§8-3` (PA5 분리, 2026-05-28) | 2026-05-14 P6-9 | manual (Phase 5-2 R-7 gate) |
+| P4 | multi-writer 운영 (§10-G) — CM 자체 세션 병렬 시 단일 writer 강제 (host self-host 한정, 외부 install user는 단일 writer 권장만) | `permission-profiles-dynamic-adoption.md:§10-G` (P7 분리, 2026-05-23; anchor rename 2026-05-28) | 2026-05-14 13차 cycle | manual |
 | P5 | 자동 install 금지 — T0(무키·로컬) 한정으로 `allow` 자동 승급 가능, 외 T1+ 사용자 명시 confirm | `permission-profiles.md:§6 자동 install 금지 doctrine` | 2026-05-14 | manual |
 
 ## §5. 인프라·meta doctrine (CM·관측·refit 회로)
@@ -96,10 +99,12 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `SKILL.md` | W1·W2·W3·W4·W6·W8·S1·S12·S13 (포인터·박스) |
 | `output-checklist.md` | S13 (must/should 정본 카운트) |
 | `phase-entry-gates.md` | W1·W2·W3·W4·W5·W7 (본문) |
-| `permission-profiles.md` (main) | S8·P1·P2·P5 |
+| `permission-profiles.md` (main) | S8·P5 (§4 결정 트리 + §6 안전 정책) |
+| `permission-profiles-profiles.md` (PA5 분리, 2026-05-28) | P1·P2 (§2-5~§2-8 도메인 권한 doctrine) |
 | `permission-profiles-inventory.md` (P7 분리) | S10 (§3-0 합성 default 풀) |
-| `permission-profiles-synthesis.md` (P7 분리) | S3 (§5-1-c Q2 model by role) |
-| `permission-profiles-dynamic-adoption.md` (P7 분리) | P4 (§10-7 multi-writer) |
+| `permission-profiles-synthesis.md` (P7 분리; PA5 §5-2/§5-3/§7 추가 흡수) | S3 (§5-1-c Q2 model by role) |
+| `permission-profiles-dynamic-adoption.md` (P7 분리) | P4 (§10-G multi-writer) |
+| `permission-profiles-empirical.md` (PA5 분리, 2026-05-28) | P3 (§8-3 mcp 출처 verify gate) |
 | `orchestrator-template.md` | S2·S4 |
 | `agent-design-patterns.md` | S6 |
 | `qa-agent-guide.md` | I6·I7 |
@@ -108,10 +113,10 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `intent-profile-schema.md` | S7·I2·W8·W9 (§8 hybrid 정합 채널 표) |
 | `grilling-loop.md` | W7·W8 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W4·S2·S3·S5·S6·R5 (결정적 검증 dispatcher) |
+| `chain.py` | W4·S2·S3·S5·S6·R5·R6 (결정적 검증 dispatcher) |
 | `chain_intent.py` (sub-cycle α+β 흡수 + cycle 6+ MVP 분리, 2026-05-25) | W1 (grilling 영역만)·W3 (5필드 + doc sync 2 fn)·W7 (grilling_log enum 1 fn)·W9 (intent_profile §8 4 fn) |
 | `chain_version.py` (sub-cycle δ 분리, 2026-05-25) | I1·I2 (dharness_version drift 1 fn) |
-| `chain_doc_sync.py` (sub-cycle ε 분리, 2026-05-25) | S13 (output-checklist count)·S14 (command count) |
+| `chain_doc_sync.py` (sub-cycle ε 분리, 2026-05-25; PA6/PA9 audit2 확장) | S13 (output-checklist count)·S14 (command count)·S15 (trigger catalog dict sync)·S16 (phase count sync) |
 | `chain_advisor.py` (sub-cycle γ 분리, 2026-05-25) | W8 (advisor handoff adapter 1 fn + 5 cross-field 룰) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
