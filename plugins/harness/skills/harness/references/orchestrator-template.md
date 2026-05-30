@@ -357,7 +357,7 @@ description: "{도메인} 오케스트레이터 (하이브리드). {키워드}. 
 
 ## changelog.md 부트스트랩 skeleton (bug_002 2026-05-23, Phase 7-4.1 단일 출처)
 
-SKILL.md 7-4.1 위임. CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태로 생성. 미생성 시 `/harness:harness-add-agent`·`harness-mcp-adopt`·`harness-evolve` 등 9+ 명령이 append 가정으로 실패(silent no-op 또는 ad-hoc 포맷).
+SKILL.md 7-4.1 위임. CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태로 생성. 미생성 시 `/harness:harness-evolve`(add-agent/mcp-adopt 등 내부 op)·`harness-feature` 등 후속 명령이 append 가정으로 실패(silent no-op 또는 ad-hoc 포맷).
 
 skeleton template (`{도메인}`/`{YYYY-MM-DD}` 치환 → `_workspace/_baseline/changelog.md`로 박제):
 

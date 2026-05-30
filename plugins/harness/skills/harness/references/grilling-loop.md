@@ -130,7 +130,7 @@ grilling 모드에서도 §4-3 스킵 패턴 유효:
 | **P2 §7-1 1차 재질문 직전** | 필수 5필드 미답 + 사용자 1차 거부 | 답변 수령 또는 §7-2 2차 재질문 진입 |
 | **P2 workflow.methodology 분기** | 사용자 "모르겠음" / "추천해줘" 응답 (§3-4) | advisor handoff yaml merge 또는 enum 직접 선택 fallback |
 | **P5 cardinality (옵션)** | 에이전트 후보 N개 중 `inline-OK` 판정 모호 1~2개 | 모호 후보 inline/agent 결정 |
-| **P9-1 (옵션)** | 사용자 피드백 어휘 모호 ("이상해" 등) | 진화 대상 (§9-2 표 5행) 1개 이상 식별 |
+| **`/harness-grill feedback`·`/harness-evolve` 호출 시 (옵션)** | 사용자가 명시 호출 + 피드백 어휘 모호 ("이상해" 등) | 진화 대상 (§9-2 표 5행) 1개 이상 식별. *자율 진입 없음 — 명시 호출만* (2026-05-30) |
 
 각 Phase grilling 진입 시 본 reference §3 추천 룰 + §5 cap + §6 skip merge 그대로 적용.
 
@@ -167,7 +167,7 @@ meta:
 
 ## 10. cross-reference
 
-- 본 reference 트리거 조건 및 진입점: `SKILL.md` Phase 0.5 / Phase 2 entry 게이트 박스 + Phase 5 cardinality 게이트 박스 + Phase 9-1
+- 본 reference 트리거 조건 및 진입점: `SKILL.md` Phase 0.5 / Phase 2 entry 게이트 박스 + Phase 5 cardinality 게이트 박스 + `/harness:harness-grill`·`/harness:harness-evolve` 명시 호출 (Phase 9-1 자율 진입 제거, 2026-05-30)
 - batch 패턴 본체: `project-inquiry.md` §4-4 (추론 결과 확인 패턴)
 - skip 룰: `project-inquiry.md` §4-3
 - 필수 재질문 룰: `project-inquiry.md` §7

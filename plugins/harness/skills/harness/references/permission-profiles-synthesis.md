@@ -153,7 +153,7 @@ frontmatter `model:` 필드는 *capability profile 단독*이 아니라 *agent r
 > **본 패턴 사용 시 의무 사항:**
 > - `enabledMcpjsonServers` allowlist를 명시 — 적재 도구 제한 (`permission-profiles-empirical.md §11-3` 토글 효과 측정 후 확정)
 > - `permissions.deny`로 민감 도구 블랙리스트 동시 박제 (§5-3 + `permission-profiles.md §6.3`)
-> - parent 컨텍스트의 토큰 비용을 `/harness:harness-mcp-status` 섹션 1·6에서 정기 점검
+> - parent 컨텍스트의 토큰 비용을 `/harness:harness-status --mcp` 섹션 1·6에서 정기 점검
 
 ---
 
@@ -201,7 +201,7 @@ frontmatter `model:` 필드는 *capability profile 단독*이 아니라 *agent r
 >
 > *왜 `ask`가 아닌 `deny`인가:* `ask`는 prompt 발생 → 사용자 confirm 시 통과. read-only가 *의도된 정책*이라면 confirm 자체를 차단하는 `deny`가 정합. `ask`는 사용자 판단을 매번 묻고 싶은 경계 case에만.
 >
-> **진단 채널** (11차 사이클 박제): 본 deny 정합 누락은 `/harness:harness-mcp-status` §4의 신규 점검 항목 — agent별 inline `mcpServers:` advertise 도구를 enumerate(`permission-profiles-inventory.md §3` 인벤토리 또는 `permission-profiles-empirical.md §8-3` stdio probe) 후 부수 효과 도구가 `permissions.deny`에 박제되어 있는지 검출. 휴리스틱 prefix(`write_/insert_/update_/delete_/remove_/append_/create_/set_/commit_/push_/exec*/run_`)는 의심 신호일 뿐, 최종 판정은 사용자 도메인 지식. 합성 *후* 정정은 §10-E inline 정의 갱신 절차 5-step.
+> **진단 채널** (11차 사이클 박제): 본 deny 정합 누락은 `/harness:harness-status --mcp` §4의 신규 점검 항목 — agent별 inline `mcpServers:` advertise 도구를 enumerate(`permission-profiles-inventory.md §3` 인벤토리 또는 `permission-profiles-empirical.md §8-3` stdio probe) 후 부수 효과 도구가 `permissions.deny`에 박제되어 있는지 검출. 휴리스틱 prefix(`write_/insert_/update_/delete_/remove_/append_/create_/set_/commit_/push_/exec*/run_`)는 의심 신호일 뿐, 최종 판정은 사용자 도메인 지식. 합성 *후* 정정은 §10-E inline 정의 갱신 절차 5-step.
 
 ---
 
@@ -218,5 +218,5 @@ Phase 5-2: 도구·MCP 합성 (본 문서 + permission-profiles.md 적용 지점
      - parent 직접 호출 필연성 확인되면 §5-2 (anti-pattern, 예외 조건 명시)
   d. 산출물 합성 (permission-profiles.md §4의 default 패치 4종)
   e. 변경 사항을 _workspace/_baseline/changelog.md 변경 이력에 1줄로 기록
-  f. 사후 정합 점검: `/harness:harness-mcp-status` (parent 적재 비용 ⚠️ 항목 확인)
+  f. 사후 정합 점검: `/harness:harness-status --mcp` (parent 적재 비용 ⚠️ 항목 확인)
 ```

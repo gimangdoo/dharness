@@ -30,7 +30,7 @@ Phase 1-2가 한 시점의 baseline(객관 + 주관)을 고정한다면, Phase 1
 
 ### 핵심 설계 원칙
 
-1. **자동 감지, 수동 승인** — Phase 10은 변경을 자동으로 감지하지만 자동으로 적용하지 않는다. 사용자 승인 없는 변경은 신뢰를 깨뜨린다.
+1. **명시 호출 시 감지, 수동 승인** — Phase 10은 `/harness:harness-adapt` 호출 시점에 drift를 감지하며(자율 발화 없음, §5 트리거), 감지해도 자동으로 적용하지 않는다. 사용자 승인 없는 변경은 신뢰를 깨뜨린다.
 2. **Baseline anchor 보존** — Phase 1의 `project_profile.md` 측정값과 `source` 필드는 drift 감지의 기준점. 이 anchor가 흔들리면 무엇이 바뀌었는지 비교할 수 없다.
 3. **신뢰도 가중** — Phase 2의 `inferred_fields − user_confirmed_fields` 차집합은 "원래도 추정이었던 필드"를 표시. 이 필드의 drift는 원래 추론이 틀렸을 가능성도 함께 의심한다.
 4. **delta 위주 보고** — 사용자에게 baseline 전체를 보여주지 않고, 변한 부분만 골라 보고. 한 번에 처리할 변경 수를 제한 (기본 5건/세션).
@@ -162,13 +162,11 @@ Phase 9는 사용자가 발화한 피드백을, Phase 10은 시스템이 감지�
 
 | 트리거 | 조건 |
 |------|------|
-| 수동 | 사용자 키워드 ("점검", "drift", "적응", "baseline 갱신") |
-| 주기 | 마지막 Adapt 이후 누적 `harness_invocation` + `agent_invocation` ≥ N (기본 10) **OR** `agent_failure` ≥ M (기본 2) |
-| 임계 | 단일 신호 만으로도 시급한 drift (보안 취약점, 새 프레임워크 도입 등) |
+| 수동 (유일) | `/harness:harness-adapt` 명시 호출. 호출 시점에 누적 telemetry를 평가 |
 
-**자동 alert 회로 (host 측 self-host CM 운영 시 한정 — 옵션):** host가 `.claude/hooks/session_start.py` 류의 SessionStart hook을 운영 중이면, 매 SessionStart마다 `_workspace/_telemetry/_last_adapt` 이후 누적 이벤트를 카운트하고 임계값 도달 시 inject에 권장 블록을 추가한다. 임계값은 환경 변수로 오버라이드 가능 — `CM_ADAPT_THRESHOLD_INVOCATIONS`(기본 10) / `CM_ADAPT_THRESHOLD_FAILURES`(기본 2). 둘 다 host의 `.claude/settings.local.json`의 `env` 필드 또는 shell env로 설정. 외부 install 환경(plugin user)은 hook 부재 — alert 발생 안 함, 수동 트리거만 가능.
+> **자율 트리거 제거 (2026-05-30):** 주기(N회 누적)·임계(단일 큰 drift) 자동 트리거는 폐기됐다. harness는 telemetry를 계속 캡처하지만 *스스로 Diagnostic을 발화·제안하지 않는다*. drift 평가는 사용자가 `/harness:harness-adapt`를 호출한 순간에만 일어난다.
 
-**derived 프로젝트:** hook 없음. 오케스트레이터-template의 [§Phase 10 Telemetry 강제 블록](orchestrator-template.md#phase-10-telemetry-강제-블록) 따라 LLM이 매 워크플로우 종료 시 telemetry JSONL 직접 append + **Phase 10 주기 점검**(append 직후 마지막 Adapt 이후 `harness_invocation` ≥ 10이면 adapt 권장 1줄을 최종 보고에 추가). `/harness:harness-adapt`는 양쪽 모두 동일 명령으로 호출 (harness plugin command).
+**derived 프로젝트:** hook 없음. 오케스트레이터-template의 [§Phase 10 Telemetry 강제 블록](orchestrator-template.md#phase-10-telemetry-강제-블록) 따라 LLM이 매 워크플로우 종료 시 telemetry JSONL 직접 append (Capture만 — drift 권장 1줄 자동 추가 금지). drift 평가·변경안은 `/harness:harness-adapt` 호출 시에만 (harness plugin command).
 
 ### Drift 감지 룰
 
@@ -501,7 +499,7 @@ changelog.md 변경 이력 테이블이 무한 성장하지 않도록 주기적�
 |------|------|
 | 분기 경계 | 매 분기 종료 시(3·6·9·12월 말) 직전 분기 항목들을 아카이브 |
 | 항목 수 임계 | 변경 이력 행 수 ≥ 50 시 가장 오래된 분기부터 아카이브 |
-| 수동 | 사용자 요청 ("changelog.md 변경 이력 정리", `/harness:harness-audit --compact-changelog`) |
+| 수동 | 사용자 요청 ("changelog.md 변경 이력 정리", `/harness:harness-status --deep --compact-changelog`) |
 
 #### 아카이브 방법
 

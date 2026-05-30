@@ -57,7 +57,7 @@ def check_dharness_version_drift() -> dict[str, str | None]:
         return {"baseline": baseline_v, "current": current_v, "message": None}
     msg = (
         f"dharness plugin upgrade 감지 — baseline `{baseline_v}` → 현 `{current_v}`. "
-        f"doctrine refit 권고: `/harness:harness-audit` + `/harness:harness-validate` "
-        f"진단 후 발견 항목별 `/harness:harness-evolve`·`-add-skill`·`-remove`로 수정."
+        f"doctrine refit 권고: `/harness:harness-status --deep` + `/harness:harness-validate` "
+        f"진단 후 발견 항목별 `/harness:harness-evolve`(내부 add-skill/remove op)로 수정."
     )
     return {"baseline": baseline_v, "current": current_v, "message": msg}

@@ -186,7 +186,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 - `permission-profiles-synthesis.md` — §5-1 에이전트 frontmatter (a/b/c — Layer B / Layer A+B / 모델 by role Q2 doctrine)
 - `permission-profiles-dynamic-adoption.md` — §10 dynamic adoption 5-step + 10-4 rollback + 10-7 병렬 세션
 
-운영 함의(mid-session 미전파·uvx 절대경로·자동 install 금지·`tools:` allowlist는 inline 도구 카운트 무력)는 위 4 파일에 분산. 합성 직전 *후보 간 자동 점수화*(3축: 효율성·확장성·정확도) + top-K + R-7 confirm gate + §10 인계는 `references/mcp-recommendation.md`. 자동 install·`allow` 승급은 T0(무키·로컬) 한정. 진단(인벤토리·매트릭스·정합)은 `/harness:harness-mcp-status` (read-only). 도구 API 의사 schema(TeamCreate / SendMessage / TaskCreate / TaskUpdate / TaskGet / TaskOutput 6 도구)는 `references/agent-design-patterns.md` 부록 (PB4 흡수, 2026-05-27).
+운영 함의(mid-session 미전파·uvx 절대경로·자동 install 금지·`tools:` allowlist는 inline 도구 카운트 무력)는 위 4 파일에 분산. 합성 직전 *후보 간 자동 점수화*(3축: 효율성·확장성·정확도) + top-K + R-7 confirm gate + §10 인계는 `references/mcp-recommendation.md`. 자동 install·`allow` 승급은 T0(무키·로컬) 한정. 진단(인벤토리·매트릭스·정합)은 `/harness:harness-status --mcp` (read-only). 도구 API 의사 schema(TeamCreate / SendMessage / TaskCreate / TaskUpdate / TaskGet / TaskOutput 6 도구)는 `references/agent-design-patterns.md` 부록 (PB4 흡수, 2026-05-27).
 
 ### Phase 5.5: Self-Critique on Agent Definitions
 
@@ -287,7 +287,7 @@ CLAUDE.md는 매 세션 컨텍스트에 로딩된다 — 줄마다 "제거 시 C
 
 ## 규칙
 - 도메인 작업은 오케스트레이터 경유 — 우회 후 산출물 직접 편집 금지 (drift 추적 끊김)
-- `_workspace/_baseline/*`(Phase 1·2 baseline) 수동 편집 금지 — `/harness:harness-baseline` 경유
+- `_workspace/_baseline/*`(Phase 1·2 baseline) 수동 편집 금지 — `/harness:harness-evolve "baseline 갱신"`(baseline op) 경유
 - {자문성 도메인 한정 — 면책 고지: 본 산출물은 [전문가] 자문을 대체하지 않음}
 
 ---
@@ -353,9 +353,9 @@ CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태�
 
 #### 9-1. 실행 후 피드백 수집
 
-매 하네스 실행 완료 후 사용자에게 피드백 요청 — "결과에서 개선할 부분이 있나요?" / "팀 구성·워크플로우에 바꿀 점이 있나요?". 강요하지 않되 기회는 반드시 제공.
+매 하네스 실행 완료 후 사용자에게 피드백 기회를 제공할 수 있다 — "결과에서 개선할 부분이 있나요?". 단 **다음 액션을 자동 제안하지 않는다**: 진화·점검·적응은 사용자가 해당 슬래시 커맨드(`/harness:harness-evolve` 등)를 명시 호출할 때만 시작된다 (autonomous trigger 제거 doctrine, 2026-05-30).
 
-> **Grilling 분기 (Phase C, 2026-05-19)**: 사용자 피드백 어휘 모호 시 ("이상해" / "별로야" / "뭔가 빠진 듯" 등) `references/grilling-loop.md` 1q + recommended answer 패턴으로 §9-2 표 5행 중 어느 진화 대상인지 분기. recommendation 출처는 직전 실행 telemetry signal — 디렉토리·파일 이름 단독 추천 doctrine 위반. cap 5 question.
+> **Grilling 분기 (command-only, 2026-05-30 개정)**: 피드백 어휘가 모호해도 *자동으로* grilling에 진입하지 않는다. 사용자가 `/harness:harness-grill feedback` 또는 `/harness:harness-evolve`를 명시 호출할 때만 `references/grilling-loop.md` 1q + recommended answer 패턴으로 §9-2 표 5행 중 진화 대상을 분기한다. recommendation 출처는 직전 실행 telemetry signal — 디렉토리·파일 이름 단독 추천 doctrine 위반. cap 5 question.
 
 #### 9-2. 피드백 반영 경로
 
@@ -371,25 +371,22 @@ CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태�
 
 모든 변경은 `_workspace/_baseline/changelog.md` 변경 이력 테이블에 기록 (CLAUDE.md엔 포인터만 — 변경 이력은 자주 바뀌어 매 세션 로딩되는 CLAUDE.md에서 제외). 출처를 명시하여 Phase 9 변경과 Phase 10 자동 감지를 구분 — `Phase 9: 사용자 피드백 — {요약}` vs `Phase 10: drift 감지 ({drift 이름})`.
 
-#### 9-4. 진화 트리거
+#### 9-4. 진화 트리거 (command-only)
 
-명시 요청("하네스 수정해줘", `/harness:harness-evolve <피드백>`)뿐만 아니라:
-- 같은 유형의 피드백이 2회 이상 반복 → `/harness:harness-audit`로 구조적 점검 권고
-- 에이전트가 반복 실패하는 패턴 → `/harness:harness-adapt`로 telemetry 기반 사용 drift 분석 권고
-- 사용자가 오케스트레이터 우회하여 수동 작업 → `/harness:harness-audit`의 변경 이력 누락 검사 권고
+진화는 **사용자의 명시 슬래시 커맨드 호출로만** 시작된다 — `/harness:harness-evolve <피드백>` (통합 변경 front door). harness는 "피드백 2회 반복", "반복 실패", "우회 감지" 같은 신호를 *자동 판단해 다음 액션을 제안하지 않는다* (autonomous trigger 제거 doctrine, 2026-05-30). telemetry는 계속 캡처되며(§10-1 Capture), 사용자가 `/harness:harness-status` 또는 `/harness:harness-adapt`를 호출하면 그때 누적 신호를 근거로 진단·변경안을 제시한다.
 
 #### 9-5. 운영/유지보수 워크플로우
 
-Phase 0에서 "운영/유지보수"로 분기 시 진입. 명시적 진입점은 `/harness:harness-audit` (read-only 정합성 감사).
+Phase 0에서 "운영/유지보수"로 분기 시 진입. 명시적 진입점은 `/harness:harness-status --deep` (read-only LLM 정합 감사).
 
-1. **현황 감사** — `.claude/agents/` ↔ 오케스트레이터 에이전트 구성 비교, `.claude/skills/` ↔ 스킬 구성 비교 → 불일치 보고 (`/harness:harness-audit`이 자동 수행)
+1. **현황 감사** — `.claude/agents/` ↔ 오케스트레이터 에이전트 구성 비교, `.claude/skills/` ↔ 스킬 구성 비교 → 불일치 보고 (`/harness:harness-status --deep`이 수행)
 2. **점진적 추가/수정** — 한 번에 하나씩, 각 변경 후 즉시 동기화(Step 3)
 3. **변경 이력 갱신** — `_workspace/_baseline/changelog.md`에 날짜·내용·대상·사유
 4. **변경 검증** — 구조(8-1), 트리거 영향 시 트리거(8-4), 대규모 변경(아키텍처 변경, 에이전트 3+ 추가/삭제) 시 실행 테스트(8-3) + 드라이런(8-5)
 
 ### Phase 10: Runtime Adaptation
 
-Phase 9가 사용자 피드백을 **수동**으로 수집한다면, Phase 10은 프로젝트 변화와 하네스 사용 패턴을 **자동 관측**하고 baseline에서 벗어난 부분을 사용자에게 제안한다. 모든 변경은 **제안 + 승인** 모델 — Phase 10이 자동 적용하는 변경은 없다.
+Phase 9가 사용자 피드백을 수집한다면, Phase 10은 프로젝트 변화와 하네스 사용 패턴을 **수동 관측(Capture)**하되, drift 진단·변경안 제시는 사용자가 `/harness:harness-adapt`를 명시 호출할 때만 수행한다. Capture 레이어(telemetry 기록)는 매 실행 자동으로 누적되지만, **harness가 스스로 "이제 적응할 때"라고 판단해 제안하지 않는다** (autonomous trigger 제거 doctrine, 2026-05-30). 모든 변경은 **제안 + 승인** 모델 — Phase 10이 자동 적용하는 변경은 없다.
 
 #### 10-1. 3 레이어 구조
 
@@ -399,13 +396,13 @@ Phase 9가 사용자 피드백을 **수동**으로 수집한다면, Phase 10은 
 | **Diagnostic** | 누적 telemetry ↔ baseline 비교, drift 감지 | `_workspace/_telemetry/_delta_{ts}.md` |
 | **Adapt** | drift 변경안 제시, 승인 시 적용 | `.claude/agents/`, `.claude/skills/`, `CLAUDE.md`, `_baseline/*.md` |
 
-#### 10-2. 트리거 조건
+#### 10-2. 트리거 조건 (command-only)
 
 | 트리거 | 조건 |
 |------|------|
-| **수동** | "하네스 점검", "drift 확인", "적응", "baseline 갱신" 등 키워드 / `/harness:harness-adapt` 명시 호출 |
-| **주기적** | 마지막 Adapt 이후 N회(기본 10) 하네스 실행 누적 |
-| **임계** | 단일 큰 drift (새 프레임워크, 보안 취약점 검출 등) |
+| **수동 (유일)** | `/harness:harness-adapt` 명시 호출. 호출 시점에 누적 telemetry를 baseline과 비교해 drift 진단 + 변경안 제시 |
+
+> **주기적·임계 자동 트리거 제거 (2026-05-30):** "N회 누적", "단일 큰 drift" 같은 신호로 harness가 *스스로 Adapt를 발화·제안하던* 트리거는 폐기됐다. Capture는 계속 누적되지만, drift 분석은 사용자가 `/harness:harness-adapt`를 호출한 순간에만 일어난다.
 
 #### 10-3. drift 두 종류 구분
 
@@ -422,7 +419,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 
 | | Phase 9 (수동 진화) | Phase 10 (Runtime Adaptation) |
 |--|---|---|
-| 트리거 | 사용자 명시 피드백 | 자동 감지 + 사용자 명시 점검 |
+| 트리거 | `/harness-evolve` 명시 호출 | `/harness-adapt` 명시 호출 |
 | 입력 | 사용자 발화 | telemetry + baseline |
 | 변경 범위 | 사용자가 지목한 부분 | 시스템이 감지한 모든 drift |
 
@@ -436,7 +433,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 
 #### 10-7. 비코드 도메인 telemetry 적응
 
-`_workspace/_telemetry/` 인프라와 **사용 신호**(`harness_invocation`·`agent_invocation`·`agent_failure`) 캡처는 도메인 무관 — 모든 하네스가 박제한다. Adapt 트리거(N회 누적)·미사용 에이전트 감지는 코드 여부와 무관하게 작동한다. 반면 **baseline drift 신호**(`project_signal` — 새 의존성·커버리지·LOC 변화)는 코드 프로젝트 전제다.
+`_workspace/_telemetry/` 인프라와 **사용 신호**(`harness_invocation`·`agent_invocation`·`agent_failure`) 캡처는 도메인 무관 — 모든 하네스가 박제한다. 미사용 에이전트 감지 등 drift 진단은 `/harness:harness-adapt` 호출 시점에 코드 여부와 무관하게 작동한다 (자동 발화 없음, §10-2). 반면 **baseline drift 신호**(`project_signal` — 새 의존성·커버리지·LOC 변화)는 코드 프로젝트 전제다.
 
 비코드 도메인(재무·교육·생활·문서·기획 등)은:
 - 사용 신호 캡처 + `_telemetry/` 인프라는 **그대로 박제** — 차단 항목이다.

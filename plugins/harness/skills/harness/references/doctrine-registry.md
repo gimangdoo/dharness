@@ -23,7 +23,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | W4 | Phase 5 — Cardinality justification (4컬럼 표 + `single-use → inline` 룰 + 이름 유일성 사전 점검) | `phase-entry-gates.md:§Phase 5` | 2026-05-15 A6/M9 | `chain.py:check_orchestrator_agent_coverage` (dead agent FAIL) |
 | W5 | Phase 0 — 중단된 factory run 감지 (`_baseline/`·`_critique_phase*` 박제 + agents/skills 빈 상태 시 재개 게이트) | `phase-entry-gates.md:§Phase 0` | 2026-05-21 mattpocock handoff | manual (Phase 0 entry) |
 | W6 | Progressive disclosure (references lazy load — Phase 진입 시점에만 read, 무차별 prefetch 금지) | `SKILL.md:§참고` "Progressive disclosure doctrine" | 2026-05-14 M8 | LLM 행동 |
-| W7 | Grilling 분기 (Phase 2 low confidence + Phase 9 모호 피드백 — 1q + recommended answer, recommendation 출처 anti-premature-judgment 정합) | `grilling-loop.md`, `phase-entry-gates.md:§Phase 2` step 5 | 2026-05-19 Phase B/C, mattpocock grill-me 흡수 | `chain_intent.py:check_intent_profile_grilling_log` (source enum 강제) |
+| W7 | Grilling 분기 (Phase 2 low confidence + `/harness:harness-grill`·`/harness:harness-evolve` 명시 호출 — 자율 진입 없음, 1q + recommended answer, recommendation 출처 anti-premature-judgment 정합) | `grilling-loop.md`, `phase-entry-gates.md:§Phase 2` step 5 | 2026-05-19 Phase B/C, mattpocock grill-me 흡수; 2026-05-30 command-only 개정 | `chain_intent.py:check_intent_profile_grilling_log` (source enum 강제) |
 | W8 | methodology-advisor 위임 + adapter 변환 (workflow.methodology 모호 / 사용자 "추천해줘"·"모르겠음" 응답 시 → advisor sub-skill 호출 → handoff yaml fragment 수신 → dharness 측 단방향 adapter 변환(list→scalar primary lowercase / free source→enum advisor / 원본 source string→meta.advisor_handoff_version 보존 / list[1:]→meta.advisor_secondary_methodologies 보존) → intent_profile merge, 사용자 confirm 게이트 필수, advisor 1회 호출 = grilling cap 5 중 1 question 카운트) | `advisor-integration.md` (PB6 분리, 2026-05-27), `SKILL.md:§Phase 2 방법론 위임 doctrine`, `grilling-loop.md:§3-4`, `intent-profile-schema.md:§2 workflow` | 2026-05-24 v0.12.0~v0.12.2 (doctrine → adapter → deterministic check 3 단계 진화, advisor v0.3.x handoff, contract drift dogfood 회복) | `chain_advisor.py:check_advisor_handoff_adapter_consistency` (v0.12.2 신설, 5 cross-field 룰 + methodology/source enum 결정적 검증) + manual (Phase 2 grilling 사용자 confirm) |
 | W9 | intent_profile §8 필수 룰 + cross-field 결정적 검증 (cycle 4) — `version` 존재 / `project_type` enum / brownfield→`inferred_fields` 1+ / greenfield+`locked_in`≠[] 모순. cross-field 경고 3종(C15-1/2/3)은 LLM-only annotation으로 명시 (`meta.explicit_assumptions` 통과 허용) | `intent-profile-schema.md:§8`, `chain_intent.py:check_intent_profile_*` (cycle 6+ MVP에서 chain.py로부터 분리) | 2026-05-25 cycle 4 C14/C15 hybrid 정합 + cycle 6+ chain.py 분할 | `chain_intent.py:check_intent_profile_version` + `chain_intent.py:check_intent_profile_project_type` + `chain_intent.py:check_intent_profile_brownfield_inferred` + `chain_intent.py:check_intent_profile_greenfield_locked_in` + LLM (C15-1/2/3 annotation) |
 
@@ -33,10 +33,10 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 
 | id | doctrine | 박제 위치 | 박제 commit | 정합 점검 |
 |---|---|---|---|---|
-| R1 | audit ↔ validate 분리 (LLM·deterministic hybrid — audit는 추론, validate는 결정, adapt는 telemetry) | `harness-audit.md:§3개 명령 분리 doctrine`, `harness-validate.md:§audit ↔ validate 분리 doctrine` | 2026-05-13C, 2026-05-14 | manual (명령 호출자 책임) |
-| R2 | 진화 명령 3분기 (`evolve` 수동 / `audit` 추론 / `adapt` 자동) | `harness-evolve.md:§진화 명령 3분기 doctrine`, `harness-adapt.md:§진화 명령 3분기 doctrine` | 2026-05-14 | manual |
-| R3 | 사용자 확정 doctrine (도메인 단정·중요 합성 결정은 사용자 명시 confirm 후만) | `harness-new.md:§모드 분기`, `harness-remove.md:§사용자 확정`, `harness-merge.md`, `harness-split.md`, `harness-status.md`, `harness-validate.md` | 2026-05-14 | manual (각 명령 confirm gate) |
-| R4 | 명령 분기 (README 표 — 변경 유형별 16 슬래시 커맨드 매핑) | `README.md:§명령 분기 doctrine` | 2026-05-14, 2026-05-23 v0.11.0 추가 | manual |
+| R1 | status --deep ↔ validate 분리 (LLM·deterministic hybrid — status --deep는 추론, validate는 결정, adapt는 telemetry) | `harness-status.md:§--deep 모드`, `harness-validate.md:§status --deep ↔ validate 분리 doctrine` | 2026-05-13C, 2026-05-14; 2026-05-30 audit→status --deep 흡수 | manual (명령 호출자 책임) |
+| R2 | 진화 명령 분기 (`evolve` 명시 변경 / `status --deep` 추론 감사 / `adapt` 명시 telemetry — 셋 다 사용자 명시 호출, 자율 트리거 없음) | `harness-evolve.md:§진화 명령 분기 doctrine`, `harness-adapt.md:§진화 명령 분기 doctrine` | 2026-05-14; 2026-05-30 command-only + 병합 개정 | manual |
+| R3 | 사용자 확정 doctrine (도메인 단정·중요 합성 결정은 사용자 명시 confirm 후만) | `harness-new.md:§모드 분기`, `harness-evolve.md:§3 변경안 설계 + 제시 (승인 게이트)`, `harness-feature.md:§3 intent_profile 갱신 (승인 게이트)`, `harness-status.md:§범위 외`, `harness-validate.md:§사용자 확정 doctrine` | 2026-05-14; 2026-05-30 병합 개정 | manual (각 명령 confirm gate) |
+| R4 | 명령 분기 (README 표 — 변경 유형별 7 슬래시 커맨드 매핑) | `README.md:§명령 분기 doctrine` | 2026-05-14, 2026-05-23 v0.11.0 추가; 2026-05-30 16→7 병합 | manual |
 | R5 | P2 self-host (`chain.py`는 harness plugin 본체 내부 cross-reference만 검증 — derived 프로젝트 검증은 별도 산출) | `chain.py:check_plugin_internal_references` | 2026-05-15 | `chain.py` 본체 |
 | R6 | chain.py 모듈 분할 self-host — `chain_intent.py`/`chain_advisor.py`/`chain_doc_sync.py`/`chain_registry.py`/`chain_version.py` 분할 후 path constant(`_DOCTRINE_REGISTRY` 등)는 chain.py에 잔류 (sub-cycle ζ, 분할 모듈에서 `chain._DOCTRINE_REGISTRY` 참조 + test_chain monkey-patch 호환) | `chain.py:_DOCTRINE_REGISTRY`, 5 분할 모듈 import | 2026-05-25 sub-cycle ζ | manual (모듈 분할 시 path constant 유지) |
 
@@ -61,7 +61,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | S13 | output-checklist 인용 카운트 sync — `output-checklist.md` 본문 must/should `- [ ]` 항목 카운트 정본 ↔ 헤더·SKILL.md·harness-new.md 인용 박제 동기 (체크리스트 항목 추가/삭제 시 cross-doc drift 차단) | `output-checklist.md`, `SKILL.md:§Phase 8`, `harness-new.md` | 2026-05-25 cycle 1 stale count 정합 | `chain_doc_sync.py:check_output_checklist_count_sync` |
 | S14 | 슬래시 커맨드 카탈로그 sync — `plugins/harness/commands/harness-*.md` glob count 정본 ↔ `README.md` `Slash command 카탈로그 (N개)` 헤더 ↔ `doctrine-registry.md` R4 본문 `N 슬래시 커맨드` 인용 (명령 추가/제거 시 cross-doc drift 차단, R4 manual → deterministic 격상) | `README.md:§Slash command 카탈로그`, `doctrine-registry.md:§2 R4` | 2026-05-25 cycle 1' command count 결정적 sync | `chain_doc_sync.py:check_command_count_sync` |
 | S15 | trigger-keyword catalog ↔ python dict sync — `trigger-keyword-catalog.md §1` 10 signal 표 ↔ chain.py 내 trigger signal dict 양방향 sync (catalog가 단일 출처 doctrine S11, code dict 누락/추가 결정적 차단) | `trigger-keyword-catalog.md:§1` | 2026-05-28 audit2 PA6 | `chain_doc_sync.py:check_trigger_catalog_python_sync` |
-| S16 | Phase count sync — `SKILL.md` `### Phase` 헤더 카운트 정본 ↔ 4 ad 위치 (`SKILL.md`/`README.md`/`harness-new.md`/`harness-baseline.md` phase 광고) 결정적 sync, phase 추가/삭제 시 cross-doc drift 차단 | `SKILL.md` 헤더, 4 ad 위치 | 2026-05-28 audit2 PA9 | `chain_doc_sync.py:check_phase_count_sync` |
+| S16 | Phase count sync — `SKILL.md` `### Phase` 헤더 카운트 정본 ↔ 4 ad 위치 (`.claude-plugin/marketplace.json`/`plugins/harness/.claude-plugin/plugin.json`/`plugins/harness/README.md`/루트 `README.md` phase 광고) 결정적 sync, phase 추가/삭제 시 cross-doc drift 차단 | `SKILL.md` 헤더, 4 ad 위치 | 2026-05-28 audit2 PA9 | `chain_doc_sync.py:check_phase_count_sync` |
 
 ## §4. 보안·회수 doctrine (Phase 5-2 MCP·permission 합성)
 
@@ -82,7 +82,7 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | id | doctrine | 박제 위치 | 박제 commit | 정합 점검 |
 |---|---|---|---|---|
 | I1 | doctrine drift refit (v0.11.0) — plugin doctrine 업그레이드 후 기존 derived harness 끌어올리는 절차 (validate + audit 진단 → evolve/add-*/remove 수정) | `README.md:§Doctrine drift refit`, `chain_version.py:check_dharness_version_drift` | 2026-05-23 v0.11.0 (eba9d21) | `chain_version.py:check_dharness_version_drift` (info 1줄) |
-| I2 | meta.dharness_version anchor — `intent_profile.md` frontmatter에 합성 시점 plugin version 박제 (refit 진단 t=0) | `intent-profile-schema.md`, `harness-new.md`, `harness-baseline.md`, `SKILL.md:§Phase 2` | 2026-05-23 doctrine drift refit 인프라 | `chain_version.py:check_dharness_version_drift` |
+| I2 | meta.dharness_version anchor — `intent_profile.md` frontmatter에 합성 시점 plugin version 박제 (refit 진단 t=0) | `intent-profile-schema.md`, `harness-new.md`, `harness-evolve.md:§baseline op`, `SKILL.md:§Phase 2` | 2026-05-23 doctrine drift refit 인프라; 2026-05-30 baseline→evolve op 흡수 | `chain_version.py:check_dharness_version_drift` |
 | I3 | P2-A 박제 — Phase entry gate 박스(Phase 0/0.5/1/2/5)를 `phase-entry-gates.md`로 분리 (SKILL.md ≤500 LOC cap 정합) | `phase-entry-gates.md` | 2026-05-23 P2-A (00177f0, c856629) | manual (LOC cap 미자동 검증, 향후 chain.py 함수 후보) |
 | I6 | QA host-agnostic 환원 (P2-2) — `qa-agent-guide.md` §1~§5는 framework 무관 doctrine, §6은 도메인 카탈로그 (web-app/ML/data/mobile/devops) | `qa-agent-guide.md:§0 doctrine` | 2026-05-14 P2-2 | LLM (Phase 5 합성) |
 | I7 | cycle 누적 (qa-agent-guide §6) — 새 버그 패턴 발견 시 §6에 행 추가 (닫힌 spec 아닌 누적 catalog) | `qa-agent-guide.md:§6 doctrine` | 2026-05-14 | manual |
@@ -120,10 +120,10 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `chain_advisor.py` (sub-cycle γ 분리, 2026-05-25) | W8 (advisor handoff adapter 1 fn + 5 cross-field 룰) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
 | `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
-| `harness-audit.md` | R1 |
-| `harness-validate.md` | R1·R3·I1·I2 |
-| `harness-evolve.md` / `harness-adapt.md` | R2 |
-| `harness-new.md` / `remove.md` / `merge.md` / `split.md` / `status.md` | R3·W1·W4·S13 (`harness-new.md`만) |
+| `harness-status.md` (audit/mcp-status/mcp-recommend 흡수, 2026-05-30) | R1·R3 (--deep 추론 감사) |
+| `harness-validate.md` | R1·R3 |
+| `harness-evolve.md` (add/remove/split/merge/baseline/mcp-adopt 흡수, 2026-05-30) / `harness-adapt.md` | R2·R3·I2 (evolve baseline op) |
+| `harness-new.md` / `harness-feature.md` (신규, 2026-05-30) | R3·W1·W4·S13·I2 (`harness-new.md`만) |
 | `README.md` | R4·I1·S14 |
 
 ---

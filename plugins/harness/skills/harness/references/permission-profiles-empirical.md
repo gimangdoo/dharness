@@ -1,6 +1,6 @@
 # Permission Profiles — Empirical 검증 상태 + 실증 reproducer (§8 + §11)
 
-> **Read at phase:** §8-2 미완 항목 진단 시 / Phase 5-2 합성 후 정합 점검 시 / `/harness:harness-mcp-status` 보고 정합 시 / 외부 환경 reproducer 실행 시.
+> **Read at phase:** §8-2 미완 항목 진단 시 / Phase 5-2 합성 후 정합 점검 시 / `/harness:harness-status --mcp` 보고 정합 시 / 외부 환경 reproducer 실행 시.
 >
 > P7 추가 분리(2026-05-28, PA5) — `permission-profiles.md` §8 (검증 상태) + §11 (실증 reproducer) ~15KB를 본 파일로 흡수. main §8/§11은 1줄 redirect.
 

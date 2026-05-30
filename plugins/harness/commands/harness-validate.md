@@ -6,7 +6,7 @@ allowed-tools: Bash(py *:*)
 
 # Harness — Validate
 
-하네스 구조·schema·chain을 **결정적 스크립트**로 검증한다. LLM 호출 0. `/harness:harness-audit`(LLM 추론)과 *분리* — audit이 본 명령 결과를 input으로 받는 구조.
+하네스 구조·schema·chain을 **결정적 스크립트**로 검증한다. LLM 호출 0. `/harness:harness-status --deep`(LLM 추론 감사)과 *분리* — status --deep이 본 명령 결과를 input으로 받는 구조.
 
 ## 컨텍스트
 
@@ -98,30 +98,30 @@ py plugins/harness/scripts/validate/chain.py [--json]
 
 📋 다음 행동:
   - structure 실패 → 수동 또는 `/harness:harness-evolve` 수정
-  - chain 실패 → `/harness:harness-remove` (dangling) 또는 `/harness:harness-mcp-adopt` (MCP 미정합)
+  - chain 실패 → `/harness:harness-evolve "X 제거"` (dangling, remove op) 또는 `/harness:harness-evolve "X MCP 붙여"` (MCP 미정합, mcp-adopt op)
 ```
 
 `--strict` 시 fail 1건 이상에서 exit code 1.
 
-## audit ↔ validate 분리 doctrine
+## status --deep ↔ validate 분리 doctrine
 
 | 명령 | 검증 영역 | 호출 방식 |
 |---|---|---|
 | `harness-validate` | **deterministic** — 구조·schema·chain | LLM 0, plugin scripts 번들 |
-| `harness-audit` | **LLM 추론** — 책임 중복·트리거 정합·통신 프로토콜 의미·orchestrator 워크플로우 일관성 | LLM 추론 + (옵션) validate 결과 input |
+| `harness-status --deep` | **LLM 추론** — 책임 중복·트리거 정합·통신 프로토콜 의미·orchestrator 워크플로우 일관성 | LLM 추론 + (옵션) validate 결과 input |
 
-**doctrine (2026-05-13C — LLM·deterministic hybrid)**: 결정·persistence는 deterministic, 추론·합성은 LLM. 본 명령은 결정적 영역만 전담, audit은 추론 영역만 전담.
+**doctrine (2026-05-13C — LLM·deterministic hybrid; 2026-05-30 audit→status --deep 흡수)**: 결정·persistence는 deterministic, 추론·합성은 LLM. 본 명령은 결정적 영역만 전담, status --deep은 추론 영역만 전담.
 
-audit이 validate 결과를 input으로 받는 패턴 — audit 본문에서:
+status --deep이 validate 결과를 input으로 받는 패턴 — status --deep 본문에서:
 1. `harness-validate --json`을 먼저 호출 가능 안내
-2. validate가 PASS면 audit이 *LLM 추론에만 집중*
-3. validate가 FAIL이면 audit이 *구조 실패 우선 권고* 후 추론 영역 skip
+2. validate가 PASS면 status --deep이 *LLM 추론에만 집중*
+3. validate가 FAIL이면 status --deep이 *구조 실패 우선 권고* 후 추론 영역 skip
 
 ## 범위 외
 
-- **자동 fix 0** — 결정적 검증만. fix는 별도 명령 (remove / evolve / mcp-adopt)
+- **자동 fix 0** — 결정적 검증만. fix는 `/harness:harness-evolve` (내부 op: remove / mcp-adopt 등)
 - **drift 점수 X** — `/harness:harness-status` §3
-- **LLM 추론 영역 X** — `/harness:harness-audit`
+- **LLM 추론 영역 X** — `/harness:harness-status --deep`
 
 ## 사용자 확정 doctrine (2026-05-14)
 

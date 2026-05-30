@@ -1,6 +1,6 @@
 # Permission Profiles — Dynamic Adoption §10
 
-> **Read at phase:** Phase 9 baseline drift 후 신규 capability 등장 시 / Phase 5-2 합성 시 인벤토리 미충족 시 / 사용자 명시 MCP 채택 요청 시. `/harness:harness-mcp-adopt` 슬래시 커맨드 본문.
+> **Read at phase:** Phase 9 baseline drift 후 신규 capability 등장 시 / Phase 5-2 합성 시 인벤토리 미충족 시 / 사용자 명시 MCP 채택 요청 시. `/harness:harness-evolve`의 mcp-adopt 내부 op 본문 (2026-05-30 mcp-adopt command 흡수).
 >
 > P7 분리(2026-05-23) — `permission-profiles.md` §10 (10-A~10-G)을 본 파일로 흡수. main 본문엔 pointer만 잔존.
 >
@@ -154,7 +154,7 @@ Step 5. Reflect — 갱신 사실 박제
 | Pre-install probe + 도구 enumeration 표시 | `permissions.allow` 등록 (T0 외) |
 | 산출물 4종 *제안* | 산출물 4종 *적용* |
 
-**권장 진입점:** Phase 5-2 합성 시 자연 발화 (T2 트리거) → 사용자 confirm → 채택. 별도 슬래시 커맨드 `/harness:harness-mcp-adopt` 본문에서 본 §10을 호출한다.
+**권장 진입점:** Phase 5-2 합성 시 자연 발화 (T2 트리거) → 사용자 confirm → 채택. `/harness:harness-evolve "X MCP 붙여"`의 mcp-adopt 내부 op가 본 §10을 호출한다.
 
 ### 10-G. 병렬 세션 운용 패턴 (Pattern A — 단일 writer + 외부 측정)
 

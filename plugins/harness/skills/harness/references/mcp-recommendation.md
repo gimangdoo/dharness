@@ -12,12 +12,12 @@
 
 > **휴리스틱 임계값 baseline:** Phase 5-2 MCP 점수 임계값은 [`heuristics-baseline.md §2`](heuristics-baseline.md#2-phase-5-2--mcp-recommendation) 단일 출처. domain override는 `--weights=` CLI / 도메인 self-critique (Phase 5.5).
 
-Phase 5-2 합성 *직전* 각 에이전트에 대해 "효율성·확장성·정확도" 3축으로 MCP 후보를 검색·점수화·추천한다. 본 문서는 추천 엔진의 단일 출처 — Phase 5-2와 `/harness:harness-mcp-recommend`가 본 문서를 참조한다.
+Phase 5-2 합성 *직전* 각 에이전트에 대해 "효율성·확장성·정확도" 3축으로 MCP 후보를 검색·점수화·추천한다. 본 문서는 추천 엔진의 단일 출처 — Phase 5-2와 `/harness:harness-status --mcp`(구 mcp-recommend)가 본 문서를 참조한다.
 
 > **분계 (중복 방지):**
 > - **합성 매핑**(profile → 후보) = `permission-profiles.md` §4 결정 트리
-> - **채택 절차**(install → reflect) = `permission-profiles.md` §10 5-step + `/harness:harness-mcp-adopt`
-> - **현황 진단**(read-only) = `/harness:harness-mcp-status`
+> - **채택 절차**(install → reflect) = `permission-profiles.md` §10 5-step + `/harness:harness-evolve "X MCP 붙여"`(mcp-adopt op)
+> - **현황 진단**(read-only) = `/harness:harness-status --mcp`
 > - **본 문서**(추천 점수·외부 검색) = Discover 강화 + 3축 점수화
 >
 > 추천은 *제안*만. 채택은 §10이, 매핑은 §4가 처리.
@@ -55,7 +55,7 @@ Phase 5-2가 합성하는 에이전트 `.md` frontmatter `description:` + 본문
 > **도메인 4 신호 doctrine (2026-05-14 P6-11):**
 > - S7~S10은 *전용 MCP가 PoC 미완*인 경우가 대부분 → 합성 default는 *T0 5종 cross-mapping*. §3 점수에서 `A` (정확도) `-2 docs only` 페널티 자동 적용
 > - 시그널 단어 매칭만으로 *전용 MCP 자동 합성 X* — §10 dynamic adoption 진입을 사용자에게 R-7 confirm 단계에서 *제안*만
-> - S7~S10 중 *2개 이상* 동시 매칭 시 (예: S7+S10 = ML data eng) **에이전트 책임 *과대* 의심** — Phase 5.5 self-critique에서 `harness-split` 권고 후보 (SKILL.md §Phase 5.5)
+> - S7~S10 중 *2개 이상* 동시 매칭 시 (예: S7+S10 = ML data eng) **에이전트 책임 *과대* 의심** — Phase 5.5 self-critique에서 `harness-evolve`(split op) 권고 후보 (SKILL.md §Phase 5.5)
 
 ---
 
@@ -204,7 +204,7 @@ R1·R2 검색은 외부 호출(WebFetch/WebSearch)이라 합성마다 반복하�
 
 | 파일 | 내용 | TTL |
 |------|------|-----|
-| `_workspace/_baseline/mcp_catalog.jsonl` | R1/R2 검색 결과 (이름·URL·tier·도구 카운트 추정·발췌일) | 30일 (사용자 명시 갱신 또는 `/harness:harness-mcp-recommend --refresh`) |
+| `_workspace/_baseline/mcp_catalog.jsonl` | R1/R2 검색 결과 (이름·URL·tier·도구 카운트 추정·발췌일) | 30일 (사용자 명시 갱신 또는 `/harness:harness-status --mcp --refresh`) |
 
 캐시 hit이면 WebFetch/WebSearch 생략. miss 또는 expired면 cascade 재실행 후 캐시 갱신.
 
@@ -268,6 +268,5 @@ Phase 5-2 합성 시작
 ## 10. 참고
 
 - `permission-profiles-inventory.md` §3·§3-1 (인벤토리) + `permission-profiles.md` §4 (결정 트리) + `permission-profiles-dynamic-adoption.md` §10 (채택 절차) — 단일 출처 인벤토리·매핑·채택 절차
-- `/harness:harness-mcp-recommend` — on-demand 진입점 (합성 후 추가 에이전트 점검용)
-- `/harness:harness-mcp-adopt` — 채택 5-step 진입점
-- `/harness:harness-mcp-status` — 채택 후 정합 진단
+- `/harness:harness-status --mcp [<agent>]` — on-demand 추천 진입점 (구 mcp-recommend, 합성 후 추가 에이전트 점검용) + 채택 후 정합 진단 (구 mcp-status)
+- `/harness:harness-evolve "X MCP 붙여"` — 채택 5-step 진입점 (내부 mcp-adopt op)

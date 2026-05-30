@@ -9,22 +9,21 @@ allowed-tools: Read, Glob, Grep, Edit, Write
 
 > **자동 적용은 없다.** 모든 변경은 명시적 사용자 승인이 필요하다.
 
-## 진화 명령 3분기 doctrine (2026-05-14)
+## 진화 명령 분기 doctrine (2026-05-14; 2026-05-30 command 병합 개정)
 
 | 명령 | 진입 시점 | 입력 | 특화 워크플로우 |
 |---|---|---|---|
-| **`/harness:harness-evolve`** | 사용자가 *명시적 피드백* 발화 | 자유 텍스트 | Phase 9 |
-| **`/harness:harness-adapt`** | 시스템이 *telemetry drift* 자동 감지 (또는 사용자 명시 점검) | `_workspace/_telemetry/*.jsonl` | 본 명령 |
-| **`/harness:harness-remove` / `-split` / `-merge`** | 사용자가 *구조적 변경* 명시 | `agent|skill <이름>` | 격리 워크플로우 |
+| **`/harness:harness-evolve`** | 사용자가 *변경 의도* 발화 (자유 텍스트) | 자유 텍스트 | Phase 9 — 모든 구조적 변경 (내부 op: add/remove/split/merge/baseline/mcp-adopt) |
+| **`/harness:harness-adapt`** | 사용자가 *명시 호출* (자율 감지 없음) | `_workspace/_telemetry/*.jsonl` | 본 명령 — Phase 10 telemetry drift |
+| **`/harness:harness-status --deep`** | 사용자가 *LLM 정합 감사* 요청 | 하네스 산출물 | read-only 추론 진단 (수정 없음) |
 
 **언제 본 명령?**:
-- 마지막 Adapt 이후 N회 이상 호출 누적 (`harness-status` §3 임계 초과 시)
-- 단일 큰 drift (보안 취약점, 새 프레임워크) 감지 또는 의심
-- 사용자가 "점검", "drift 확인", "적응" 등 발화
+- 사용자가 `/harness:harness-adapt`를 명시 호출했을 때 (유일 트리거 — 자율 발화 없음, 2026-05-30)
+- 호출 시점에 누적 telemetry를 baseline과 비교해 drift를 진단
 
 **언제 본 명령 아님?**:
 - 사용자가 *구체 피드백* 발화 시 → `evolve`
-- *명시적 제거/분할/통합* 요청 → `remove` / `split` / `merge`
+- *명시적 제거/분할/통합* 요청 → `evolve` (내부 op: remove / split / merge)
 
 ## 컨텍스트
 - **입력**: `_workspace/_telemetry/*.jsonl` (누적 telemetry, Phase 10 Capture 레이어 산출), `_workspace/_baseline/*.md` (t=0 anchor)
@@ -40,7 +39,7 @@ allowed-tools: Read, Glob, Grep, Edit, Write
 | 미충족 항목 | 안내 메시지 |
 |-----------|----------|
 | (1) | "telemetry 데이터가 없습니다. 오케스트레이터에 capture 훅이 설치되어 있는지 확인하세요 — `plugins/harness/skills/harness/references/runtime-adaptation.md` §4 (Capture 레이어) 참조. 신규 하네스라면 최소 몇 회 실행 후 다시 시도하세요." |
-| (2) | "baseline이 없습니다. `/harness:harness-new` 또는 `/harness:harness-baseline`을 먼저 실행하세요." |
+| (2) | "baseline이 없습니다. `/harness:harness-new`(신규 구축) 또는 `/harness:harness-evolve \"baseline 갱신\"`(baseline op)을 먼저 실행하세요." |
 
 ## 실행 절차
 
@@ -120,8 +119,10 @@ date -u +"%Y-%m-%dT%H:%M:%SZ" > _workspace/_telemetry/_last_adapt
 
 > **Optional integration — dharness self-host CM 환경:** dharness 본 저장소에서 호출된 경우, SessionStart hook(`.claude/hooks/session_start.py` + `_schema.py`의 `count_events_since_last_adapt`)이 누적 invocation/failure 카운트로 alert를 띄운다. 본 reset으로 alert가 새 사이클부터 카운팅된다. 임계값 변경은 `.claude/hooks/_schema.py`의 `HARNESS_ADAPT_THRESHOLD_INVOCATIONS` / `HARNESS_ADAPT_THRESHOLD_FAILURES` 상수. **derived 프로젝트 등 일반 install 환경**에는 본 hook이 없으므로 alert 자체가 발생하지 않으며, reset은 단순히 카운터 anchor를 갱신할 뿐. 본 reset을 생략하면 다음 Diagnostic이 같은 telemetry 윈도우를 다시 평가한다.
 
-## 트리거 빈도 권고
+## 호출 빈도 권고 (사용자 재량)
 
-- **수동**: 큰 변경 직후, 또는 매주~격주
-- **주기적**: 마지막 Adapt 이후 N회(기본 10) 하네스 실행 누적 시 자동 제안
-- **임계**: 단일 큰 drift (보안 취약점, 새 프레임워크 도입 등) 즉시
+자율 트리거가 없으므로 호출 시점은 전적으로 사용자가 정한다. 참고 권고:
+- 큰 변경 직후, 또는 매주~격주 정기 점검
+- 보안 취약점·새 프레임워크 도입 등 큰 변화를 인지했을 때
+
+> harness는 위 시점을 *자동 판단해 제안하지 않는다* (2026-05-30 autonomous trigger 제거). telemetry는 계속 캡처되며, 사용자가 본 명령을 호출하면 그 누적분을 평가한다.

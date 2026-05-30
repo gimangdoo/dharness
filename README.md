@@ -123,26 +123,19 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 | **자연어 트리거** | "하네스 구성해줘" 등 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화, 일반 사용 |
 | **Slash command** | `/harness:harness-new`, `/cm-status` 등 결정적 호출 | 사용자가 Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-### Slash command 카탈로그 (`harness` 16개 + CM 5개 = 21개)
+### Slash command 카탈로그 (`harness` 7개 + CM 5개 = 12개)
+
+> **command 병합 doctrine (2026-05-30):** 자율 트리거를 제거하고 산재한 16 command를 7로 통합. `harness-add-agent`/`-add-skill`/`-remove`/`-split`/`-merge`/`-baseline`/`-mcp-adopt`는 **`harness-evolve`의 내부 op**로, `harness-audit`/`-mcp-status`/`-mcp-recommend`는 **`harness-status`의 모드 플래그(`--deep`/`--mcp`)**로 흡수. 신규 `harness-feature`(진행 중 신규 기능 의도 흡수) 1종 추가.
 
 ```
-# harness plugin (메타 스킬 팩토리, 외부 install 가능)
-/harness:harness-new <도메인>          # 하네스 신규 구축 (Phase 0-8 + Phase 10 인프라)
-/harness:harness-add-agent <역할>      # 에이전트 1명 추가 (Phase 4·5·7·8)
-/harness:harness-add-skill <스킬>      # 스킬 1개 추가/수정 (Phase 6·7·8)
-/harness:harness-baseline              # 기준선 갱신 (Phase 1·2 재실행 + plugin version 박제)
-/harness:harness-audit                 # 추론 영역 감사 (책임·트리거·워크플로우, read-only)
-/harness:harness-validate [--json]     # 결정적 검증 (구조·스키마·체인 + version drift 알림, LLM 0)
-/harness:harness-status [--verbose]    # 하네스 현황 (구성·기준선·drift·MCP, read-only)
-/harness:harness-evolve <피드백>       # 피드백 반영 (Phase 9 수동 진화)
-/harness:harness-adapt                 # 관측 기반 적응 (Phase 10 telemetry drift)
-/harness:harness-grill <step> [필드]   # 추궁 모드 — 모호 답안 1q씩 추천 답 + 사용자 확정 (step ∈ domain/inquiry/agents/feedback)
-/harness:harness-remove <agent|skill> <이름>            # 1개 제거 + 잔여 참조 자동 정리
-/harness:harness-split  <agent|skill> <원본> <결과...>  # 책임별 분할 (4축 기준 + 참조 갱신)
-/harness:harness-merge  <agent|skill> <결과> <원본...>  # 통합 + 참조 갱신
-/harness:harness-mcp-recommend <agent> # MCP 후보 추천 (효율성·확장성·정확도 3축, Phase 5-2 자동 + on-demand)
-/harness:harness-mcp-adopt <사유>      # MCP 신규 채택 (발견→탐침→확인→설치→반영 5단계, §10)
-/harness:harness-mcp-status            # MCP 상태 진단 (인벤토리·도구·비용·정합, read-only)
+# harness plugin (메타 스킬 팩토리, 외부 install 가능) — 7 command
+/harness:harness-new <도메인>              # 하네스 신규 구축 (Phase 0-8 + Phase 10 인프라)
+/harness:harness-feature <기능>            # 진행 중 신규 기능 의도 흡수 — grill 후 intent_profile 확장 (구조 변경 아님)
+/harness:harness-evolve <피드백>           # 통합 변경 front door (add/remove/split/merge/baseline/mcp-adopt 내부 op, Phase 9)
+/harness:harness-status [--verbose] [--deep] [--mcp]  # read-only 진단 — 현황·기준선·drift / --deep LLM 감사 / --mcp MCP 매트릭스·추천
+/harness:harness-validate [--json]         # 결정적 검증 (구조·스키마·체인 + version drift 알림, LLM 0)
+/harness:harness-adapt                     # 관측 기반 적응 (Phase 10 telemetry drift)
+/harness:harness-grill <step> [필드]       # 추궁 모드 — 모호 답안 1q씩 추천 답 + 사용자 확정 (step ∈ domain/inquiry/agents/feedback)
 
 # CM (dharness self-host, root .claude/commands/)
 /cm-status                              # 메모리 상태 보기 (누적 세션·관측 행 수·미적용 draft)
@@ -172,7 +165,7 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 │   └── harness/               # PLUGIN — 메타 스킬 팩토리
 │       ├── .claude-plugin/plugin.json
 │       ├── skills/harness/    # SKILL.md + references/
-│       └── commands/          # harness-* 16개
+│       └── commands/          # harness-* 7개
 ├── _workspace/                # DATA — CM 런타임 산출물 (gitignore)
 │   ├── _telemetry/            # 라이프사이클 이벤트 append-only JSONL
 │   ├── _memory/               # 세션·클러스터·observations.db (dharness_event 포함)
@@ -223,27 +216,27 @@ dharness plugin doctrine이 업그레이드된 후(예: 새 invariant·새 권�
 
 ```text
 ℹ️  dharness plugin upgrade 감지 — baseline `0.10.0` → 현 `0.11.0`.
-   doctrine refit 권고: `/harness:harness-audit` + `/harness:harness-validate` 진단 후
-   발견 항목별 `/harness:harness-evolve`·`-add-skill`·`-remove`로 수정.
+   doctrine refit 권고: `/harness:harness-status --deep` + `/harness:harness-validate` 진단 후
+   발견 항목별 `/harness:harness-evolve`(내부 add-skill/remove op)로 수정.
 ```
 
-### 2. 진단 — audit + validate
+### 2. 진단 — status --deep + validate
 
 | 진단 명령 | 영역 |
 |---|---|
-| `/harness:harness-audit` | LLM 추론 영역 — 책임 중복·트리거·통신 프로토콜·워크플로우 |
+| `/harness:harness-status --deep` | LLM 추론 영역 — 책임 중복·트리거·통신 프로토콜·워크플로우 |
 | `/harness:harness-validate` | 결정적 invariant — 인젝션 가드·model 필드·tools↔MCP·SKILL.md 빈 파일·파일명·telemetry 박제·dangling reference 등 |
 
-### 3. 수정 — 항목별 매핑
+### 3. 수정 — 항목별 매핑 (모두 `/harness:harness-evolve` 내부 op)
 
-| 진단 발견 유형 | 수정 명령 |
+| 진단 발견 유형 | 수정 (evolve 피드백 → 내부 op) |
 |---|---|
-| 본문 누락 절(예: `입력 신뢰 경계`)·schema 위반 | `/harness:harness-evolve <피드백>` |
-| 누락 에이전트·스킬 | `/harness:harness-add-agent` / `/harness:harness-add-skill` |
-| 책임 중복·통합 필요 | `/harness:harness-merge` |
-| 책임 과부하·분할 필요 | `/harness:harness-split` |
-| 잘못 합성된 항목 제거 | `/harness:harness-remove` |
-| MCP 매트릭스 부적합 | `/harness:harness-mcp-adopt` / `-recommend` |
+| 본문 누락 절(예: `입력 신뢰 경계`)·schema 위반 | `/harness:harness-evolve <피드백>` (edit-skill/edit-agent) |
+| 누락 에이전트·스킬 | `/harness:harness-evolve "X 추가"` (add-agent/add-skill) |
+| 책임 중복·통합 필요 | `/harness:harness-evolve "이 둘 합쳐"` (merge) |
+| 책임 과부하·분할 필요 | `/harness:harness-evolve "X 쪼개"` (split) |
+| 잘못 합성된 항목 제거 | `/harness:harness-evolve "X 제거"` (remove) |
+| MCP 매트릭스 부적합 | `/harness:harness-evolve "X MCP 붙여"` (mcp-adopt) · 추천은 `/harness:harness-status --mcp` |
 
 ### 4. 재진단
 
@@ -267,12 +260,12 @@ derived 프로젝트 진행 중 신규 MCP가 필요해질 때(예: "playwright�
 
 | | 권장 | 수동 |
 |---|------|------|
-| 진입점 | `/harness:harness-mcp-adopt <사유>` | `claude mcp add ...` 직접 |
+| 진입점 | `/harness:harness-evolve "X MCP 붙여"` (내부 mcp-adopt op) | `claude mcp add ...` 직접 |
 | 절차 | discover → probe → confirm → install → reflect (5-step) | 사용자 책임 |
 | 산출물 동시 패치 | ✅ 4 산출물 (`§3 인벤토리`/`agent frontmatter`/`settings.json`/`changelog.md` 변경 이력) | ❌ 사용자가 직접 |
 | 안전 게이트 | 출처 검증·pre-install probe·user confirm·rollback 절차 포함 | 사용자 책임 |
-| 추천 | `/harness:harness-mcp-recommend <agent>`로 3축(E/S/A) 점수 후보 도출 (Phase 5-2 자동 호출 + on-demand) | 사용자 책임 |
-| 진단 | `/harness:harness-mcp-status`로 read-only 점검 | 동일 |
+| 추천 | `/harness:harness-status --mcp [<agent>]`로 3축(E/S/A) 점수 후보 도출 (Phase 5-2 자동 호출 + on-demand) | 사용자 책임 |
+| 진단 | `/harness:harness-status --mcp`로 read-only 점검 | 동일 |
 
 권장 경로는 [§10 Dynamic MCP Adoption](./plugins/harness/skills/harness/references/permission-profiles.md#10-dynamic-mcp-adoption--프로젝트-진행에-따른-mcp-신규-채택) 워크플로우를 그대로 따른다.
 

@@ -96,7 +96,7 @@ meta:
   confidence_low: [string]              # P6-6 신규 (2026-05-14) — confidence 낮은 필드 dot-path. Phase 10 drift 가중치 0.7 이하 룰 활성
   source: { string: string }            # P6-4 신규 (2026-05-14) — inferred_fields 항목별 source 인용. dot-path → manifest 경로 매핑. 인용 0이면 schema 위반 → Phase 1 재합성 트리거.
   grilling_log: [grilling_entry]        # 옵션 (2026-05-19, grill-me 흡수 Phase B). grilling 진입 시에만 박제. 미박제 시 schema 위반 아님 — 정합 검사 silent skip.
-  dharness_version: string              # 합성 시점 plugin `version` (`plugins/harness/.claude-plugin/plugin.json` `version` 값). harness-new·harness-baseline이 박제. doctrine drift 진단의 기준점 — `harness-validate`/`harness-status`가 현 plugin version과 비교해 upgrade 여부 1줄 보고 (2026-05-23, doctrine drift refit 인프라).
+  dharness_version: string              # 합성 시점 plugin `version` (`plugins/harness/.claude-plugin/plugin.json` `version` 값). harness-new·harness-evolve(baseline op)가 박제. doctrine drift 진단의 기준점 — `harness-validate`/`harness-status`가 현 plugin version과 비교해 upgrade 여부 1줄 보고 (2026-05-23, doctrine drift refit 인프라).
   advisor_secondary_methodologies: [string]   # 2026-05-24, v0.12.1 adapter doctrine. advisor가 list로 반환한 4축 합성 중 primary(첫 번째 lowercase 정규화) 외 secondary 박제 (재현성·진화 비교용). `methodology_source: advisor` 외 시 미박제 (=schema 위반 아님, 옵션 필드).
   advisor_handoff_version: string             # 2026-05-24, v0.12.1 adapter doctrine. advisor가 출력한 free string `methodology_source` 원본 (예: "methodology-advisor v0.3.1"). dharness 측은 `workflow.methodology_source`를 enum `advisor`로 정규화하면서 원 문자열을 본 필드에 박제 — re-grilling 시 버전 회상 가능.
 
@@ -155,7 +155,7 @@ required:                               # P6-10 / M2 (2026-05-14) — 다운스�
 | `quality.test_rigor` | Phase 5 QA 에이전트 포함 여부 결정 |
 | `meta.dharness_version` | I2 doctrine drift refit anchor — `harness-validate`/`harness-status`가 upgrade 진단의 t=0 기준 (2026-05-28 audit2 PA8 격상) |
 
-이 6개가 비어 있으면 Phase 2를 종료하지 않고 재질문한다. `meta.dharness_version`은 `harness-new`/`harness-baseline`이 합성 시점 plugin version으로 자동 박제 — 사용자 raw 답변 불요 (LLM 박제).
+이 6개가 비어 있으면 Phase 2를 종료하지 않고 재질문한다. `meta.dharness_version`은 `harness-new`/`harness-evolve`(baseline op)가 합성 시점 plugin version으로 자동 박제 — 사용자 raw 답변 불요 (LLM 박제).
 
 ### 선택 필드
 
@@ -235,7 +235,7 @@ constraints:
 | `inferred_fields` | brownfield 자동 추론 직후 | "신뢰도 낮음" 표시 |
 | `user_confirmed_fields` | 사용자가 추론 결과를 확인/수정 시 | "신뢰도 높음" 표시 |
 | `grilling_log` | grilling 모드 진입 시 question별 1 entry 박제 (2026-05-19, `grilling-loop.md`) | Phase 10 사용 drift 분석 — 같은 필드 반복 grilling 시 baseline 갱신 시그널. 미박제 시 검사 silent skip. |
-| `dharness_version` | `harness-new`·`harness-baseline` 합성·갱신 시점 | `harness-validate`/`harness-status`가 현 plugin version과 비교 → upgrade 발생 시 사용자에게 doctrine refit 권고 1줄 (audit + validate 조합 → 발견 항목별 evolve/add-*/remove로 수정). |
+| `dharness_version` | `harness-new`·`harness-evolve`(baseline op) 합성·갱신 시점 | `harness-validate`/`harness-status`가 현 plugin version과 비교 → upgrade 발생 시 사용자에게 doctrine refit 권고 1줄 (status --deep + validate 조합 → 발견 항목별 evolve 내부 op로 수정). |
 
 ### 신뢰도 차집합
 

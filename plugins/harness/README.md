@@ -58,21 +58,17 @@ claude --plugin-dir <path>/plugins/harness
 | **자연어 트리거** | 자연 발화 ↔ skill description 매칭 | LLM이 자동 분기 | 자연스러운 발화 |
 | **Slash command** | `/harness:harness-*` 결정적 호출 | Phase 범위 직접 지정 | 비용 회피, 트리거 확률 의존 제거 |
 
-### Slash command 카탈로그 (16개)
+### Slash command 카탈로그 (7개)
 
-**합성·확장 (5)**
+**합성·확장 (2)**
 ```
 /harness:harness-new <도메인> [--mode=single|derived]     # 하네스 신규 구축 (Phase 0-8 + Phase 10 인프라)
-/harness:harness-add-agent <역할>                          # 에이전트 1명 추가 (Phase 4·5·7·8)
-/harness:harness-add-skill <스킬>                          # 스킬 1개 추가/수정 (Phase 6·7·8)
-/harness:harness-split <agent|skill> <원본> <결과 2+>     # 책임 분할 + 참조 갱신
-/harness:harness-merge <agent|skill> <결과> <원본 2+>     # 책임 통합 + 참조 갱신
+/harness:harness-feature <기능>                            # 진행 중 신규 기능 의도 흡수 — grill 후 intent_profile 확장 (구조 변경 아님)
 ```
 
-**제거·진화 (3)**
+**진화 (2)**
 ```
-/harness:harness-remove <agent|skill> <이름>              # 1개 제거 + 잔여 참조 자동 정리
-/harness:harness-evolve <피드백>                           # 피드백 반영 (Phase 9 수동 진화 진입점)
+/harness:harness-evolve <피드백>                           # 통합 변경 front door — add/remove/split/merge/baseline/mcp-adopt 내부 op (Phase 9)
 /harness:harness-adapt                                     # 관측 기반 적응 (Phase 10 telemetry drift)
 ```
 
@@ -81,22 +77,13 @@ claude --plugin-dir <path>/plugins/harness
 /harness:harness-grill <domain|inquiry|agents|feedback> [필드]  # 추궁 모드 — 모호 답안 1q씩 추천 답 + 사용자 확정
 ```
 
-**진단·검증 (4)**
+**진단·검증 (2)**
 ```
-/harness:harness-status [--verbose]                        # 하네스 현황 (구성·기준선·drift·MCP, read-only)
-/harness:harness-baseline                                  # 기준선 갱신 (Phase 1·2 재실행 + plugin version 박제)
-/harness:harness-audit                                     # 추론 영역 감사 (책임·트리거·워크플로우, read-only)
+/harness:harness-status [--verbose] [--deep] [--mcp]       # read-only 진단 — 현황·기준선·drift / --deep LLM 감사 / --mcp MCP 매트릭스·추천
 /harness:harness-validate [--json] [--strict]              # 결정적 검증 (구조·스키마·체인 + version drift 알림, LLM 0)
 ```
 
-**MCP (3 명령)**
-```
-/harness:harness-mcp-recommend <에이전트|역할>             # MCP 후보 추천 (효율성·확장성·정확도 3축)
-/harness:harness-mcp-adopt <사유>                          # MCP 신규 채택 (발견→탐침→확인→설치→반영 5단계)
-/harness:harness-mcp-status                                # MCP 상태 진단 (인벤토리·도구·비용·정합, read-only)
-```
-
-> 통합 명령은 *추가* 진입점 — 기존 3 명령도 그대로 유지된다 (install 사용자 break-change 0). 신규 사용자에는 단일 진입점 권장.
+> **command 병합 doctrine (2026-05-30):** 자율 트리거 제거 + 16→7 통합. 구조 변경은 모두 `harness-evolve` 내부 op로, 추론 감사·MCP 진단은 `harness-status`의 `--deep`/`--mcp` 모드로 흡수. 산재한 진입점 제거로 결정적 단일 front door 확보.
 
 ### 명령 분기 doctrine (2026-05-14, doctrine drift refit 행 2026-05-23)
 
@@ -115,9 +102,9 @@ claude --plugin-dir <path>/plugins/harness
 
 dharness plugin doctrine 자체가 업그레이드된 후(예: 새 invariant 추가) 기존 derived harness를 새 doctrine으로 끌어올리는 절차. 단일 명령이 아니라 *기존 명령 조합*:
 
-1. **자동 알림** — `harness-new`·`harness-baseline`이 합성·갱신 시점 `meta.dharness_version`을 `intent_profile.md`에 박제. 이후 `/harness:harness-status` 또는 `/harness:harness-validate` 호출 시 baseline version ↔ 현 plugin `version` 비교 → mismatch면 ℹ️ refit 권고 1줄 출력.
-2. **진단** — `/harness:harness-audit` (LLM 추론 영역) + `/harness:harness-validate` (결정적 invariant). 새 doctrine 위반 항목 enumeration.
-3. **수정** — 진단 보고서 항목별로 `/harness:harness-evolve` (피드백 형식), `/harness:harness-add-skill`·`-add-agent` (누락 항목), `/harness:harness-remove`·`-merge`·`-split` (구조 변경).
+1. **자동 알림** — `harness-new`·`harness-evolve`(baseline op)가 합성·갱신 시점 `meta.dharness_version`을 `intent_profile.md`에 박제. 이후 `/harness:harness-status` 또는 `/harness:harness-validate` 호출 시 baseline version ↔ 현 plugin `version` 비교 → mismatch면 ℹ️ refit 권고 1줄 출력.
+2. **진단** — `/harness:harness-status --deep` (LLM 추론 영역) + `/harness:harness-validate` (결정적 invariant). 새 doctrine 위반 항목 enumeration.
+3. **수정** — 진단 보고서 항목별로 `/harness:harness-evolve` (피드백 형식 — 내부 add-skill/add-agent/remove/merge/split op).
 4. **재진단** — `/harness:harness-validate` 0 errors 확인.
 
 ## 워크플로우 개요

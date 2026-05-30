@@ -27,7 +27,7 @@
 | 합성 산출물 (inline / .mcp.json / settings.json) | synthesis.md §5-1·5-2·5-3 + §7 호출 절차 |
 | 안전 정책 검토 | 본 §6 |
 | run-time MCP 채택 | dynamic-adoption.md §10 5-step |
-| 진행 가시성 (read-only 진단) | inventory.md §3 + dynamic-adoption.md §10-D rollback 이력 → `/harness:harness-mcp-status` |
+| 진행 가시성 (read-only 진단) | inventory.md §3 + dynamic-adoption.md §10-D rollback 이력 → `/harness:harness-status --mcp` |
 | 검증 상태 확인 | empirical.md §8 |
 | 외부 환경 reproducer | empirical.md §11-1~§11-4 |
 
@@ -105,7 +105,7 @@ Phase 5에서 에이전트 명세를 받았을 때:
       → frontmatter `tools:`에 필요 도구만 열거
       → parent 미적재만 (서버 측 도구 풀은 그대로)
    c) MCP 미install (런타임 신규 채택 필요) → dynamic-adoption.md §10 진입
-      → /harness:harness-mcp-adopt 5-step (discover → probe → confirm → install → reflect)
+      → /harness:harness-evolve "X MCP 붙여" 의 mcp-adopt op 5-step (discover → probe → confirm → install → reflect)
       → 자동 install·자동 키 발급 금지 (§6)
    d) parent 직접 호출 필연성 (드문 케이스) → synthesis.md §5-2 .mcp.json (anti-pattern)
       → §5-2의 3 예외 조건 충족 시에만, enabledMcpjsonServers allowlist 의무
@@ -163,7 +163,7 @@ Phase 5-1 → 5-2 a~f 호출 절차 = [`permission-profiles-synthesis.md §7`](.
 
 ## 10. Dynamic MCP Adoption (분리됨 → `permission-profiles-dynamic-adoption.md`)
 
-§10 + §10-A~§10-G (트리거 신호 / 5-step 채택 절차 / 프로젝트 유형별 패턴 / Rollback / inline update / 자동화 한계 / 병렬 세션 운용) = [`permission-profiles-dynamic-adoption.md`](./permission-profiles-dynamic-adoption.md) 단일 출처. `/harness:harness-mcp-adopt` 슬래시 커맨드 본문에서 호출.
+§10 + §10-A~§10-G (트리거 신호 / 5-step 채택 절차 / 프로젝트 유형별 패턴 / Rollback / inline update / 자동화 한계 / 병렬 세션 운용) = [`permission-profiles-dynamic-adoption.md`](./permission-profiles-dynamic-adoption.md) 단일 출처. `/harness:harness-evolve`의 mcp-adopt 내부 op에서 호출.
 
 ---
 
