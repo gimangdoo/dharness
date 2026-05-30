@@ -2,6 +2,7 @@
   "candidate_slug": "changelog-row-writer",
   "candidate_version": 1,
   "gap_source": "pattern-synthesis",
+  "emit_at": "2026-05-30T00:00:00Z",
   "evals": {
     "static": {
       "status": "PASS",

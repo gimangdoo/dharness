@@ -43,6 +43,9 @@ medium/large 작업은 착수 전 plan 먼저(small은 생략).
 - **tdd**: 실패 테스트→구현→리팩터(테스트 먼저). **bdd**: Given/When/Then→step 구현. **ddd**: 도메인 모델·용어→경계 컨텍스트→구현. **spec-driven**: 스펙(API/schema)→구현→대조. **trunk-based**: 작은 증분+잦은 통합. **xp**: tdd+CI 통과. **kanban/scrum/shape-up**: 프로세스 산출물(보드/백로그/pitch). **none/unknown**: 직접 구현+기본 검증.
 - 방법론 산출물 + G2 검증 기준 둘 다 충족해야 task `completed`. 순서 위반(예: tdd인데 구현 먼저) 금지.
 - `unknown`이고 large면 완료 보고에 "방법론 미수집 — `/harness:harness-evolve` 재합성 권장" 1줄.
+
+### Observability (선택)
+telemetry 채널(`_workspace/_telemetry/`) 존재 시 게이트 분기를 jsonl 1줄씩 로깅: `G1_classification`(size·신호) · `G1_boundary_confirm` · `G2_task_count`·`G2_todo_desync` · `G3_methodology`·`G3_order_violation`. 채널 부재 시 생략(강제 아님 — 진단용). 신호 schema 단일 출처: runtime-execution.md §6.
 <!-- RUNTIME-GATE:end -->
 ```
 
@@ -193,6 +196,9 @@ medium/large 작업은 착수 전 plan 먼저(small은 생략).
 `intent_profile.workflow.methodology`로 task당 산출물 분기:
 - **tdd**: 테스트→구현→리팩터. **bdd**: Given/When/Then→step. **ddd**: 도메인 모델→경계→구현. **spec-driven**: 스펙→구현→대조. **trunk-based**: 작은 증분+잦은 통합. **xp**: tdd+CI. **kanban/scrum/shape-up**: 프로세스 산출물. **none/unknown**: 직접 구현+기본 검증.
 - 방법론 산출물 + G2 검증 둘 다 충족 시 `completed`. 순서 위반 금지.
+
+### Observability (선택)
+telemetry 채널 존재 시 분기 1줄씩 로깅: `G1_classification`·`G1_boundary_confirm`·`G2_task_count`·`G2_todo_desync`·`G3_methodology`·`G3_order_violation`. 부재 시 생략. schema: runtime-execution.md §6.
 <!-- RUNTIME-GATE:end -->
 
 ### Phase 2: 팀 구성
@@ -200,3 +206,26 @@ medium/large 작업은 착수 전 plan 먼저(small은 생략).
 ```
 
 P1에서 G1(규모분류), P2에서 G2(plan→atomic task→todo), P3에서 G3(methodology→산출물)가 inline 채워져 게이트가 완성됐다 — derived 하네스가 소규모는 직접 처리, medium/large는 plan 분해 후 todo로 진행하며 각 task를 방법론에 맞는 산출물 형태로 생성한다. 주입 메커니즘과 검증 회로는 P0에서 완성됐다.
+
+## §6. Observability signals — 게이트 분기 계측 (런타임 telemetry 단일 출처)
+
+§2-§4 게이트 doctrine은 *무엇을 할지*(규범)만 정의한다. 본 절은 *무엇을 emit할지*(관측 신호)를 정의한다 — wiki-bridge.md §1-b의 expected output shape와 대칭. 신호 부재 시 G1 오분류·G2 todo desync·G3 순서 위반이 최종 산출물로만 사후 추정된다. 본 절이 게이트 블록 `### Observability` sub-section(§1·§5 inline)이 가리키는 단일 출처다.
+
+### 신호 schema
+
+derived 하네스는 게이트 통과 시 `_workspace/_telemetry/*.jsonl`에 아래 이벤트를 1줄씩 append(telemetry 채널 존재 시 — 강제 아님):
+
+| signal | 발화 시점 | payload |
+|---|---|---|
+| `G1_classification` | G1 분류 확정 | `{size, signals:{file_count, new_dependency, arch_impact}}` |
+| `G1_boundary_confirm` | 경계 모호 confirm 1회 | `{from, to, reason, user_choice}` |
+| `G2_task_count` | atomic 분해 완료 | `{plan_summary, task_count, milestones}` |
+| `G2_todo_desync` | todo 추가/미완 위반 감지 | `{expected, actual, added_subtask}` |
+| `G3_methodology` | task 산출물 생성 진입 | `{methodology, task_id, deliverable_order}` |
+| `G3_order_violation` | 순서 위반(예: tdd 구현 먼저) | `{methodology, task_id, violation}` |
+
+### 적용 규약
+
+1. telemetry 채널(`_workspace/_telemetry/`) 부재 시 silent — 로깅 강제 아님(derived 환경 가변). 채널 유무가 게이트 분기를 바꾸지 않는다.
+2. 빌드타임 결정적 검증(`chain.py:check_runtime_gate_block`)은 신호 emit을 강제하지 않는다 — 마커·`G1`/`G2`/`G3` 식별자 구조만 검증. 신호는 순수 런타임 진단용.
+3. 게이트 블록에는 신호 *목록만* inline(self-contained 최소), 전체 payload는 본 절이 정본 — 게이트 블록 주석/본 reference 동기.

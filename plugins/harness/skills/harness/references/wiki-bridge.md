@@ -14,6 +14,10 @@ dharness가 합성한 reusable skill을 로컬 "harness" wiki의 평가 파이�
 
 **presence gate:** 로컬 wiki `<wiki>/harness/candidates/` 타겟이 **존재할 때만** 다리 작동. 부재 시 silent no-op — Emit/Feedback 생략, 합성 정상 진행. wiki 측 contract는 `<wiki>/harness/candidates/README.md` 단일 출처이며 본 doctrine은 dharness 측 단방향 정합(wiki 출력 형식 변경 0).
 
+**observability:** silent no-op은 추적 신호가 0이라 "wiki 미설정" vs "설정됐으나 skip"을 운영자가 구분 못 한다. derived 하네스가 telemetry 채널(`_workspace/_telemetry/`)을 가지면 게이트 미작동 시 `wiki_bridge_skipped {reason: target-absent|not-reusable|dedup-hit}` 1줄 로깅 권장(강제 아님). M1 Emit·M4 Feedback 각각의 skip 사유를 분리 기록.
+
+**Layering invariant:** M1 Emit(SKILL Phase 7-7 trigger)·M5 gate(fixture-anchored)는 doctrine+fixture template의 *결정적 정합 검증*일 뿐 실제 wiki `candidates/` write가 아니다. 실 candidate 박제는 derived 런타임 post-synthesis + 사용자 gate 1회. wiki-bridge는 active dharness phase가 아니라 doctrine+fixture 정의 — runtime-execution.md의 marker 위치·게이트 구조가 바뀌어도 본 contract는 Phase 7 공유 컨텍스트만 참조하며 서로의 내부 구조에 의존하지 않는다.
+
 ## §1. M1 Emit — dharness → wiki `candidates/`
 
 reusable skill을 합성했고 wiki candidates/ 타겟이 존재하면, `candidates/<kebab-slug>-v<N>/` 디렉토리에 3 파일을 박제한다. **canonical 예시: `fixtures/wiki_candidate_example/`** (M5 gate가 검증하는 정본 형태).
@@ -33,7 +37,7 @@ meta:
   promoted_to: null | ".claude/skills/<name>/"
 ```
 
-**(b) `eval-results.json`** — tier 누적 결과. shape: `candidate_slug`(str) · `candidate_version`(int) · `gap_source`(str) · `evals.{static,llm_judge,monte_carlo}`(각 `status`/`last_run` 보유) · `promotion.{verdict,promoted_to,promoted_at}`. Emit 시점은 전 tier `status: not-run`(또는 dharness 측 Static 선검증분 PASS) + `promotion.verdict: null`.
+**(b) `eval-results.json`** — tier 누적 결과. shape: `candidate_slug`(str) · `candidate_version`(int) · `gap_source`(str) · `emit_at`(ISO8601, 권장) · `evals.{static,llm_judge,monte_carlo}`(각 `status`/`last_run` 보유) · `promotion.{verdict,promoted_to,promoted_at}`. Emit 시점은 전 tier `status: not-run`(또는 dharness 측 Static 선검증분 PASS) + `promotion.verdict: null`. `emit_at`은 M4 Feedback이 tier staleness(예: Static `last_run` > 90일)를 진단하는 기준 — M5 gate는 미강제(권장 필드).
 
 **(c) `changelog.md`** — append-only 표(일자/event/본문), 첫 행 `emit` event.
 
