@@ -16,7 +16,7 @@
 - [ ] **CLAUDE.md 하네스 섹션** — 운영·구조·규칙 + 변경 이력 포인터 (Phase 7-4 템플릿, litmus 통과·< 200줄)
 - [ ] **오케스트레이터 Phase 1에 컨텍스트 확인 단계** — 초기/후속/부분 재실행 판별
 - [ ] **Phase 10 capture 인프라** — `_workspace/_telemetry/` + `_telemetry/_rollback/` 디렉토리 + 오케스트레이터 telemetry capture 훅 + description에 Phase 10 트리거 키워드("점검"·"drift"·"적응"·"baseline 갱신"). 비코드 도메인은 사용 신호 캡처는 박제하고 baseline drift는 CLAUDE.md에 future scope 명시(10-7) — silent 생략 금지
-- [ ] **Runtime gate 블록** — 오케스트레이터 `### Phase 1: 준비` 직후 `<!-- RUNTIME-GATE:start -->`…`<!-- RUNTIME-GATE:end -->` 1쌍 박제, 식별자 G1·G2·G3 포함 (런타임 규모분류/plan분해/산출물생성 스캐폴드, self-contained inline, 단일 출처 `references/runtime-execution.md`, `chain.py:check_runtime_gate_block` 결정적 검증). G1 규모분류(선택적 작동)·G2 plan분해(plan→atomic task→`TodoWrite` todo)는 inline 박제, G3는 골격 — silent 생략 금지
+- [ ] **Runtime gate 블록** — 오케스트레이터 `### Phase 1: 준비` 직후 `<!-- RUNTIME-GATE:start -->`…`<!-- RUNTIME-GATE:end -->` 1쌍 박제, 식별자 G1·G2·G3 포함 (런타임 규모분류/plan분해/산출물생성 스캐폴드, self-contained inline, 단일 출처 `references/runtime-execution.md`, `chain.py:check_runtime_gate_block` 결정적 검증). G1 규모분류(선택적 작동)·G2 plan분해(plan→atomic task→`TodoWrite` todo)·G3 산출물생성(`workflow.methodology`별 deliverable, tdd→테스트 먼저 등)은 모두 inline 박제 — silent 생략 금지
 
 ## 권장 (should) — 9개
 

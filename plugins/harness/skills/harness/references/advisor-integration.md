@@ -32,9 +32,18 @@ methodology-advisor plugin v0.3.x 출력 yaml fragment를 dharness `intent_profi
 
 정합 점검: `chain_advisor.py:check_advisor_handoff_adapter_consistency` (5 cross-field 룰).
 
-## §3. cross-reference
+## §3. 런타임 산출물 생성 확장 (G3, 2026-05-30 runtime #3)
+
+본 §1·§2는 **빌드타임** — advisor/사용자 입력을 `intent_profile.workflow.methodology`(enum 11)로 *선택*만 한다. 그 선택을 derived 하네스가 런타임에 *산출물 생성*으로 확장하는 doctrine은 `runtime-execution.md §4 (G3)` 단일 출처다.
+
+- **빌드타임(여기):** methodology 선택 + cross-field invariant 박제 → intent_profile.
+- **런타임(runtime-execution §4):** derived 오케스트레이터 게이트 G3가 `workflow.methodology`를 읽어 task당 deliverable 형태·순서(tdd→테스트 먼저, ddd→도메인 모델 먼저 …) 결정. 게이트 inline self-contained — 본 plugin reference 미read.
+- `methodology: unknown`(advisor 미호출+사용자 미응답) 시 런타임 large 작업은 `/harness:harness-evolve` 재합성 권장 1줄(빌드타임 미결의 런타임 상속).
+
+## §4. cross-reference
 
 - 트리거 본체: `SKILL.md §Phase 2 방법론 위임 doctrine`
 - 분기 step: `grilling-loop.md §3-4` advisor delegation branch
 - enum/필드 정의: `intent-profile-schema.md §2 workflow`
+- 런타임 산출물 생성: `runtime-execution.md §4 (G3)`
 - 결정적 검증: `plugins/harness/scripts/validate/chain_advisor.py`

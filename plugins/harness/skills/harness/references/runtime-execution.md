@@ -39,7 +39,10 @@ medium/large 작업은 착수 전 plan 먼저(small은 생략).
 4. `TodoWrite`로 todo 박제 — 진행 중 1개만 `in_progress`, 완료 즉시 `completed`. 새 하위작업 발견 시 todo 추가(은폐 금지). 미완 todo 남으면 완료 보고 금지 → 전부 완료 시 G3.
 
 ### G3 산출물 생성
-> P3에서 채움 — methodology별 deliverable 템플릿.
+`_workspace/_baseline/intent_profile.md`의 `workflow.methodology`로 task당 산출물 형태·순서 분기:
+- **tdd**: 실패 테스트→구현→리팩터(테스트 먼저). **bdd**: Given/When/Then→step 구현. **ddd**: 도메인 모델·용어→경계 컨텍스트→구현. **spec-driven**: 스펙(API/schema)→구현→대조. **trunk-based**: 작은 증분+잦은 통합. **xp**: tdd+CI 통과. **kanban/scrum/shape-up**: 프로세스 산출물(보드/백로그/pitch). **none/unknown**: 직접 구현+기본 검증.
+- 방법론 산출물 + G2 검증 기준 둘 다 충족해야 task `completed`. 순서 위반(예: tdd인데 구현 먼저) 금지.
+- `unknown`이고 large면 완료 보고에 "방법론 미수집 — `/harness:harness-evolve` 재합성 권장" 1줄.
 <!-- RUNTIME-GATE:end -->
 ```
 
@@ -120,9 +123,43 @@ derived 하네스는 Claude Code 환경에서 동작하므로 **`TodoWrite` 도�
 
 derived 하네스는 런타임에 본 plugin reference를 읽지 못한다 — plan→atomic→todo 절차와 `TodoWrite` 규약을 **게이트 블록 G2 sub-section에 inline 박제**한다(§1 G2). 게이트 단독으로 derived 오케스트레이터 LLM을 인도한다.
 
-## §4. G3 산출물 생성 (P3에서 채움)
+## §4. G3 산출물 생성 — methodology별 deliverable (기능 #3)
 
-> **P0 placeholder.** P3 #3 methodology-advisor 산출물 생성 doctrine(방법론별 deliverable 템플릿 매핑)을 본 절에 박제. 현재는 G3 골격 표 행만 존재.
+빌드타임은 방법론을 *선택*만 한다(W8: advisor handoff/사용자 응답 → `intent_profile.workflow.methodology`). 런타임은 그 선택을 *산출물 생성*으로 확장한다 — G2에서 만든 각 atomic task를 처리할 때, **방법론에 맞는 deliverable 형태·순서로 생성**한다. 같은 task라도 tdd면 테스트가 먼저, ddd면 도메인 모델이 먼저다.
+
+### 출처 (self-contained 입력)
+
+derived 하네스는 자신의 `_workspace/_baseline/intent_profile.md` frontmatter `workflow.methodology`(빌드타임 박제)를 읽어 분기한다. 본 plugin reference는 런타임에 못 읽으므로 아래 매핑을 게이트 G3 sub-section에 inline 박제한다.
+
+### 방법론 → deliverable 매핑
+
+| methodology | task당 산출물 순서 | 핵심 deliverable |
+|---|---|---|
+| **tdd** | 실패 테스트(red) → 구현(green) → 리팩터 | task마다 테스트 먼저. 미작성 시 완료 금지. |
+| **bdd** | Given/When/Then 시나리오 → step 구현 → 통과 | task당 행위 시나리오 1+개. |
+| **ddd** | 도메인 모델·유비쿼터스 언어 → 경계 컨텍스트 → 구현 | 모델/언어 산출물 먼저, 그 위에 코드. |
+| **spec-driven** | 스펙(API·schema·계약) → 구현 → 스펙 대조 | task당 스펙 문서 먼저 박제. |
+| **trunk-based** | 작은 증분 + (필요 시) feature flag → 잦은 통합 | task = 통합 가능한 작은 단위, 큰 분기 금지. |
+| **xp** | tdd + pair 시점 표기 + CI 통과 | tdd 산출물 + 통합 신호. |
+| **kanban / scrum / shape-up** | 프로세스 산출물(보드 항목·스프린트 백로그·pitch) | 비코드 도메인 — 코드 대신 프로세스 deliverable. |
+| **none / unknown** | 직접 구현 + 기본 검증 | 방법론 강제 산출물 없음. G2 검증 기준만 충족. |
+
+### 적용 규약
+
+1. G2 todo의 각 task를 위 순서대로 생성 — 순서 위반(예: tdd인데 구현 먼저) 금지.
+2. 방법론 deliverable과 G2 task 검증 기준은 **둘 다** 충족해야 task `completed`.
+3. `methodology: unknown`(advisor 미호출+사용자 미응답)이면 강제 산출물 없이 진행하되, large 작업은 완료 보고에 "방법론 미수집 — `/harness:harness-evolve`로 재합성 권장" 1줄(빌드타임 미결을 런타임이 상속).
+4. `meta.advisor_secondary_methodologies`가 있으면 primary 매핑을 따르되 secondary는 보조 참고(강제 아님).
+
+### worked example
+
+- **methodology=tdd, task="sort 파라미터 파싱":** ① 잘못된 키 400 기대 테스트 작성(red) → ② 파싱+검증 구현(green) → ③ 리팩터. 테스트 없이 구현부터 쓰면 순서 위반.
+- **methodology=ddd, task="결제 정산 규칙":** ① 정산 도메인 모델·용어 정의 → ② 경계 컨텍스트 배치 → ③ 규칙 구현. 모델 없이 구현 금지.
+- **methodology=none, task="null 체크 추가":** 직접 구현 + G2 검증(테스트/관찰)만.
+
+### 주입 형태 (self-contained)
+
+매핑 표·적용 규약을 게이트 블록 **G3 sub-section에 inline 박제**한다(§1 G3). derived 하네스가 자신의 `intent_profile.workflow.methodology`만으로 산출물 형태를 결정한다.
 
 ## §5. canonical 주입 예시
 
@@ -153,11 +190,13 @@ medium/large 작업은 착수 전 plan 먼저(small은 생략).
 4. `TodoWrite`로 todo 박제 — 진행 중 1개만 `in_progress`, 완료 즉시 `completed`. 새 하위작업 발견 시 todo 추가. 미완 todo 남으면 완료 보고 금지 → 전부 완료 시 G3.
 
 ### G3 산출물 생성
-> P3에서 채움 — methodology별 deliverable 템플릿.
+`intent_profile.workflow.methodology`로 task당 산출물 분기:
+- **tdd**: 테스트→구현→리팩터. **bdd**: Given/When/Then→step. **ddd**: 도메인 모델→경계→구현. **spec-driven**: 스펙→구현→대조. **trunk-based**: 작은 증분+잦은 통합. **xp**: tdd+CI. **kanban/scrum/shape-up**: 프로세스 산출물. **none/unknown**: 직접 구현+기본 검증.
+- 방법론 산출물 + G2 검증 둘 다 충족 시 `completed`. 순서 위반 금지.
 <!-- RUNTIME-GATE:end -->
 
 ### Phase 2: 팀 구성
 ...
 ```
 
-P1에서 G1(규모분류), P2에서 G2(plan→atomic task→todo)가 inline 채워져 derived 하네스가 소규모는 직접 처리하고 medium/large는 plan 분해 후 todo로 진행한다. G3는 P3가 채운다. 주입 메커니즘과 검증 회로는 P0에서 완성됐다.
+P1에서 G1(규모분류), P2에서 G2(plan→atomic task→todo), P3에서 G3(methodology→산출물)가 inline 채워져 게이트가 완성됐다 — derived 하네스가 소규모는 직접 처리, medium/large는 plan 분해 후 todo로 진행하며 각 task를 방법론에 맞는 산출물 형태로 생성한다. 주입 메커니즘과 검증 회로는 P0에서 완성됐다.
