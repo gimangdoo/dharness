@@ -37,7 +37,7 @@ dharness `harness` 플러그인 = **빌드타임 메타 팩토리** (Phase 0-10)
 | Phase | 기능 | 상태 | 산출물 |
 |---|---|---|---|
 | **P0** | 런타임 레이어 기초 | ✅ 완료(green) | `references/runtime-execution.md` 골격 + orchestrator-template 주입점 + `chain.py:check_runtime_gate_block` (S17) + output-checklist must(8→9) + doctrine-registry S17 — chain PASS·smoke 8/8·test_chain 159 |
-| **P1** | #1 brownfield 규모 선택적 작동 | ⬜ | runtime-execution §규모분류 + 분기 doctrine + fixture |
+| **P1** | #1 brownfield 규모 선택적 작동 | ✅ 완료(green) | runtime-execution §2 G1 규모분류(small/medium/large + 신호 + 분기 + 경계 confirm + worked example) + 게이트 inline self-contained + check G1/G2/G3 완전성 확장 — chain PASS·smoke 8/8·test_chain 160 |
 | **P2** | #2 plan+todo 분해 | ⬜ | runtime-execution §plan분해 + fixture |
 | **P3** | #3 advisor 산출물 생성 | ⬜ | runtime-execution §산출물생성 + advisor-integration 확장 + fixture |
 | **P4** | #5 wiki 양방향 다리 [CORE] | ⬜ | `references/wiki-bridge.md` + M1/M4/M5 + schema gate + fixture |

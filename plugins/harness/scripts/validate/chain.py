@@ -396,8 +396,18 @@ def check_runtime_gate_block() -> list[str]:
     if n_start != 1 or n_end != 1:
         errors.append(f"{rel}: Runtime Gate 마커 쌍이 정확히 1쌍이 아님 — S17")
         return errors
-    if text.find(_RUNTIME_GATE_START) > text.find(_RUNTIME_GATE_END):
+    si = text.find(_RUNTIME_GATE_START)
+    ei = text.find(_RUNTIME_GATE_END)
+    if si > ei:
         errors.append(f"{rel}: Runtime Gate 마커 순서 역전 (start가 end보다 뒤) — S17")
+        return errors
+    block = text[si:ei + len(_RUNTIME_GATE_END)]
+    missing = [g for g in ("G1", "G2", "G3") if g not in block]
+    if missing:
+        errors.append(
+            f"{rel}: Runtime Gate 스캐폴드 불완전 — 게이트 식별자 {missing} 누락 "
+            f"(G1 규모분류/G2 plan/G3 산출물, runtime-execution.md §1) — S17"
+        )
     return errors
 
 

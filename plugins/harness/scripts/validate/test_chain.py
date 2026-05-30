@@ -1463,12 +1463,24 @@ class CheckRuntimeGateBlock(_ChainTestBase):
     """S17 — derived 오케스트레이터 Runtime Gate 마커 정합."""
 
     _GATE = (
-        "<!-- RUNTIME-GATE:start -->\n## Runtime Gate\n표.\n"
+        "<!-- RUNTIME-GATE:start -->\n## Runtime Gate\n"
+        "### G1 규모분류\nsmall/large 분기.\n### G2 plan\n### G3 산출물\n"
         "<!-- RUNTIME-GATE:end -->"
     )
 
     def test_no_orchestrator_silent_skip(self):
         self.assertEqual(chain.check_runtime_gate_block(), [])
+
+    def test_incomplete_scaffold_detected(self):
+        self._write_skill(
+            "orchestrator-skill", "orchestrator",
+            body="### Phase 1\n\n<!-- RUNTIME-GATE:start -->\n## Runtime Gate\n"
+                 "### G1 규모분류\n<!-- RUNTIME-GATE:end -->\n",
+        )
+        errors = chain.check_runtime_gate_block()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("스캐폴드 불완전", errors[0])
+        self.assertIn("G2", errors[0])
 
     def test_gate_present_passes(self):
         self._write_skill(

@@ -23,28 +23,63 @@ dharness `harness` 플러그인은 **빌드타임 팩토리** — 도메인 한 
 <!-- RUNTIME-GATE:start -->
 ## Runtime Gate (런타임 의사결정 게이트)
 
-derived 하네스가 작업을 수령하면 *Phase 1 컨텍스트 확인 직후* 본 게이트를 통과한다.
-각 게이트는 런타임 입력(작업 문장·기존 산출물)을 보고 분기를 결정한다.
+작업 수령 시 *Phase 1 컨텍스트 확인 직후* 본 게이트를 통과한다. 게이트는 self-contained — 런타임 입력(작업 문장·기존 산출물)만으로 분기를 결정한다.
 
-| 게이트 | 질문 | 분기 | 단일 출처 |
-|---|---|---|---|
-| G1 규모분류 | 작업 규모가 small/medium/large 중 무엇인가 | small→직접 사용 / large→합성 트리거 | `runtime-execution.md §2` |
-| G2 plan 분해 | 작업을 atomic task + todo로 분해했는가 | 분해 후 진행 | `runtime-execution.md §3` |
-| G3 산출물 생성 | methodology에 맞는 deliverable 템플릿을 적용했는가 | 템플릿 적용 후 산출 | `runtime-execution.md §4` |
+### G1 규모분류 (선택적 작동)
+- **small** (1-file·단일 patch·버그 fix·문구/설정 변경) → 기존 에이전트/도구 **직접 사용**, 합성·plan 분해 생략.
+- **medium** (단일 모듈·기존 패턴 확장·2~10 파일) → 기존 팀 충분 판단 → 충분하면 G2, 부족하면 large 승급.
+- **large** (새 서브시스템·새 module 50+ files·new_dependency 다수·cross-cutting) → 합성 트리거(에이전트/도구 추가), G2·G3 통과.
+- 경계 모호 시 사용자 confirm 1회(권장 분류 + 사유).
+
+### G2 plan 분해
+> P2에서 채움 — atomic task + todo 분해.
+
+### G3 산출물 생성
+> P3에서 채움 — methodology별 deliverable 템플릿.
 <!-- RUNTIME-GATE:end -->
 ```
 
 **주입 위치:** 오케스트레이터 `### Phase 1: 준비` *직후*(컨텍스트 확인으로 실행 모드를 정한 뒤, 본격 작업 전). 모드 무관(팀/서브/하이브리드) 동일 위치.
 
-**불변식 (P0):**
+**불변식:**
 
 1. 마커 쌍 `<!-- RUNTIME-GATE:start -->` … `<!-- RUNTIME-GATE:end -->`가 정확히 1쌍, start가 end보다 앞.
 2. 블록 안에 `## Runtime Gate` 헤더 1개. (derived 오케스트레이터의 `## ` 헤더 — plugin SKILL.md `### Phase` 카운트(S16)와 무관.)
-3. 게이트 표 3행(G1/G2/G3) — P0는 골격만, 각 게이트 *본문 doctrine*은 P1-P3가 §2-§4에 채운다.
+3. 게이트 식별자 `G1`·`G2`·`G3` 모두 존재 (`chain.py:check_runtime_gate_block` 결정적 검증). G1 본문은 inline 박제(§2 P1), G2·G3는 P2·P3가 채운다.
 
-## §2. G1 규모분류 (P1에서 채움)
+## §2. G1 규모분류 — 선택적 작동 (기능 #1)
 
-> **P0 placeholder.** P1 #1 brownfield 규모 선택적 작동에서 small/medium/large 휴리스틱 + 분기 doctrine을 본 절에 박제. 현재는 G1 골격 표 행만 존재.
+derived 하네스가 작업을 받으면 **규모를 먼저 분류**해 합성 오버헤드를 조절한다. brownfield의 핵심 요구 — 소규모 작업에 풀 팩토리(에이전트 합성·plan 분해)를 강제하지 않고, 규모가 클 때만 합성을 트리거한다.
+
+### 분류 (small / medium / large)
+
+| 규모 | 정의 | 분기 |
+|---|---|---|
+| **small** | 1-file 또는 단일 patch — 버그 fix, 함수 수정, 문구·설정 변경 | **직접 사용.** 기존 에이전트/도구로 즉시 처리. 합성·plan 분해 *생략*. |
+| **medium** | 단일 모듈·기능 — 2~10 파일, 새 함수/엔드포인트, 기존 패턴 확장 | **판단 게이트.** 기존 팀으로 충분한지 검토 → 충분하면 G2(plan 분해)로, 부족하면 large 승급. |
+| **large** | 아키텍처·다중 모듈 — 새 서브시스템, 새 module, cross-cutting 변경 | **합성 트리거.** 에이전트/도구 합성 필요(`/harness:harness-evolve` 또는 신규 에이전트). G2·G3 전체 통과. |
+
+### 규모 신호 (휴리스틱 — `heuristics-baseline.md` 재사용)
+
+- **파일 수:** 1 → small / 2~10 동일 모듈 → medium / 새 module(50+ files 신설, `heuristics-baseline.md §1` "새 디렉토리 신호") 또는 다중 모듈 → large.
+- **의존성:** 변경 없음 → small·medium / `new_dependency` major(≥3, `heuristics-baseline.md §3`) → large.
+- **아키텍처 영향:** 기존 패턴·경계 내 → small·medium / 새 패턴·새 경계·새 데이터 흐름 → large.
+
+신호가 엇갈리면 *가장 큰* 신호를 따른다(과소분류로 합성을 빠뜨리는 것이 과대분류보다 위험).
+
+### 경계 confirm (anti-premature-judgment 정합)
+
+규모가 경계(small↔medium 또는 medium↔large)에서 모호하면 **사용자 confirm 1회** — 권장 분류 + 사유 1줄 제시 후 진행. 자율 단정 금지(W1 doctrine 정합). 명확하면 confirm 생략.
+
+### worked example
+
+- **small:** "이 함수에 null 체크 추가" → 1-file·패턴 내 → **small** → 기존 코드 에이전트가 직접 수정, 합성 skip.
+- **medium:** "리스트 API에 정렬 파라미터 추가" → 1~3 파일·기존 패턴 확장 → **medium** → 기존 팀 충분 판단 → G2 plan 분해 후 진행.
+- **large:** "결제 모듈 신설 — PG 연동·정산·웹훅" → 새 서브시스템·새 경계·new_dependency 다수 → **large** → 합성 트리거(결제 에이전트 + 연동 도구), G2·G3 통과.
+
+### 주입 형태 (self-contained)
+
+derived 하네스는 런타임에 본 plugin reference를 읽지 못한다 — 위 분류·신호·분기 규칙을 **게이트 블록 본문에 inline 박제**한다(§1 G1 sub-section). 게이트는 단독으로 derived 오케스트레이터 LLM을 인도해야 한다.
 
 ## §3. G2 plan 분해 (P2에서 채움)
 
@@ -67,17 +102,23 @@ derived 오케스트레이터(템플릿 A 팀 모드)에 주입된 모습 — Ph
 <!-- RUNTIME-GATE:start -->
 ## Runtime Gate (런타임 의사결정 게이트)
 
-derived 하네스가 작업을 수령하면 *Phase 1 컨텍스트 확인 직후* 본 게이트를 통과한다.
+작업 수령 시 *Phase 1 컨텍스트 확인 직후* 본 게이트를 통과한다. 게이트는 self-contained.
 
-| 게이트 | 질문 | 분기 | 단일 출처 |
-|---|---|---|---|
-| G1 규모분류 | 작업 규모가 small/medium/large 중 무엇인가 | small→직접 사용 / large→합성 트리거 | `runtime-execution.md §2` |
-| G2 plan 분해 | 작업을 atomic task + todo로 분해했는가 | 분해 후 진행 | `runtime-execution.md §3` |
-| G3 산출물 생성 | methodology에 맞는 deliverable 템플릿을 적용했는가 | 템플릿 적용 후 산출 | `runtime-execution.md §4` |
+### G1 규모분류 (선택적 작동)
+- **small** (1-file·단일 patch·버그 fix·문구/설정 변경) → 기존 에이전트/도구 **직접 사용**, 합성·plan 분해 생략.
+- **medium** (단일 모듈·기존 패턴 확장·2~10 파일) → 기존 팀 충분 판단 → 충분하면 G2, 부족하면 large 승급.
+- **large** (새 서브시스템·새 module 50+ files·new_dependency 다수·cross-cutting) → 합성 트리거(에이전트/도구 추가), G2·G3 통과.
+- 경계 모호 시 사용자 confirm 1회(권장 분류 + 사유).
+
+### G2 plan 분해
+> P2에서 채움 — atomic task + todo 분해.
+
+### G3 산출물 생성
+> P3에서 채움 — methodology별 deliverable 템플릿.
 <!-- RUNTIME-GATE:end -->
 
 ### Phase 2: 팀 구성
 ...
 ```
 
-P0 단계에선 게이트가 *골격*(분기 단서만)이고, P1-P3가 §2-§4 본문을 채우면 derived 하네스가 실제 분기를 수행한다. 주입 메커니즘과 검증 회로는 P0에서 완성된다.
+P1에서 G1(규모분류)이 inline 채워져 derived 하네스가 소규모 작업에 합성을 생략하고 대규모에서만 합성을 트리거한다. G2·G3는 P2·P3가 채운다. 주입 메커니즘과 검증 회로는 P0에서 완성됐다.
