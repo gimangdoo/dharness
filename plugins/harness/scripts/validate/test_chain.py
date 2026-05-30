@@ -17,6 +17,7 @@ REPO_ROOT/AGENTS_DIR/SKILLS_DIR을 *모킹 후 복원*. 외부 의존성 0.
 
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -1516,6 +1517,110 @@ class CheckRuntimeGateBlock(_ChainTestBase):
         errors = chain.check_runtime_gate_block()
         self.assertEqual(len(errors), 1)
         self.assertIn("1쌍", errors[0])
+
+
+class CheckWikiCandidateSchema(_ChainTestBase):
+    """S18 — wiki bridge Emit candidate contract 정합 (M5 schema gate)."""
+
+    _SKILL_FM = (
+        "name: my-skill\n"
+        "description: \"트리거1 트리거2 트리거3. NOT: 예외.\"\n"
+        "meta:\n"
+        "  skill_kind: user-facing\n"
+        "  candidate_version: 1\n"
+        "  gap_source: pattern-synthesis\n"
+        "  static_tier: PASS\n"
+        "  llm_judge_tier: not-run\n"
+        "  mc_tier: not-run\n"
+        "  promoted_to: null\n"
+    )
+    _EVAL = {
+        "candidate_slug": "my-skill",
+        "candidate_version": 1,
+        "gap_source": "pattern-synthesis",
+        "evals": {
+            "static": {"status": "PASS"},
+            "llm_judge": {"status": "not-run"},
+            "monte_carlo": {"status": "not-run"},
+        },
+        "promotion": {"verdict": None, "promoted_to": None, "promoted_at": None},
+    }
+
+    def setUp(self):
+        super().setUp()
+        self._saved_fix = chain._WIKI_CANDIDATE_FIXTURE
+        self.cand = self.root / "fixtures" / "wiki_candidate_example"
+        chain._WIKI_CANDIDATE_FIXTURE = self.cand
+
+    def tearDown(self):
+        chain._WIKI_CANDIDATE_FIXTURE = self._saved_fix
+        super().tearDown()
+
+    def _write_candidate(self, skill_fm=None, eval_obj=None,
+                         files=("SKILL.md", "eval-results.json", "changelog.md")):
+        self.cand.mkdir(parents=True, exist_ok=True)
+        if "SKILL.md" in files:
+            (self.cand / "SKILL.md").write_text(
+                f"---\n{skill_fm or self._SKILL_FM}---\n\n본문\n", encoding="utf-8")
+        if "eval-results.json" in files:
+            (self.cand / "eval-results.json").write_text(
+                json.dumps(self._EVAL if eval_obj is None else eval_obj), encoding="utf-8")
+        if "changelog.md" in files:
+            (self.cand / "changelog.md").write_text("# changelog\n", encoding="utf-8")
+
+    def test_absent_fixture_silent_skip(self):
+        self.assertEqual(chain.check_wiki_candidate_schema(), [])
+
+    def test_valid_candidate_passes(self):
+        self._write_candidate()
+        self.assertEqual(chain.check_wiki_candidate_schema(), [])
+
+    def test_missing_file_detected(self):
+        self._write_candidate(files=("SKILL.md", "eval-results.json"))
+        errors = chain.check_wiki_candidate_schema()
+        self.assertTrue(any("changelog.md" in e for e in errors))
+
+    def test_missing_frontmatter_field_detected(self):
+        fm = self._SKILL_FM.replace("  gap_source: pattern-synthesis\n", "")
+        self._write_candidate(skill_fm=fm)
+        errors = chain.check_wiki_candidate_schema()
+        self.assertTrue(any("gap_source" in e for e in errors))
+
+    def test_internal_capability_rejected(self):
+        fm = self._SKILL_FM.replace("skill_kind: user-facing", "skill_kind: internal-capability")
+        self._write_candidate(skill_fm=fm)
+        errors = chain.check_wiki_candidate_schema()
+        self.assertTrue(any("internal-capability" in e for e in errors))
+
+    def test_non_integer_version_detected(self):
+        fm = self._SKILL_FM.replace("candidate_version: 1", "candidate_version: v1")
+        self._write_candidate(skill_fm=fm)
+        errors = chain.check_wiki_candidate_schema()
+        self.assertTrue(any("candidate_version" in e and "정수" in e for e in errors))
+
+    def test_invalid_json_detected(self):
+        self.cand.mkdir(parents=True, exist_ok=True)
+        (self.cand / "SKILL.md").write_text(f"---\n{self._SKILL_FM}---\n\n본문\n", encoding="utf-8")
+        (self.cand / "eval-results.json").write_text("{not valid json", encoding="utf-8")
+        (self.cand / "changelog.md").write_text("# c\n", encoding="utf-8")
+        errors = chain.check_wiki_candidate_schema()
+        self.assertTrue(any("유효 JSON" in e for e in errors))
+
+    def test_version_mismatch_detected(self):
+        self._write_candidate(eval_obj=dict(self._EVAL, candidate_version=2))
+        errors = chain.check_wiki_candidate_schema()
+        self.assertTrue(any("candidate_version 불일치" in e for e in errors))
+
+    def test_missing_eval_key_detected(self):
+        self._write_candidate(eval_obj={k: v for k, v in self._EVAL.items() if k != "promotion"})
+        errors = chain.check_wiki_candidate_schema()
+        self.assertTrue(any("promotion" in e for e in errors))
+
+    def test_missing_eval_tier_detected(self):
+        ev = dict(self._EVAL, evals={"static": {"status": "PASS"}, "llm_judge": {"status": "not-run"}})
+        self._write_candidate(eval_obj=ev)
+        errors = chain.check_wiki_candidate_schema()
+        self.assertTrue(any("monte_carlo" in e for e in errors))
 
 
 class CheckSkillNameUniqueness(_ChainTestBase):

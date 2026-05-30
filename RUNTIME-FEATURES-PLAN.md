@@ -40,7 +40,7 @@ dharness `harness` 플러그인 = **빌드타임 메타 팩토리** (Phase 0-10)
 | **P1** | #1 brownfield 규모 선택적 작동 | ✅ 완료(green) | runtime-execution §2 G1 규모분류(small/medium/large + 신호 + 분기 + 경계 confirm + worked example) + 게이트 inline self-contained + check G1/G2/G3 완전성 확장 — chain PASS·smoke 8/8·test_chain 160 |
 | **P2** | #2 plan+todo 분해 | ✅ 완료(green) | runtime-execution §3 G2 plan분해(plan→atomic task→`TodoWrite` todo + 규모별 적용 + worked example) + 게이트 G2 sub-section inline self-contained(§1·§5) + SKILL 7-6/output-checklist wording — chain PASS·smoke 8/8·test_chain 160 |
 | **P3** | #3 advisor 산출물 생성 | ✅ 완료(green) | runtime-execution §4 G3(methodology 11종→task당 deliverable 형태·순서 매핑 + 적용 규약 + worked example) + 게이트 G3 sub-section inline self-contained(§1·§5, 게이트 완성) + advisor-integration §3 런타임 확장 cross-ref + SKILL 7-6/output-checklist wording — chain PASS·smoke 8/8·test_chain 160 |
-| **P4** | #5 wiki 양방향 다리 [CORE] | ⬜ | `references/wiki-bridge.md` + M1/M4/M5 + schema gate + fixture |
+| **P4** | #5 wiki 양방향 다리 [CORE] | ✅ 완료(green) | `references/wiki-bridge.md`(M1 Emit·M4 Feedback·M5 schema gate, self-host opt-in presence-gated) + `chain.py:check_wiki_candidate_schema`(S18) + canonical fixture `wiki_candidate_example/`(3파일) + SKILL 7-7 hook + doctrine-registry S18 — chain PASS·smoke 8/8·test_chain 170. 범위=doctrine+gate+fixture(wiki repo 실쓰기 0, 사용자 결정 a) |
 
 상태 범례: ⬜ 미착수 · 🔶 진행 중 · ✅ 완료(chain green).
 

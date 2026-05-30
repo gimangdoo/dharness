@@ -1,0 +1,32 @@
+{
+  "candidate_slug": "changelog-row-writer",
+  "candidate_version": 1,
+  "gap_source": "pattern-synthesis",
+  "evals": {
+    "static": {
+      "status": "PASS",
+      "last_run": "2026-05-30",
+      "findings": []
+    },
+    "llm_judge": {
+      "status": "not-run",
+      "last_run": null,
+      "iterations": [],
+      "verdict": null
+    },
+    "monte_carlo": {
+      "status": "not-run",
+      "last_run": null,
+      "case_count": null,
+      "simulation_count": null,
+      "trigger_f1": null,
+      "output_consistency": null,
+      "verdict": null
+    }
+  },
+  "promotion": {
+    "verdict": null,
+    "promoted_to": null,
+    "promoted_at": null
+  }
+}

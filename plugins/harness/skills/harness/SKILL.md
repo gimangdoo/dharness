@@ -320,6 +320,10 @@ CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태�
 
 오케스트레이터 `### Phase 1: 준비` *직후*에 **Runtime Gate 블록**을 박제한다 — derived 하네스가 런타임에 작업을 받았을 때 따르는 의사결정 스캐폴드(G1 규모분류·G2 plan분해·G3 산출물생성). 마커 규약·위치·불변식·G1 분기 doctrine·canonical 예시는 `references/runtime-execution.md` 단일 출처. 블록은 `<!-- RUNTIME-GATE:start -->` … `<!-- RUNTIME-GATE:end -->` 1쌍으로 구획하고 식별자 G1·G2·G3를 모두 포함하며, `/harness:harness-validate`(`chain.py:check_runtime_gate_block`)가 derived 오케스트레이터에 마커·스캐폴드 완전성을 결정적 검증한다. **게이트는 self-contained** — derived 하네스는 런타임에 본 plugin reference를 못 읽으므로 분기 규칙을 게이트 본문에 inline 박제한다. G1 규모분류(small→직접 사용/large→합성 트리거, 선택적 작동)·G2 plan분해(medium/large 작업 plan→atomic task→`TodoWrite` todo 박제)·G3 산출물생성(`workflow.methodology`별 task당 deliverable 형태·순서, tdd→테스트 먼저 등)는 모두 inline 채워 박제한다(게이트 self-contained 완성).
 
+#### 7-7. Wiki Bridge Emit (self-host opt-in, S18 doctrine, 2026-05-30)
+
+**dharness self-host 한정** — 외부 install 파생 하네스는 본 단계 건너뛴다. 합성한 skill이 *재사용 가치 있는 범용 패턴*이고 로컬 harness wiki `<wiki>/harness/candidates/` 타겟이 존재하면, 사용자 gate 1회 후 candidate 디렉토리(`SKILL.md` frontmatter 9필드 + `eval-results.json` + `changelog.md`)를 Emit해 wiki 평가 파이프라인(Static/LLM-Judge/MonteCarlo tier)에 태운다(M1). 다음 합성 설계(Phase 5) 시 promoted candidate를 pull해 재합성 대신 재사용을 우선한다(M4). contract·gate·canonical fixture·안전 규약은 `references/wiki-bridge.md` 단일 출처이며 `chain.py:check_wiki_candidate_schema`(M5 schema gate)가 candidate 형태를 결정적 검증한다. **타겟 부재 시 silent no-op** — Emit 생략, 합성 정상 진행. wiki repo 쓰기는 outward-facing이라 사용자 gate 필수.
+
 ### Phase 7.5: Orchestrator Dry-Run Simulation
 
 > **사용자 핵심 요구 (2026-05-14)** — Phase 7 오케스트레이터의 *가상 진행*으로 dead link / 데이터 흐름 끊김 사전 검출.
