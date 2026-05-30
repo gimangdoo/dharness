@@ -364,6 +364,43 @@ def check_orchestrator_agent_coverage() -> list[str]:
     return errors
 
 
+_RUNTIME_GATE_START = "<!-- RUNTIME-GATE:start -->"
+_RUNTIME_GATE_END = "<!-- RUNTIME-GATE:end -->"
+
+
+def check_runtime_gate_block() -> list[str]:
+    """S17 doctrine — derived 오케스트레이터에 Runtime Gate 블록 마커 정합 (2026-05-30 runtime 기초).
+
+    dharness가 합성하는 오케스트레이터는 런타임 의사결정 스캐폴드(규모분류/plan분해/산출물생성)를
+    `<!-- RUNTIME-GATE:start -->` … `<!-- RUNTIME-GATE:end -->` 1쌍으로 박제해야 한다.
+    단일 출처: references/runtime-execution.md §1. plugin-only repo(derived 오케스트레이터 부재)는
+    silent skip — dharness 자체는 빌드타임 팩토리라 게이트를 보유하지 않는다.
+    """
+    errors: list[str] = []
+    orch = find_orchestrator()
+    if not orch:
+        return errors
+    try:
+        text = orch.read_text(encoding="utf-8-sig")
+    except OSError:
+        return errors
+    rel = orch.relative_to(REPO_ROOT)
+    n_start = text.count(_RUNTIME_GATE_START)
+    n_end = text.count(_RUNTIME_GATE_END)
+    if n_start == 0 or n_end == 0:
+        errors.append(
+            f"{rel}: Runtime Gate 블록 마커 부재 "
+            f"(`{_RUNTIME_GATE_START}`…`{_RUNTIME_GATE_END}`) — S17 (runtime-execution.md §1)"
+        )
+        return errors
+    if n_start != 1 or n_end != 1:
+        errors.append(f"{rel}: Runtime Gate 마커 쌍이 정확히 1쌍이 아님 — S17")
+        return errors
+    if text.find(_RUNTIME_GATE_START) > text.find(_RUNTIME_GATE_END):
+        errors.append(f"{rel}: Runtime Gate 마커 순서 역전 (start가 end보다 뒤) — S17")
+    return errors
+
+
 def check_skill_name_uniqueness() -> list[str]:
     """skills/*/SKILL.md frontmatter `name:` 전역 유일성 + 디렉토리명 정합 검증."""
     errors: list[str] = []
@@ -944,6 +981,7 @@ def main(argv: list[str]) -> int:
         ("check_agent_name_uniqueness", check_agent_name_uniqueness),
         ("check_agent_write_path_overlap", check_agent_write_path_overlap),
         ("check_orchestrator_agent_coverage", check_orchestrator_agent_coverage),
+        ("check_runtime_gate_block", check_runtime_gate_block),
         ("check_skill_name_uniqueness", check_skill_name_uniqueness),
         ("check_reference_links", check_reference_links),
         ("check_plugin_internal_references", check_plugin_internal_references),

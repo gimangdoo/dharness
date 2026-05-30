@@ -62,6 +62,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | S14 | 슬래시 커맨드 카탈로그 sync — `plugins/harness/commands/harness-*.md` glob count 정본 ↔ `README.md` `Slash command 카탈로그 (N개)` 헤더 ↔ `doctrine-registry.md` R4 본문 `N 슬래시 커맨드` 인용 (명령 추가/제거 시 cross-doc drift 차단, R4 manual → deterministic 격상) | `README.md:§Slash command 카탈로그`, `doctrine-registry.md:§2 R4` | 2026-05-25 cycle 1' command count 결정적 sync | `chain_doc_sync.py:check_command_count_sync` |
 | S15 | trigger-keyword catalog ↔ python dict sync — `trigger-keyword-catalog.md §1` 10 signal 표 ↔ chain.py 내 trigger signal dict 양방향 sync (catalog가 단일 출처 doctrine S11, code dict 누락/추가 결정적 차단) | `trigger-keyword-catalog.md:§1` | 2026-05-28 audit2 PA6 | `chain_doc_sync.py:check_trigger_catalog_python_sync` |
 | S16 | Phase count sync — `SKILL.md` `### Phase` 헤더 카운트 정본 ↔ 4 ad 위치 (`.claude-plugin/marketplace.json`/`plugins/harness/.claude-plugin/plugin.json`/`plugins/harness/README.md`/루트 `README.md` phase 광고) 결정적 sync, phase 추가/삭제 시 cross-doc drift 차단 | `SKILL.md` 헤더, 4 ad 위치 | 2026-05-28 audit2 PA9 | `chain_doc_sync.py:check_phase_count_sync` |
+| S17 | Runtime gate 블록 주입 — derived 오케스트레이터 `### Phase 1` 직후 `<!-- RUNTIME-GATE:start -->`…`<!-- RUNTIME-GATE:end -->` 1쌍 박제 (런타임 규모분류/plan분해/산출물생성 스캐폴드, P0 골격 G1/G2/G3 — 본문은 P1-P3가 채움). dharness=빌드타임 팩토리 유지, 런타임 결정은 합성 산출물에 *주입* | `runtime-execution.md:§1`, `orchestrator-template.md:§Runtime Gate 주입점`, `SKILL.md:§Phase 7-6` | 2026-05-30 runtime features P0 | `chain.py:check_runtime_gate_block` (derived 오케스트레이터 marker 정합, plugin-only repo silent skip) |
 
 ## §4. 보안·회수 doctrine (Phase 5-2 MCP·permission 합성)
 
@@ -96,8 +97,9 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 
 | 파일 | 박제된 doctrine id |
 |---|---|
-| `SKILL.md` | W1·W2·W3·W4·W6·W8·S1·S12·S13 (포인터·박스) |
-| `output-checklist.md` | S13 (must/should 정본 카운트) |
+| `SKILL.md` | W1·W2·W3·W4·W6·W8·S1·S12·S13·S17 (포인터·박스) |
+| `output-checklist.md` | S13·S17 (must/should 정본 카운트 + runtime gate must) |
+| `runtime-execution.md` (런타임 레이어 단일 출처, P0 2026-05-30) | S17 (§1 marker 규약·§2-§4 게이트 본문) |
 | `phase-entry-gates.md` | W1·W2·W3·W4·W5·W7 (본문) |
 | `permission-profiles.md` (main) | S8·P5 (§4 결정 트리 + §6 안전 정책) |
 | `permission-profiles-profiles.md` (PA5 분리, 2026-05-28) | P1·P2 (§2-5~§2-8 도메인 권한 doctrine) |
@@ -105,7 +107,7 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `permission-profiles-synthesis.md` (P7 분리; PA5 §5-2/§5-3/§7 추가 흡수) | S3 (§5-1-c Q2 model by role) |
 | `permission-profiles-dynamic-adoption.md` (P7 분리) | P4 (§10-G multi-writer) |
 | `permission-profiles-empirical.md` (PA5 분리, 2026-05-28) | P3 (§8-3 mcp 출처 verify gate) |
-| `orchestrator-template.md` | S2·S4 |
+| `orchestrator-template.md` | S2·S4·S17 (§Runtime Gate 주입점) |
 | `agent-design-patterns.md` | S6 |
 | `qa-agent-guide.md` | I6·I7 |
 | `trigger-keyword-catalog.md` | S11 |
@@ -113,7 +115,7 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `intent-profile-schema.md` | S7·I2·W8·W9 (§8 hybrid 정합 채널 표) |
 | `grilling-loop.md` | W7·W8 |
 | `skill-writing-guide.md` | S12 (최소 본문 골격) |
-| `chain.py` | W4·S2·S3·S5·S6·R5·R6 (결정적 검증 dispatcher) |
+| `chain.py` | W4·S2·S3·S5·S6·R5·R6·S17 (결정적 검증 dispatcher) |
 | `chain_intent.py` (sub-cycle α+β 흡수 + cycle 6+ MVP 분리, 2026-05-25) | W1 (grilling 영역만)·W3 (5필드 + doc sync 2 fn)·W7 (grilling_log enum 1 fn)·W9 (intent_profile §8 4 fn) |
 | `chain_version.py` (sub-cycle δ 분리, 2026-05-25) | I1·I2 (dharness_version drift 1 fn) |
 | `chain_doc_sync.py` (sub-cycle ε 분리, 2026-05-25; PA6/PA9 audit2 확장) | S13 (output-checklist count)·S14 (command count)·S15 (trigger catalog dict sync)·S16 (phase count sync) |

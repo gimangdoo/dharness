@@ -277,6 +277,18 @@ description: "{도메인} 오케스트레이터 (하이브리드). {키워드}. 
 
 ---
 
+## Runtime Gate 주입점 (S17 doctrine, 2026-05-30)
+
+> **Read at phase:** Phase 7-6 (오케스트레이터 합성 시 Runtime Gate 블록 박제).
+
+오케스트레이터는 빌드타임에 생성되지만, derived 하네스가 런타임에 작업을 받았을 때 따라야 할 의사결정 스캐폴드(규모분류·plan분해·산출물생성)를 **본문에 주입**해야 한다. 주입 블록의 마커 규약·위치·불변식·canonical 예시는 `references/runtime-execution.md` 단일 출처.
+
+- **주입 위치:** 위 3 템플릿(A/B/C) 모두 `### Phase 1: 준비` *직후* — 컨텍스트 확인으로 실행 모드를 정한 뒤, 본격 작업 전.
+- **마커:** `<!-- RUNTIME-GATE:start -->` … `<!-- RUNTIME-GATE:end -->` 1쌍. `chain.py:check_runtime_gate_block`이 derived 오케스트레이터에 마커 존재를 결정적 검증(plugin-only repo는 silent skip).
+- **P0 골격:** G1/G2/G3 게이트 표 3행만 박제. 각 게이트 본문 doctrine은 P1-P3가 `runtime-execution.md §2-§4`에 채운다.
+
+---
+
 ## 작성 원칙
 
 1. **실행 모드를 먼저 명시** — 오케스트레이터 상단에 "에이전트 팀" / "서브 에이전트" / "하이브리드" 중 하나 명시. 하이브리드면 Phase별 모드 표 필수

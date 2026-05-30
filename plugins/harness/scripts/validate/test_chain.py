@@ -1459,6 +1459,53 @@ class CheckOrchestratorAgentCoverage(_ChainTestBase):
         self.assertIn("Q1 cardinality", errors[0])
 
 
+class CheckRuntimeGateBlock(_ChainTestBase):
+    """S17 — derived 오케스트레이터 Runtime Gate 마커 정합."""
+
+    _GATE = (
+        "<!-- RUNTIME-GATE:start -->\n## Runtime Gate\n표.\n"
+        "<!-- RUNTIME-GATE:end -->"
+    )
+
+    def test_no_orchestrator_silent_skip(self):
+        self.assertEqual(chain.check_runtime_gate_block(), [])
+
+    def test_gate_present_passes(self):
+        self._write_skill(
+            "orchestrator-skill", "orchestrator",
+            body=f"### Phase 1: 준비\n\n{self._GATE}\n\n### Phase 2\n",
+        )
+        self.assertEqual(chain.check_runtime_gate_block(), [])
+
+    def test_gate_missing_detected(self):
+        self._write_skill(
+            "orchestrator-skill", "orchestrator",
+            body="### Phase 1: 준비\n\n게이트 없음.\n",
+        )
+        errors = chain.check_runtime_gate_block()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("마커 부재", errors[0])
+        self.assertIn("S17", errors[0])
+
+    def test_reversed_markers_detected(self):
+        self._write_skill(
+            "orchestrator-skill", "orchestrator",
+            body="### Phase 1\n\n<!-- RUNTIME-GATE:end -->\n표.\n<!-- RUNTIME-GATE:start -->\n",
+        )
+        errors = chain.check_runtime_gate_block()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("순서 역전", errors[0])
+
+    def test_duplicate_markers_detected(self):
+        self._write_skill(
+            "orchestrator-skill", "orchestrator",
+            body=f"### Phase 1\n\n{self._GATE}\n{self._GATE}\n",
+        )
+        errors = chain.check_runtime_gate_block()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("1쌍", errors[0])
+
+
 class CheckSkillNameUniqueness(_ChainTestBase):
     """skills/*/SKILL.md `name:` 유일성 + dir 정합."""
 

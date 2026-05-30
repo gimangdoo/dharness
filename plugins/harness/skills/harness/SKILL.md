@@ -316,6 +316,10 @@ CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태�
 
 > 패턴별 골격 상세, 에러 유형별 전략표, 데이터 흐름 다이어그램, Phase 0 컨텍스트 확인 템플릿은 `references/orchestrator-template.md`.
 
+#### 7-6. Runtime Gate 블록 주입 (S17 doctrine, 2026-05-30)
+
+오케스트레이터 `### Phase 1: 준비` *직후*에 **Runtime Gate 블록**을 박제한다 — derived 하네스가 런타임에 작업을 받았을 때 따르는 의사결정 스캐폴드(G1 규모분류·G2 plan분해·G3 산출물생성). 마커 규약·위치·불변식·canonical 예시는 `references/runtime-execution.md` 단일 출처. 블록은 `<!-- RUNTIME-GATE:start -->` … `<!-- RUNTIME-GATE:end -->` 1쌍으로 구획하고, `/harness:harness-validate`(`chain.py:check_runtime_gate_block`)가 derived 오케스트레이터에 마커 존재를 결정적 검증한다. P0 단계는 게이트 골격(G1/G2/G3 표 3행)만 박제 — 각 게이트 본문은 후속 phase가 `runtime-execution.md §2-§4`에 채운다.
+
 ### Phase 7.5: Orchestrator Dry-Run Simulation
 
 > **사용자 핵심 요구 (2026-05-14)** — Phase 7 오케스트레이터의 *가상 진행*으로 dead link / 데이터 흐름 끊김 사전 검출.
@@ -443,7 +447,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 ## 산출물 체크리스트
 
 > **🚧 Read at phase:** Phase 8 검증 진입 직전 + factory 종료 전 최종 self-check.
-> 17 항목 (must 8 / should 9) 단일 출처는 [`references/output-checklist.md`](./references/output-checklist.md) — 본 reference 미read 시 Phase 8-1 구조 검증의 항목 catalog 누락. `harness-validate`가 must 항목 일부를 결정적으로 검증.
+> 18 항목 (must 9 / should 9) 단일 출처는 [`references/output-checklist.md`](./references/output-checklist.md) — 본 reference 미read 시 Phase 8-1 구조 검증의 항목 catalog 누락. `harness-validate`가 must 항목 일부를 결정적으로 검증.
 
 ## 참고
 
@@ -461,7 +465,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > | Phase 5-2 | `permission-profiles.md` + 3 sibling (`-inventory.md` / `-synthesis.md` / `-dynamic-adoption.md`, P7 분리, 2026-05-23), `mcp-recommendation.md`, `trigger-keyword-catalog.md` | MCP·도구 할당 |
 > | Phase 6 | `skill-writing-guide.md`, `skill-testing-guide.md` | 스킬 생성 |
 > | Phase 7 | `orchestrator-template.md` | CLAUDE.md 통합 |
-> | Phase 8 | `output-checklist.md` (must 8 / should 9 catalog), `skill-testing-guide.md` (트리거 회귀) | 검증 |
+> | Phase 8 | `output-checklist.md` (must 9 / should 9 catalog), `skill-testing-guide.md` (트리거 회귀) | 검증 |
 > | Phase 9 | (사용자 발화 종속 — case-by-case) | 진화 |
 > | Phase 10 | `runtime-adaptation.md` | telemetry drift 적응 |
 > | Sub-agent 활용 | `agent-design-patterns.md` (부록 §Team Tools API) | Phase 1/5/6/8 sub-agent 격리 시 |
@@ -472,7 +476,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > **검증:** 각 reference 상단 헤더와 본 표 일치 — `harness-validate`가 향후 chain 검증에 포함 가능 (P0-2 doctrine 정합).
 
 - **Phase Entry Gates** (Phase 0/0.5/1/2/5 entry 게이트 doctrine 박스 모음, 2026-05-23 P2-A 분리): `references/phase-entry-gates.md`
-- **Output Checklist** (must 8 / should 9 항목 catalog, 2026-05-23 P2-A 분리): `references/output-checklist.md`
+- **Output Checklist** (must 9 / should 9 항목 catalog, 2026-05-23 P2-A 분리): `references/output-checklist.md`
 - **Doctrine Registry** (전 영역 doctrine 단일 색인 — id·박제 위치·근거 commit·정합 점검, 2026-05-23 P9): `references/doctrine-registry.md`
 - 하네스 패턴: `references/agent-design-patterns.md`
 - 기존 하네스 예시 (실제 파일 전문 포함): `references/team-examples.md`
