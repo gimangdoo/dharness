@@ -318,7 +318,7 @@ CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태�
 
 #### 7-6. Runtime Gate 블록 주입 (S17 doctrine, 2026-05-30)
 
-오케스트레이터 `### Phase 1: 준비` *직후*에 **Runtime Gate 블록**을 박제한다 — derived 하네스가 런타임에 작업을 받았을 때 따르는 의사결정 스캐폴드(G1 규모분류·G2 plan분해·G3 산출물생성). 마커 규약·위치·불변식·G1 분기 doctrine·canonical 예시는 `references/runtime-execution.md` 단일 출처. 블록은 `<!-- RUNTIME-GATE:start -->` … `<!-- RUNTIME-GATE:end -->` 1쌍으로 구획하고 식별자 G1·G2·G3를 모두 포함하며, `/harness:harness-validate`(`chain.py:check_runtime_gate_block`)가 derived 오케스트레이터에 마커·스캐폴드 완전성을 결정적 검증한다. **게이트는 self-contained** — derived 하네스는 런타임에 본 plugin reference를 못 읽으므로 분기 규칙을 게이트 본문에 inline 박제한다. G1 규모분류(small→직접 사용/large→합성 트리거, 선택적 작동)는 inline 채워 박제, G2·G3 본문은 후속 phase가 채운다.
+오케스트레이터 `### Phase 1: 준비` *직후*에 **Runtime Gate 블록**을 박제한다 — derived 하네스가 런타임에 작업을 받았을 때 따르는 의사결정 스캐폴드(G1 규모분류·G2 plan분해·G3 산출물생성). 마커 규약·위치·불변식·G1 분기 doctrine·canonical 예시는 `references/runtime-execution.md` 단일 출처. 블록은 `<!-- RUNTIME-GATE:start -->` … `<!-- RUNTIME-GATE:end -->` 1쌍으로 구획하고 식별자 G1·G2·G3를 모두 포함하며, `/harness:harness-validate`(`chain.py:check_runtime_gate_block`)가 derived 오케스트레이터에 마커·스캐폴드 완전성을 결정적 검증한다. **게이트는 self-contained** — derived 하네스는 런타임에 본 plugin reference를 못 읽으므로 분기 규칙을 게이트 본문에 inline 박제한다. G1 규모분류(small→직접 사용/large→합성 트리거, 선택적 작동)·G2 plan분해(medium/large 작업 plan→atomic task→`TodoWrite` todo 박제)는 inline 채워 박제, G3 본문은 후속 phase가 채운다.
 
 ### Phase 7.5: Orchestrator Dry-Run Simulation
 

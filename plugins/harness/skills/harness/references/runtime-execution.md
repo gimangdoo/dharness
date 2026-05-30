@@ -32,7 +32,11 @@ dharness `harness` 플러그인은 **빌드타임 팩토리** — 도메인 한 
 - 경계 모호 시 사용자 confirm 1회(권장 분류 + 사유).
 
 ### G2 plan 분해
-> P2에서 채움 — atomic task + todo 분해.
+medium/large 작업은 착수 전 plan 먼저(small은 생략).
+1. 전체 plan 1문단(목표·표면·완료 조건; 모호하면 confirm 1회).
+2. atomic task 분해 — 각 task = 한 파일/함수/테스트 수준, 단독 검증 가능.
+3. 각 task에 검증 기준 1줄("make it work" 금지).
+4. `TodoWrite`로 todo 박제 — 진행 중 1개만 `in_progress`, 완료 즉시 `completed`. 새 하위작업 발견 시 todo 추가(은폐 금지). 미완 todo 남으면 완료 보고 금지 → 전부 완료 시 G3.
 
 ### G3 산출물 생성
 > P3에서 채움 — methodology별 deliverable 템플릿.
@@ -81,9 +85,40 @@ derived 하네스가 작업을 받으면 **규모를 먼저 분류**해 합성 �
 
 derived 하네스는 런타임에 본 plugin reference를 읽지 못한다 — 위 분류·신호·분기 규칙을 **게이트 블록 본문에 inline 박제**한다(§1 G1 sub-section). 게이트는 단독으로 derived 오케스트레이터 LLM을 인도해야 한다.
 
-## §3. G2 plan 분해 (P2에서 채움)
+## §3. G2 plan 분해 — per-task plan + atomic 분해 + todo (기능 #2)
 
-> **P0 placeholder.** P2 #2 per-task plan + atomic 분해 + todo doctrine을 본 절에 박제. 현재는 G2 골격 표 행만 존재.
+G1에서 medium/large로 분류된 작업은 본격 착수 전 **plan을 먼저 세운다**. small은 본 게이트를 건너뛴다(직접 처리). plan 없이 즉시 코드를 쓰면 범위 누락·중간 재작업·미검증 완료가 발생한다 — plan 분해가 이를 차단한다.
+
+### 분해 절차 (plan → atomic task → todo)
+
+1. **전체 plan 1문단** — 작업을 한 문단으로 기술: 목표·건드릴 표면·완료 조건. 모호하면 G1 경계 confirm처럼 사용자 confirm 1회.
+2. **atomic task 분해** — plan을 독립 검증 가능한 최소 단위로 쪼갠다. 각 task = 한 파일·한 함수·한 테스트 수준, 다른 task 완료를 기다리지 않고 단독으로 "됐다/안 됐다" 판정 가능.
+3. **검증 기준 부착** — 각 atomic task에 검증 1줄(테스트·체크·관찰). "make it work" 같은 약한 기준 금지 — 통과/실패가 결정 가능한 goal(CLAUDE.md §4 goal-driven 정합).
+4. **todo 박제** — 분해한 task를 todo list로 고정한다.
+
+### Claude Code todo 도구 활용 규약
+
+derived 하네스는 Claude Code 환경에서 동작하므로 **`TodoWrite` 도구**로 todo를 박제한다.
+
+- 작업 착수 시 atomic task 전부를 `pending`으로 등록.
+- 진행 중 **정확히 1개**만 `in_progress`. 한 task 완료 즉시 `completed`로 갱신하고 다음 task를 `in_progress`로.
+- task 도중 새 하위작업 발견 시 todo에 추가(은폐 금지) — plan drift를 가시화한다.
+- 모든 task `completed` 시 G3(산출물 생성)로. 미완 task가 남으면 완료 보고 금지.
+
+### 규모별 적용
+
+- **small** (G1) → plan 분해 생략, 직접 처리.
+- **medium** → 경량 plan(2~5 atomic task) + todo. 과분해 금지(1 task = 1 todo 줄, 표피적 쪼개기 회피).
+- **large** → 전체 plan + atomic 분해 + todo 필수. task 수 많으면 단계(milestone)로 묶되 atomic 단위 유지.
+
+### worked example
+
+- **medium:** "리스트 API에 정렬 파라미터 추가" → plan: 쿼리 파라미터 파싱·정렬 로직·테스트. atomic: ① `sort` 파라미터 파싱 + 검증(테스트: 잘못된 키 400) ② 정렬 적용(테스트: asc/desc 결과 순서) ③ 문서 갱신. → 3 todo 박제, 순차 `in_progress`/`completed`.
+- **large:** "결제 모듈 신설" → plan 1문단 후 milestone(연동·정산·웹훅)별 atomic 분해, milestone마다 todo 그룹. G3에서 milestone별 산출물 생성.
+
+### 주입 형태 (self-contained)
+
+derived 하네스는 런타임에 본 plugin reference를 읽지 못한다 — plan→atomic→todo 절차와 `TodoWrite` 규약을 **게이트 블록 G2 sub-section에 inline 박제**한다(§1 G2). 게이트 단독으로 derived 오케스트레이터 LLM을 인도한다.
 
 ## §4. G3 산출물 생성 (P3에서 채움)
 
@@ -111,7 +146,11 @@ derived 오케스트레이터(템플릿 A 팀 모드)에 주입된 모습 — Ph
 - 경계 모호 시 사용자 confirm 1회(권장 분류 + 사유).
 
 ### G2 plan 분해
-> P2에서 채움 — atomic task + todo 분해.
+medium/large 작업은 착수 전 plan 먼저(small은 생략).
+1. 전체 plan 1문단(목표·표면·완료 조건; 모호하면 confirm 1회).
+2. atomic task 분해 — 각 task = 한 파일/함수/테스트 수준, 단독 검증 가능.
+3. 각 task에 검증 기준 1줄("make it work" 금지).
+4. `TodoWrite`로 todo 박제 — 진행 중 1개만 `in_progress`, 완료 즉시 `completed`. 새 하위작업 발견 시 todo 추가. 미완 todo 남으면 완료 보고 금지 → 전부 완료 시 G3.
 
 ### G3 산출물 생성
 > P3에서 채움 — methodology별 deliverable 템플릿.
@@ -121,4 +160,4 @@ derived 오케스트레이터(템플릿 A 팀 모드)에 주입된 모습 — Ph
 ...
 ```
 
-P1에서 G1(규모분류)이 inline 채워져 derived 하네스가 소규모 작업에 합성을 생략하고 대규모에서만 합성을 트리거한다. G2·G3는 P2·P3가 채운다. 주입 메커니즘과 검증 회로는 P0에서 완성됐다.
+P1에서 G1(규모분류), P2에서 G2(plan→atomic task→todo)가 inline 채워져 derived 하네스가 소규모는 직접 처리하고 medium/large는 plan 분해 후 todo로 진행한다. G3는 P3가 채운다. 주입 메커니즘과 검증 회로는 P0에서 완성됐다.
