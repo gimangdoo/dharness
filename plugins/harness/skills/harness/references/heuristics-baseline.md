@@ -71,8 +71,8 @@ override 박제 위치: `--weights=` CLI override / 도메인 self-critique (Pha
 | 새 디렉토리 신호 (ra §5-5) | 50+ files | 휴리스틱 — module 신설 단위 | 소규모 도메인에선 20+, monorepo에선 100+ |
 | 커버리지 drift 신호 (ra §5-5) | ±15pp | 휴리스틱 — measurement noise 초과 변동 | 강한 quality gate 도메인에선 ±10pp / loose 도메인에선 ±20pp |
 | confidence 자동 적용 (ra §8) | high + user_confirmed | 휴리스틱 — silent fail 방지 | 회귀 telemetry 누적 풍부 시 high 단독으로 완화 |
-| 핫스팟 임계 (cross — `code-research.md §9`) | 5% churn 또는 10회 변경 | 휴리스틱 — long-tail 분포 cutoff | mature 코드베이스에선 3% + 20회 (변동 가속) |
-| 핫스팟 outlier (cross — `code-research.md §9`) | 95-percentile | 측정 분포 기반 (heavy-tail 가정) | normal 분포 추정 도메인에선 99-percentile |
+| 핫스팟 임계 (cross — `code-research-deep.md §2-1`) | 5% churn 또는 10회 변경 | 휴리스틱 — long-tail 분포 cutoff | mature 코드베이스에선 3% + 20회 (변동 가속) |
+| 핫스팟 outlier (cross — `code-research-deep.md §2-5`) | 95-percentile | 측정 분포 기반 (heavy-tail 가정) | normal 분포 추정 도메인에선 99-percentile |
 
 override 박제 위치: `_baseline/intent_profile.md`의 `tuning_overrides` 필드.
 

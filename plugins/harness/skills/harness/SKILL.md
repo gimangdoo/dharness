@@ -491,6 +491,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 - **스킬 테스트 가이드**: `references/skill-testing-guide.md` — 테스트/평가/반복 개선 방법론
 - **QA 에이전트 가이드**: `references/qa-agent-guide.md` — 통합 정합성 검증, 경계면 버그 패턴, QA 정의 템플릿 (`qa-agent-guide.md §6` ML/data/mobile/devops 도메인 경계 카탈로그)
 - **Code Research 방법론**: `references/code-research.md` — greenfield/brownfield 감지, 5축 조사, quick scan vs deep audit
+- **Code Research Deep 축** (분할 #2, 2026-05-31): `references/code-research-deep.md` — deep audit 전용 Maturity·Pain Points 2축 상세 조사 기법
 - **Project Profile 스키마**: `references/project-profile-schema.md` — Phase 1 출력 표준 형식
 - **Project Inquiry 가이드**: `references/project-inquiry.md` — 두 브랜치별 채우기 전략, profile-finding → question 매핑 룰
 - **Intent Profile 스키마**: `references/intent-profile-schema.md` — Phase 2 출력 표준 형식 + meta 필드 의미 + 검증 룰
