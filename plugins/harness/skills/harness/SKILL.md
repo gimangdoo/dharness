@@ -498,7 +498,8 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 - **Intent Profile 예시** (분할 #1, 2026-05-31): `references/intent-profile-examples.md` — greenfield/brownfield 완성 인스턴스 예시 2종
 - **Intent Profile Advisory** (PB5 분리, 2026-05-27): `references/intent-profile-advisory.md` — LLM-only 권장 룰 + cross-field 경고 3종 (Phase 2 합성 직전 final review)
 - **Advisor Integration** (PB6 분리, 2026-05-27): `references/advisor-integration.md` — methodology-advisor v0.3.x handoff 변환 룰 + cross-field invariant (advisor 위임 분기 시점만 read)
-- **Runtime Adaptation 가이드**: `references/runtime-adaptation.md` — Phase 10 telemetry schema, capture 신호, diagnostic 룰, adapt 룰, 승인 UX
+- **Runtime Adaptation 가이드**: `references/runtime-adaptation.md` — Phase 10 capture 신호, diagnostic 룰, adapt 룰, 승인 UX
+- **Runtime Telemetry Schema** (분할 #3, 2026-05-31): `references/runtime-telemetry.md` — telemetry 저장 형식·이벤트 타입 7종·공통 규약
 - **Permission Profiles (main)**: `references/permission-profiles.md` — §0 진입 매트릭스 + §1 3-layer / §4 결정 트리 / §6 안전 정책 / §9 plugin subagent 제약 (분리 본문은 profiles/inventory/synthesis/dynamic-adoption/empirical)
 - **Permission Profiles Profiles** (PA5 분리, 2026-05-28): `references/permission-profiles-profiles.md` — §2 8 capability profile 본문 (code-test / web-research / external-integration / reasoning-aux + ml-pipeline / devops-infra / mobile-native / data-eng)
 - **Permission Profiles Empirical** (PA5 분리, 2026-05-28): `references/permission-profiles-empirical.md` — §8 검증 상태 (공식 docs ✓ + empirical ✓✓ + 외부 의제) + §8-3 stdio probe 기법 + §11-1~§11-4 실증 reproducer fixture
