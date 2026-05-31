@@ -163,6 +163,8 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 > **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) §"Phase 5 — 🚧 entry 게이트 — Cardinality justification" 진입 직전 필수.
 
+> **Phase 5-0 — Wiki Feedback pull (self-host opt-in, M4, S18 doctrine, 2026-05-31):** 에이전트·스킬 설계 직전, 로컬 harness wiki `<wiki>/harness/candidates/` + `pages/tools/` 타겟이 존재하면 **promoted candidate를 조회해 재합성 대신 재사용을 우선**한다. pull 대상(`candidates/<name>/eval-results.json`의 `promotion.verdict` + `evals.*.status` + `meta.promoted_to`)·tier 의미(3 tier 전부 PASS + verdict 박제 시만 "검증된 재사용 후보")·재사용 분기는 [`references/wiki-bridge.md`](./references/wiki-bridge.md) §2 단일 출처. **presence gate**: wiki 타겟 부재 시 silent no-op — 정상 합성 진행(외부 install 파생 하네스는 wiki 위치 모르므로 무관). 재사용 판단은 *제안 후 사용자 confirm* — 자동 graft 0. M1 Emit(Phase 7-7)과 짝.
+
 **모든 에이전트는 반드시 `프로젝트/.claude/agents/{name}.md` 파일로 정의한다.** 빌트인 타입(`general-purpose`, `Explore`, `Plan`)을 사용하더라도 정의 파일 생성 필수. Agent 도구의 prompt에 역할을 직접 넣는 것은 금지. 이유: 다음 세션 재사용성, 협업 프로토콜 명시, 에이전트(누가)와 스킬(어떻게) 분리.
 
 > **Sub-agent 격리 doctrine (P6-3, 2026-05-14)**: 에이전트 N개 정의 파일 작성을 N sub-agent 병렬 호출(`Agent` tool, `general-purpose` + `model: opus`). 각 sub-agent에 단일 에이전트 정의 책임 위임 — parent는 frontmatter `tools:` allowlist 합성 + 통신 프로토콜 매트릭스 통합만 담당. parent 컨텍스트 격리, N개 동시 작성 시간 단축.
@@ -465,7 +467,7 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 > | Phase 2 | `phase-entry-gates.md` ("Phase 2 — 🚧 entry 게이트" 절), `project-inquiry.md`, `intent-profile-schema.md`, `grilling-loop.md` (Low confidence 또는 필수 5필드 1차 거부 시) | Project Inquiry 진입 |
 > | Phase 3 | (없음 — Phase 1+2 합성) | 도메인 분석 |
 > | Phase 4 | `agent-design-patterns.md`, `team-examples.md` | 팀 패턴 선택 |
-> | Phase 5 | `phase-entry-gates.md` ("Phase 5 — 🚧 entry 게이트 — Cardinality justification" 절), `agent-design-patterns.md`, `team-examples.md`, `qa-agent-guide.md` (QA 에이전트 정의 시) | 에이전트 정의 |
+> | Phase 5 | `phase-entry-gates.md` ("Phase 5 — 🚧 entry 게이트 — Cardinality justification" 절), `agent-design-patterns.md`, `team-examples.md`, `qa-agent-guide.md` (QA 에이전트 정의 시), `wiki-bridge.md` §2 (self-host — Phase 5-0 Wiki Feedback pull) | 에이전트 정의 |
 > | Phase 5-2 | `permission-profiles.md` + 3 sibling (`-inventory.md` / `-synthesis.md` / `-dynamic-adoption.md`, P7 분리, 2026-05-23), `mcp-recommendation.md`, `trigger-keyword-catalog.md` | MCP·도구 할당 |
 > | Phase 6 | `skill-writing-guide.md`, `skill-testing-guide.md` | 스킬 생성 |
 > | Phase 7 | `orchestrator-template.md` | CLAUDE.md 통합 |
