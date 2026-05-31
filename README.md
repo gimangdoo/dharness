@@ -101,6 +101,23 @@ claude --plugin-dir C:\path\to\dharness\plugins\harness
 
 > **변경은 모두 `harness-evolve`가 front door.** 과거 `add-agent`/`add-skill`/`remove`/`split`/`merge`/`baseline`/`mcp-adopt` 명령은 evolve의 내부 op로, `audit`/`mcp-status`/`mcp-recommend`는 status의 플래그(`--deep`/`--mcp`)로 흡수됐다 (2026-05-30 command 병합 doctrine).
 
+### 작은 작업엔 가벼운 경로 — 전체 구동은 처음 한 번만
+
+15단계 전체 구동(`harness-new`)은 **처음 팀을 만들 때만**. 이후 작은 기능 추가·수정은 필요한 만큼만 도는 경량 경로로 처리된다 — 매번 전체 프로그램을 재구동하지 않는다.
+
+| 작업 | 쓰는 것 | 도는 범위 (15단계 전체 대비) |
+|------|---------|------------------------------|
+| 작은 기능 의도 추가 | `/harness:harness-feature` | intent_profile 1건 확장, 재구축 0 (질문 ≤5) |
+| 텍스트·단일 스킬 본문 수정 | `/harness:harness-evolve` | diff 미리보기 → 승인 즉시 적용 |
+| 스킬 1개 추가/수정 | `/harness:harness-evolve` | Phase 6 + 8만 (P1~P5 skip) |
+| 에이전트 1명 추가 | `/harness:harness-evolve` | Phase 4 배치결정 + 5 + 8만 |
+| 현황 확인 | `/harness:harness-status` | read-only, 합성 0 |
+| 구조 검증 | `/harness:harness-validate` | 결정적, LLM 0 |
+
+작업 크기 → 도는 Phase 수가 자동으로 줄어든다 (Phase 0 확장 선택 매트릭스, `SKILL.md`). Phase 1 코드 분석도 규모에 맞춰 스케일 — 소스 ≤100개 또는 "간단히/빠르게" 발화 시 Quick scan(3축), 그 이상만 Deep(5축).
+
+> 단, 기존 하네스 현황 감사(Phase 0)는 어떤 변경이든 가볍게 1회 거친다. 정말 사소한 1줄 수정이면 harness를 거치지 않고 파일을 직접 편집해도 된다.
+
 ### Context Manager — dharness 본 폴더 한정
 
 CM은 hooks가 자동으로 진화를 캡처한다 — 평소엔 사용자 행동 불필요. 아래는 조회·관리용.
