@@ -106,7 +106,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 >
 > 사용자 직접 응답 시 `methodology_source: user`, brownfield 자동 추론(jest.config·gherkin·OpenAPI signal) 시 `methodology_source: inferred`, 미수집 시 `none`. 카탈로그 외 방법론은 `methodology: unknown` + secondary에 원본 보존 + `meta.open_questions` 박제. PM 영역(Kanban/Scrum/Shape Up)은 dharness 직접 매핑 없음 — `methodology` 필드만 박제하고 다운스트림 Phase 4·5에서 외부 도구로 위임. 변환 룰 표는 `references/intent-profile-schema.md:§Advisor handoff 수신 시 변환 룰`.
 
-> 채우기 전략 상세, 자동 추론 매핑, 코드 grounded 질문 패턴(13종), 섹션별 질문 카탈로그는 `references/project-inquiry.md`. 풀 schema와 인스턴스 예시는 `references/intent-profile-schema.md`. Low confidence 추론 또는 필수 5필드 1차 거부 시 1q-at-a-time + LLM 추천 답안 패턴은 `references/grilling-loop.md` (mattpocock grill-me 흡수, 2026-05-19).
+> 채우기 전략 상세, 자동 추론 매핑, 코드 grounded 질문 패턴(13종), 섹션별 질문 카탈로그는 `references/project-inquiry.md`. 풀 schema는 `references/intent-profile-schema.md`, 완성 인스턴스 예시는 `references/intent-profile-examples.md`. Low confidence 추론 또는 필수 5필드 1차 거부 시 1q-at-a-time + LLM 추천 답안 패턴은 `references/grilling-loop.md` (mattpocock grill-me 흡수, 2026-05-19).
 
 ### Phase 3: 도메인 분석
 
@@ -493,7 +493,8 @@ Phase 2의 `meta.inferred_fields − meta.user_confirmed_fields` 차집합("신�
 - **Code Research 방법론**: `references/code-research.md` — greenfield/brownfield 감지, 5축 조사, quick scan vs deep audit
 - **Project Profile 스키마**: `references/project-profile-schema.md` — Phase 1 출력 표준 형식
 - **Project Inquiry 가이드**: `references/project-inquiry.md` — 두 브랜치별 채우기 전략, profile-finding → question 매핑 룰
-- **Intent Profile 스키마**: `references/intent-profile-schema.md` — Phase 2 출력 표준 형식 + greenfield/brownfield 인스턴스 예시
+- **Intent Profile 스키마**: `references/intent-profile-schema.md` — Phase 2 출력 표준 형식 + meta 필드 의미 + 검증 룰
+- **Intent Profile 예시** (분할 #1, 2026-05-31): `references/intent-profile-examples.md` — greenfield/brownfield 완성 인스턴스 예시 2종
 - **Intent Profile Advisory** (PB5 분리, 2026-05-27): `references/intent-profile-advisory.md` — LLM-only 권장 룰 + cross-field 경고 3종 (Phase 2 합성 직전 final review)
 - **Advisor Integration** (PB6 분리, 2026-05-27): `references/advisor-integration.md` — methodology-advisor v0.3.x handoff 변환 룰 + cross-field invariant (advisor 위임 분기 시점만 read)
 - **Runtime Adaptation 가이드**: `references/runtime-adaptation.md` — Phase 10 telemetry schema, capture 신호, diagnostic 룰, adapt 룰, 승인 UX
