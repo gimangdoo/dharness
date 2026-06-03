@@ -43,6 +43,8 @@ meta:
 
 **Emit trigger (self-host):** dharness가 *재사용 가치 있는* skill을 합성했을 때(특정 프로젝트 전용이 아닌 범용 패턴) + wiki candidates/ 존재 + 사용자 gate 1회. 특정 프로젝트 1회용 skill은 Emit 금지(wiki rule 2-a 75% 중복·inflation guard 정합).
 
+**실행 (P5, self-host 전용):** gate 통과 후 3파일 write·dedup·자가검증·telemetry는 산문 수기 대신 `scripts/wiki/bridge.py:emit_candidate`가 수행한다(기계적 I/O). 콘텐츠(SKILL 본문·eval shape)는 LLM이 저작해 인자로 넘기고, 헬퍼는 (1) presence-gate (2) dedup advisory soft-block(`_dedup_check` → `{overlap, conflict}`, 임계 `_DEDUP_THRESHOLD`=wiki rule 2-a 상속) (3) `<slug>-v<N>/` 멱등 write (4) `_validate_candidate_dir` 자가검증 FAIL 시 롤백(wiki 미오염) (5) `wiki_bridge_emit`/`wiki_bridge_skipped` telemetry 박제. dedup hit은 **hard-block 아님** — 헬퍼가 soft_block 반환 시 LLM이 사용자에 재확인.
+
 ## §2. M4 Feedback — wiki → dharness 재사용
 
 다음 합성 설계(Phase 5) 진입 시 wiki candidates/ + `pages/tools/` 에서 **promoted candidate**를 조회해, 재합성 대신 재사용을 우선한다.
@@ -50,6 +52,8 @@ meta:
 - **pull 대상:** `candidates/<name>/eval-results.json`의 `promotion.verdict` + `evals.*.status`, 그리고 `meta.promoted_to`(`.claude/skills/<name>/` 승격분).
 - **tier 의미:** Static=구조 PASS / LLM-Judge=adversarial eval PASS / MonteCarlo=trigger F1 ≥ champion. **3 tier 전부 PASS + `promotion.verdict` 박제** 시에만 "검증된 재사용 후보".
 - **재사용 분기:** 합성하려는 skill이 promoted candidate와 의미 중복(트리거·목적) 시 → 재합성 대신 해당 candidate 재사용(또는 description 확장). 미승격(tier 미통과)분은 참고만, 재사용 강제 아님.
+
+**실행 (P5, self-host 전용):** promoted 조회는 `scripts/wiki/bridge.py:pull_promoted`가 수행한다 — `candidates/*/eval-results.json` glob → **3 tier 전부 `status: PASS` + `promotion.verdict` 박제**분만 `[{slug, version, promoted_to, verdict}]`로 반환 + `wiki_bridge_pull {n_promoted}` telemetry, presence-gate 부재 시 `[]` + skip. 재사용 판단(의미중복 → 재사용 제안)·사용자 confirm은 LLM 레이어 — 헬퍼는 read-only 조회만(자동 graft 0).
 
 ## §3. M5 Schema gate (deterministic, `chain.py:check_wiki_candidate_schema`, S18)
 
