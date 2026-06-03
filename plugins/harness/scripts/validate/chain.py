@@ -16,9 +16,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from schema import (  # noqa: E402  W3·I2 doctrine 단일 출처
+from schema import (  # noqa: E402  W3·I2·S18 doctrine 단일 출처
     INTENT_REQUIRED,
     INTENT_REQUIRED_USER_CONFIRMED,
+    validate_candidate_contract,
 )
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -412,10 +413,6 @@ def check_runtime_gate_block() -> list[str]:
 
 
 _WIKI_CANDIDATE_FIXTURE = PLUGIN_REFERENCES_DIR / "fixtures" / "wiki_candidate_example"
-_WIKI_CANDIDATE_FM_FIELDS = (
-    "name", "description", "skill_kind", "candidate_version",
-    "gap_source", "static_tier", "llm_judge_tier", "mc_tier", "promoted_to",
-)
 
 
 def check_wiki_candidate_schema() -> list[str]:
@@ -423,71 +420,15 @@ def check_wiki_candidate_schema() -> list[str]:
 
     dharness가 합성 reusable skill을 로컬 harness wiki `candidates/<name>-v<N>/`로 Emit 할 때의
     contract(SKILL.md frontmatter + eval-results.json + changelog.md)를 결정적 강제(M5 schema gate).
-    fixture-anchored — canonical 산출물 `fixtures/wiki_candidate_example/`를 검증하며 실제 Emit
-    candidate도 동일 gate를 통과해야 한다. 단일 출처: references/wiki-bridge.md.
+    fixture-anchored — canonical 산출물 `fixtures/wiki_candidate_example/`를 검증한다.
+    검증 로직은 `schema.validate_candidate_contract` 단일 출처에 위임(bridge.py와 공유 — fork 차단).
     fixture 부재(외부 install·미동봉)는 silent skip.
     """
-    errors: list[str] = []
     base = _WIKI_CANDIDATE_FIXTURE
     if not base.is_dir():
-        return errors
+        return []
     rel = base.relative_to(REPO_ROOT)
-    skill_md = base / "SKILL.md"
-    eval_json = base / "eval-results.json"
-    changelog = base / "changelog.md"
-    for f in (skill_md, eval_json, changelog):
-        if not f.is_file():
-            errors.append(f"{rel}: wiki candidate 필수 파일 부재 `{f.name}` — S18 (wiki-bridge.md §1)")
-    if errors:
-        return errors
-    # SKILL.md frontmatter 필수 필드 (wiki-bridge.md §1-a)
-    try:
-        fm = _extract_frontmatter_block(skill_md.read_text(encoding="utf-8-sig")) or ""
-    except OSError:
-        return errors
-    skill_ver: int | None = None
-    for field in _WIKI_CANDIDATE_FM_FIELDS:
-        m = re.search(rf"^\s*{field}\s*:\s*(.+)$", fm, re.MULTILINE)
-        if not m:
-            errors.append(
-                f"{rel}/SKILL.md: candidate frontmatter 필수 필드 `{field}` 누락 — S18 (wiki-bridge.md §1-a)"
-            )
-            continue
-        val = _strip_quotes(m.group(1).strip())
-        if field == "skill_kind" and val == "internal-capability":
-            errors.append(
-                f"{rel}/SKILL.md: candidate `skill_kind: internal-capability` 금지 (wiki rule 3-a) — S18"
-            )
-        if field == "candidate_version":
-            if not val.isdigit():
-                errors.append(f"{rel}/SKILL.md: `candidate_version`은 정수여야 함 (got `{val}`) — S18")
-            else:
-                skill_ver = int(val)
-    # eval-results.json shape (wiki-bridge.md §1-b)
-    try:
-        data = json.loads(eval_json.read_text(encoding="utf-8-sig"))
-    except (OSError, json.JSONDecodeError) as exc:
-        errors.append(f"{rel}/eval-results.json: 유효 JSON 아님 ({exc}) — S18 (wiki-bridge.md §1-b)")
-        return errors
-    for key in ("candidate_slug", "candidate_version", "gap_source", "evals", "promotion"):
-        if key not in data:
-            errors.append(f"{rel}/eval-results.json: 필수 키 `{key}` 누락 — S18 (wiki-bridge.md §1-b)")
-    evals = data.get("evals")
-    if isinstance(evals, dict):
-        for tier in ("static", "llm_judge", "monte_carlo"):
-            if tier not in evals:
-                errors.append(f"{rel}/eval-results.json: `evals.{tier}` 누락 — S18")
-    elif "evals" in data:
-        errors.append(f"{rel}/eval-results.json: `evals`는 object여야 함 — S18")
-    json_ver = data.get("candidate_version")
-    if not isinstance(json_ver, int):
-        errors.append(f"{rel}/eval-results.json: `candidate_version`은 정수여야 함 (got {json_ver!r}) — S18")
-    elif skill_ver is not None and json_ver != skill_ver:
-        errors.append(
-            f"{rel}: candidate_version 불일치 — SKILL.md {skill_ver} ≠ eval-results.json {json_ver} "
-            f"(M5 cross-field) — S18"
-        )
-    return errors
+    return [f"{rel}: {e} — S18" for e in validate_candidate_contract(base)]
 
 
 def check_skill_name_uniqueness() -> list[str]:

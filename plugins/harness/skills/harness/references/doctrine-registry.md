@@ -63,7 +63,7 @@ phase 진입 직전 LLM이 따라야 할 행동 invariant. 결정적 강제 여�
 | S15 | trigger-keyword catalog ↔ python dict sync — `trigger-keyword-catalog.md §1` 10 signal 표 ↔ chain.py 내 trigger signal dict 양방향 sync (catalog가 단일 출처 doctrine S11, code dict 누락/추가 결정적 차단) | `trigger-keyword-catalog.md:§1` | 2026-05-28 audit2 PA6 | `chain_doc_sync.py:check_trigger_catalog_python_sync` |
 | S16 | Phase count sync — `SKILL.md` `### Phase` 헤더 카운트 정본 ↔ 4 ad 위치 (`.claude-plugin/marketplace.json`/`plugins/harness/.claude-plugin/plugin.json`/`plugins/harness/README.md`/루트 `README.md` phase 광고) 결정적 sync, phase 추가/삭제 시 cross-doc drift 차단 | `SKILL.md` 헤더, 4 ad 위치 | 2026-05-28 audit2 PA9 | `chain_doc_sync.py:check_phase_count_sync` |
 | S17 | Runtime gate 블록 주입 — derived 오케스트레이터 `### Phase 1` 직후 `<!-- RUNTIME-GATE:start -->`…`<!-- RUNTIME-GATE:end -->` 1쌍 박제 (런타임 규모분류/plan분해/산출물생성 스캐폴드, P0 골격 G1/G2/G3 — 본문은 P1-P3가 채움). dharness=빌드타임 팩토리 유지, 런타임 결정은 합성 산출물에 *주입* | `runtime-execution.md:§1`, `orchestrator-template.md:§Runtime Gate 주입점`, `SKILL.md:§Phase 7-6` | 2026-05-30 runtime features P0 | `chain.py:check_runtime_gate_block` (derived 오케스트레이터 marker 정합, plugin-only repo silent skip) |
-| S18 | Wiki bridge Emit candidate contract — dharness 합성 reusable skill을 로컬 harness wiki `candidates/<name>-v<N>/`로 Emit 할 때의 contract(SKILL.md frontmatter 9필드 + eval-results.json shape + changelog.md) 결정적 강제 (M5 schema gate). dharness self-host 한정 다리(M1 Emit / M4 Feedback), fixture-anchored — canonical 산출물 `fixtures/wiki_candidate_example/` 검증, fixture 부재 silent skip. 실 송수신 I/O는 `scripts/wiki/bridge.py`(emit_candidate/pull_promoted, P5 self-host 전용 — gate 후 호출, validator 불변) | `wiki-bridge.md:§1·§2·§3`, `SKILL.md:§Phase 7-7·§Phase 5-0`, `fixtures/wiki_candidate_example/`, `scripts/wiki/bridge.py` | 2026-05-30 runtime features P4 (실행 자동화 P5 2026-06-03) | `chain.py:check_wiki_candidate_schema` (candidate contract 정합, fixture 부재 silent skip) |
+| S18 | Wiki bridge Emit candidate contract — dharness 합성 reusable skill을 로컬 harness wiki `candidates/<name>-v<N>/`로 Emit 할 때의 contract(SKILL.md frontmatter 9필드 + eval-results.json shape + changelog.md) 결정적 강제 (M5 schema gate). dharness self-host 한정 다리(M1 Emit / M4 Feedback), fixture-anchored — canonical 산출물 `fixtures/wiki_candidate_example/` 검증, fixture 부재 silent skip. 실 송수신 I/O는 `scripts/wiki/bridge.py`(emit_candidate/pull_promoted, P5 self-host 전용 — gate 후 호출, validator 불변) | `wiki-bridge.md:§1·§2·§3`, `SKILL.md:§Phase 7-7·§Phase 5-0`, `fixtures/wiki_candidate_example/`, `scripts/wiki/bridge.py`, `scripts/validate/schema.py` | 2026-05-30 runtime features P4 (실행 자동화 P5 2026-06-03) | `chain.py:check_wiki_candidate_schema` (fixture 검증 — `schema.py:validate_candidate_contract` 단일 출처 위임, bridge.py와 공유) |
 
 ## §4. 보안·회수 doctrine (Phase 5-2 MCP·permission 합성)
 
@@ -103,6 +103,7 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `runtime-execution.md` (런타임 레이어 단일 출처, P0 2026-05-30) | S17 (§1 marker 규약·§2-§4 게이트 본문) |
 | `wiki-bridge.md` (wiki 다리 단일 출처, P4 2026-05-30) | S18 (§1 M1 Emit contract·§2 M4 Feedback·§3 M5 schema gate) |
 | `fixtures/wiki_candidate_example/` (canonical Emit candidate) | S18 (M5 gate 검증 대상)·I8 (fixture 회귀) |
+| `scripts/wiki/bridge.py` (P5 self-host 실행 헬퍼, 2026-06-03) | S18 (M1 Emit/M4 Feedback 실 I/O — emit_candidate/pull_promoted/note_skip). **manual 인용**: R6 fn-ref 자동검증은 chain*/structure/schema 패턴만 매칭, bridge.py 미포함 → rename 시 수동 추적 필요 |
 | `phase-entry-gates.md` | W1·W2·W3·W4·W5·W7 (본문) |
 | `permission-profiles.md` (main) | S8·P5 (§4 결정 트리 + §6 안전 정책) |
 | `permission-profiles-profiles.md` (PA5 분리, 2026-05-28) | P1·P2 (§2-5~§2-8 도메인 권한 doctrine) |
@@ -124,7 +125,7 @@ dharness 자체 진화 메커니즘. baseline 박제·drift 감지·refit 워크
 | `chain_doc_sync.py` (sub-cycle ε 분리, 2026-05-25; PA6/PA9 audit2 확장) | S13 (output-checklist count)·S14 (command count)·S15 (trigger catalog dict sync)·S16 (phase count sync) |
 | `chain_advisor.py` (sub-cycle γ 분리, 2026-05-25) | W8 (advisor handoff adapter 1 fn + 5 cross-field 룰) |
 | `structure.py` | S12 (빈 스킬 디렉토리 검출) |
-| `schema.py` | W3 (INTENT_REQUIRED 정본)·S7 |
+| `schema.py` | W3 (INTENT_REQUIRED 정본)·S7·S18 (validate_candidate_contract — chain.py·bridge.py 공유 단일 출처) |
 | `harness-status.md` (audit/mcp-status/mcp-recommend 흡수, 2026-05-30) | R1·R3 (--deep 추론 감사) |
 | `harness-validate.md` | R1·R3 |
 | `harness-evolve.md` (add/remove/split/merge/baseline/mcp-adopt 흡수, 2026-05-30) / `harness-adapt.md` | R2·R3·I2 (evolve baseline op) |

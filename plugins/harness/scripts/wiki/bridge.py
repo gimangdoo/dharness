@@ -11,7 +11,7 @@ self-host 전용 — derived 런타임 주입 0 (RUNTIME-FEATURES-PLAN P5, 2026-
 from __future__ import annotations
 
 import json
-import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,10 +19,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[4]
 _DEFAULT_TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"
 
-# Emit candidate frontmatter 필수 필드 — chain.py 정본 상수 재사용(field-list drift 차단).
-from plugins.harness.scripts.validate.chain import (  # noqa: E402
-    _WIKI_CANDIDATE_FM_FIELDS as _FM_FIELDS,
-)
+# 공유 candidate contract 검증 단일 출처 — validate/ dir를 path에 올려 dir-on-path import
+# (트리 관행 정합·포터블). 절대 `plugins.` 패키지 import 회피 → 외부 install 위치서도 무손상 (L11-2 fix).
+_VALIDATE_DIR = REPO_ROOT / "plugins" / "harness" / "scripts" / "validate"
+if str(_VALIDATE_DIR) not in sys.path:
+    sys.path.insert(0, str(_VALIDATE_DIR))
+from schema import validate_candidate_contract  # noqa: E402
 
 # dedup 임계 — wiki rule 2-a(75% 중복 Emit 금지) *상속*. 정본=<wiki>/.../WIKI-SCHEMA §11 rule 2.
 # dharness 독립 숫자 fork 아님 — 미러. wiki 측 변경 시 본 상수 추종 (wiki-bridge.md §4).
@@ -33,14 +35,21 @@ _DEDUP_THRESHOLD = 0.75
 # telemetry
 # ─────────────────────────────────────────────────────────────────────────────
 def _emit_telemetry(event: dict, telemetry_dir: Path | None = None) -> None:
-    """append-only JSONL 1줄 (runtime-telemetry.md §1 형식). 절대 삭제·수정 금지."""
+    """append-only JSONL 1줄 (runtime-telemetry.md §1 형식). 절대 삭제·수정 금지.
+
+    write 실패는 삼킨다(stderr만) — telemetry는 비-load-bearing 관측 side effect라,
+    실패가 candidate write 같은 load-bearing 결과를 오염시키면 안 된다 (L08-005 fix).
+    """
     tdir = telemetry_dir or _DEFAULT_TELEMETRY_DIR
     now = datetime.now(timezone.utc)
     row = {"ts": now.strftime("%Y-%m-%dT%H:%M:%SZ"), **event}
-    tdir.mkdir(parents=True, exist_ok=True)
-    fpath = tdir / f"{now.strftime('%Y-%m-%d')}.jsonl"
-    with fpath.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    try:
+        tdir.mkdir(parents=True, exist_ok=True)
+        fpath = tdir / f"{now.strftime('%Y-%m-%d')}.jsonl"
+        with fpath.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"[wiki-bridge] telemetry write 실패 (관측성만 손실): {exc}", file=sys.stderr)
 
 
 def _emit_skip(milestone: str, reason: str, session_id: str,
@@ -51,6 +60,17 @@ def _emit_skip(milestone: str, reason: str, session_id: str,
          "milestone": milestone, "reason": reason, **extra},
         telemetry_dir,
     )
+
+
+def note_skip(milestone: str, reason: str, session_id: str = "self-host",
+              telemetry_dir: Path | None = None, **extra) -> None:
+    """LLM 레이어 공개 skip 로깅 — emit_candidate를 *호출하지 않는* 분기(특히 합성 skill을
+    재사용 가치 없다고 판단해 Emit 안 하는 reason=not-reusable)도 추적 신호를 남긴다.
+
+    wiki-bridge.md §0 observability 보장("wiki 미설정 vs 설정됐으나 skip" 구분) 충족 (L08-002 fix).
+    SKILL 7-7이 비-Emit 결정 시 본 fn 호출을 지시한다.
+    """
+    _emit_skip(milestone, reason, session_id, telemetry_dir, **extra)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -85,64 +105,12 @@ def _dedup_check(triggers, existing_triggers, threshold: float = _DEDUP_THRESHOL
 # ─────────────────────────────────────────────────────────────────────────────
 # candidate 검증 (write 후 자가검증 — 실패 시 abort, wiki repo 미오염)
 # ─────────────────────────────────────────────────────────────────────────────
-def _frontmatter(text: str) -> str:
-    m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.DOTALL)
-    return m.group(1) if m else ""
-
-
 def _validate_candidate_dir(cand_dir: Path) -> list[str]:
-    """emit한 candidate 디렉토리가 M5 contract(wiki-bridge.md §1)를 만족하는지.
+    """emit한 candidate가 M5 contract(wiki-bridge.md §1)를 만족하는지 — schema 단일 출처 위임.
 
-    chain.py:check_wiki_candidate_schema(fixture-anchored)와 동일 규칙을 임의 디렉토리에
-    적용한 generic 버전. 필드 목록은 chain 정본 상수(_FM_FIELDS) 재사용.
+    `schema.validate_candidate_contract`를 chain.py:check_wiki_candidate_schema와 공유 (fork 차단).
     """
-    errors: list[str] = []
-    skill_md = cand_dir / "SKILL.md"
-    eval_json = cand_dir / "eval-results.json"
-    changelog = cand_dir / "changelog.md"
-    for f in (skill_md, eval_json, changelog):
-        if not f.is_file():
-            errors.append(f"필수 파일 부재 `{f.name}` (wiki-bridge.md §1)")
-    if errors:
-        return errors
-
-    fm = _frontmatter(skill_md.read_text(encoding="utf-8-sig"))
-    skill_ver: int | None = None
-    for field in _FM_FIELDS:
-        m = re.search(rf"^\s*{field}\s*:\s*(.+)$", fm, re.MULTILINE)
-        if not m:
-            errors.append(f"SKILL.md frontmatter 필수 필드 `{field}` 누락 (§1-a)")
-            continue
-        val = m.group(1).strip().strip("\"'")
-        if field == "skill_kind" and val == "internal-capability":
-            errors.append("SKILL.md `skill_kind: internal-capability` 금지 (wiki rule 3-a)")
-        if field == "candidate_version":
-            if not val.isdigit():
-                errors.append(f"SKILL.md `candidate_version` 정수 아님 (got `{val}`)")
-            else:
-                skill_ver = int(val)
-
-    try:
-        data = json.loads(eval_json.read_text(encoding="utf-8-sig"))
-    except (OSError, json.JSONDecodeError) as exc:
-        errors.append(f"eval-results.json 유효 JSON 아님 ({exc}) (§1-b)")
-        return errors
-    for key in ("candidate_slug", "candidate_version", "gap_source", "evals", "promotion"):
-        if key not in data:
-            errors.append(f"eval-results.json 필수 키 `{key}` 누락 (§1-b)")
-    evals = data.get("evals")
-    if isinstance(evals, dict):
-        for tier in ("static", "llm_judge", "monte_carlo"):
-            if tier not in evals:
-                errors.append(f"eval-results.json `evals.{tier}` 누락")
-    elif "evals" in data:
-        errors.append("eval-results.json `evals` object 아님")
-    json_ver = data.get("candidate_version")
-    if not isinstance(json_ver, int):
-        errors.append(f"eval-results.json `candidate_version` 정수 아님 (got {json_ver!r})")
-    elif skill_ver is not None and json_ver != skill_ver:
-        errors.append(f"candidate_version 불일치 — SKILL.md {skill_ver} ≠ eval-results.json {json_ver}")
-    return errors
+    return validate_candidate_contract(cand_dir)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -214,16 +182,22 @@ def emit_candidate(candidates_dir: Path, slug: str, version: int,
     (cand_dir / "changelog.md").write_text(
         _render_changelog(slug, version, changelog_rows), encoding="utf-8")
 
-    # 5. 자가검증 — FAIL 시 롤백(생성분 제거), telemetry failure
+    # 5. 자가검증 — FAIL 시 telemetry 먼저(롤백이 실패해도 추적 보장) → 롤백 guard (L08-003/004 fix)
     errors = _validate_candidate_dir(cand_dir)
     if errors:
-        for f in cand_dir.iterdir():
-            f.unlink()
-        cand_dir.rmdir()
         _emit_telemetry({"type": "wiki_bridge_emit", "session_id": session_id,
                          "slug": slug, "outcome": "failure",
-                         "error": "; ".join(errors)[:100]}, telemetry_dir)
-        return {"status": "invalid", "errors": errors}
+                         "n_errors": len(errors), "errors": errors[:6]}, telemetry_dir)
+        residual = None
+        try:
+            for f in cand_dir.iterdir():
+                f.unlink()
+            cand_dir.rmdir()
+        except OSError as exc:
+            residual = str(cand_dir)
+            _emit_skip("emit", "rollback-failed", session_id, telemetry_dir,
+                       slug=slug, residual=residual, error=str(exc)[:100])
+        return {"status": "invalid", "errors": errors, "residual": residual}
 
     _emit_telemetry({"type": "wiki_bridge_emit", "session_id": session_id,
                      "slug": slug, "outcome": "success"}, telemetry_dir)

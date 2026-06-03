@@ -3,11 +3,14 @@
 실행: repo root에서 `py -3 -m plugins.harness.scripts.wiki.test_bridge`
 """
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from plugins.harness.scripts.wiki import bridge
+# repo root를 path에 — repo root `-m` 호출과 in-dir 호출 양쪽서 동작 (L15-5 fix).
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from plugins.harness.scripts.wiki import bridge  # noqa: E402
 
 
 def _skill_md(slug="demo-skill", version=1):
@@ -131,6 +134,14 @@ class EmitTest(unittest.TestCase):
             existing_triggers={"existing-x": ["데모 실행", "전혀 다른 것"]},
             telemetry_dir=self.tel)
         self.assertEqual(res["status"], "emitted")
+
+    def test_note_skip_not_reusable(self):
+        # LLM 비-Emit 결정(재사용 가치 없음) 추적 신호 (L08-002)
+        bridge.note_skip("emit", "not-reusable", session_id="x", telemetry_dir=self.tel)
+        evs = self._telemetry_events()
+        self.assertTrue(any(e["type"] == "wiki_bridge_skipped"
+                            and e["reason"] == "not-reusable"
+                            and e["milestone"] == "emit" for e in evs))
 
     def test_invalid_rollback(self):
         self.cand.mkdir()

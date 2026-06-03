@@ -170,6 +170,71 @@ def find_inferred_fields_without_source(yaml_text: str) -> list[str]:
     return missing
 
 
+# ── wiki bridge candidate contract (S18 단일 출처) ──
+# chain.py:check_wiki_candidate_schema(fixture) + scripts/wiki/bridge.py 양쪽이 본 모듈에 위임.
+# 필드/로직 fork 차단 (L11-3·L11-5 coupling fix, 2026-06-03).
+WIKI_CANDIDATE_FM_FIELDS = (
+    "name", "description", "skill_kind", "candidate_version",
+    "gap_source", "static_tier", "llm_judge_tier", "mc_tier", "promoted_to",
+)
+
+
+def validate_candidate_contract(cand_dir: Path) -> list[str]:
+    """wiki bridge Emit candidate contract(wiki-bridge.md §1) 결정적 검증 — 단일 출처.
+
+    3파일 존재 + SKILL.md frontmatter 필수 9필드 + skill_kind!=internal-capability +
+    candidate_version 정수 + eval-results.json shape + cross-field version 정합.
+    """
+    errors: list[str] = []
+    skill_md = cand_dir / "SKILL.md"
+    eval_json = cand_dir / "eval-results.json"
+    changelog = cand_dir / "changelog.md"
+    for f in (skill_md, eval_json, changelog):
+        if not f.is_file():
+            errors.append(f"필수 파일 부재 `{f.name}` (wiki-bridge.md §1)")
+    if errors:
+        return errors
+
+    fm_m = FRONTMATTER_RE.match(skill_md.read_text(encoding="utf-8-sig"))
+    fm = fm_m.group(1) if fm_m else ""
+    skill_ver: int | None = None
+    for field in WIKI_CANDIDATE_FM_FIELDS:
+        m = re.search(rf"^\s*{field}\s*:\s*(.+)$", fm, re.MULTILINE)
+        if not m:
+            errors.append(f"SKILL.md frontmatter 필수 필드 `{field}` 누락 (§1-a)")
+            continue
+        val = m.group(1).strip().strip("\"'")
+        if field == "skill_kind" and val == "internal-capability":
+            errors.append("SKILL.md `skill_kind: internal-capability` 금지 (wiki rule 3-a)")
+        if field == "candidate_version":
+            if not val.isdigit():
+                errors.append(f"SKILL.md `candidate_version` 정수 아님 (got `{val}`)")
+            else:
+                skill_ver = int(val)
+
+    try:
+        data = json.loads(eval_json.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(f"eval-results.json 유효 JSON 아님 ({exc}) (§1-b)")
+        return errors
+    for key in ("candidate_slug", "candidate_version", "gap_source", "evals", "promotion"):
+        if key not in data:
+            errors.append(f"eval-results.json 필수 키 `{key}` 누락 (§1-b)")
+    evals = data.get("evals")
+    if isinstance(evals, dict):
+        for tier in ("static", "llm_judge", "monte_carlo"):
+            if tier not in evals:
+                errors.append(f"eval-results.json `evals.{tier}` 누락")
+    elif "evals" in data:
+        errors.append("eval-results.json `evals` object 아님")
+    json_ver = data.get("candidate_version")
+    if not isinstance(json_ver, int):
+        errors.append(f"eval-results.json `candidate_version` 정수 아님 (got {json_ver!r})")
+    elif skill_ver is not None and json_ver != skill_ver:
+        errors.append(f"candidate_version 불일치 — SKILL.md {skill_ver} ≠ eval-results.json {json_ver}")
+    return errors
+
+
 def check_baseline_file(path: Path, required_fields: list[str], label: str) -> list[str]:
     errors: list[str] = []
     if not path.exists():

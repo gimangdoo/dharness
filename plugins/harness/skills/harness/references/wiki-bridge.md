@@ -47,7 +47,7 @@ meta:
 
 ## §2. M4 Feedback — wiki → dharness 재사용
 
-다음 합성 설계(Phase 5) 진입 시 wiki candidates/ + `pages/tools/` 에서 **promoted candidate**를 조회해, 재합성 대신 재사용을 우선한다.
+다음 합성 설계(Phase 5) 진입 시 wiki `candidates/`에서 **promoted candidate**를 조회해, 재합성 대신 재사용을 우선한다. (조회원은 `candidates/*/eval-results.json`의 promotion 박제 단일 — `pages/tools/`는 wiki 측 승격-후 hoist 위치이지 dharness pull source 아님. `bridge.py:pull_promoted` 정합.)
 
 - **pull 대상:** `candidates/<name>/eval-results.json`의 `promotion.verdict` + `evals.*.status`, 그리고 `meta.promoted_to`(`.claude/skills/<name>/` 승격분).
 - **tier 의미:** Static=구조 PASS / LLM-Judge=adversarial eval PASS / MonteCarlo=trigger F1 ≥ champion. **3 tier 전부 PASS + `promotion.verdict` 박제** 시에만 "검증된 재사용 후보".
