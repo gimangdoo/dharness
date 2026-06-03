@@ -201,6 +201,23 @@ class PullTest(unittest.TestCase):
                             and e["n_promoted"] == 1 for e in evs))
 
 
+    def test_pull_unreadable_traced(self):
+        # 깨진 eval-results.json → 무음 skip 아니라 추적 신호 (L08-006)
+        self.cand.mkdir()
+        d = self.cand / "broken-v1"
+        d.mkdir(parents=True)
+        (d / "eval-results.json").write_text("{not json", encoding="utf-8")
+        res = bridge.pull_promoted(self.cand, telemetry_dir=self.tel)
+        self.assertEqual(res, [])
+        evs = [json.loads(l) for f in self.tel.glob("*.jsonl")
+               for l in f.read_text(encoding="utf-8").splitlines()]
+        self.assertTrue(any(e["type"] == "wiki_bridge_skipped"
+                            and e["reason"] == "unreadable-candidate" for e in evs))
+        pull = next(e for e in evs if e["type"] == "wiki_bridge_pull")
+        self.assertEqual(pull["n_scanned"], 1)
+        self.assertEqual(pull["n_skipped_unreadable"], 1)
+
+
 class DedupUnitTest(unittest.TestCase):
     def test_jaccard(self):
         # 완전 일치 → 1.0

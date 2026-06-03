@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from schema import (  # noqa: E402  W3·I2·S18 doctrine 단일 출처
     INTENT_REQUIRED,
     INTENT_REQUIRED_USER_CONFIRMED,
+    REPO_ROOT,
     validate_candidate_contract,
 )
 
@@ -27,9 +28,7 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-# scripts/validate/chain.py → parents[4]가 repo root. __file__ 기반 통일 (structure.py/schema.py 정합).
-# cwd 의존 시 derived install user가 sub-dir에서 호출하면 silent precondition_fail.
-REPO_ROOT = Path(__file__).resolve().parents[4]
+# REPO_ROOT는 schema.py 단일 출처 import (L11-7 — parents[4] 중복 제거, 마커 기반 walk-up).
 AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 SETTINGS_FILES = [

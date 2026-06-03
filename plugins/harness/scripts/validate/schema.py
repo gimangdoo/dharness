@@ -26,8 +26,17 @@ if hasattr(sys.stdout, "reconfigure"):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-# scripts/validate/schema.py → parents[4]가 repo root. __file__ 기반 통일 (structure.py 정합).
-REPO_ROOT = Path(__file__).resolve().parents[4]
+# REPO_ROOT 단일 출처 — `.claude-plugin/marketplace.json` 마커까지 walk-up (L11-7 fix).
+# 위치 이동에 강건 (parents[N] positional magic 제거). chain.py·bridge.py가 본 정의를 공유.
+# 주: plugin dir `.claude-plugin/`엔 plugin.json만 — marketplace.json 마커가 repo root 유일 식별.
+def _find_repo_root(start: Path) -> Path:
+    for p in [start, *start.parents]:
+        if (p / ".claude-plugin" / "marketplace.json").is_file():
+            return p
+    return Path(__file__).resolve().parents[4]  # fallback — 외부 install·마커 부재 시
+
+
+REPO_ROOT = _find_repo_root(Path(__file__).resolve())
 BASELINE_DIR = REPO_ROOT / "_workspace" / "_baseline"
 
 PROJECT_PROFILE = BASELINE_DIR / "project_profile.md"

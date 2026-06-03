@@ -15,16 +15,16 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# scripts/wiki/bridge.py → parents[4]가 repo root (chain.py REPO_ROOT 정합).
-REPO_ROOT = Path(__file__).resolve().parents[4]
-_DEFAULT_TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"
-
-# 공유 candidate contract 검증 단일 출처 — validate/ dir를 path에 올려 dir-on-path import
-# (트리 관행 정합·포터블). 절대 `plugins.` 패키지 import 회피 → 외부 install 위치서도 무손상 (L11-2 fix).
-_VALIDATE_DIR = REPO_ROOT / "plugins" / "harness" / "scripts" / "validate"
+# bootstrap — validate/ dir 위치만 잡는다(REPO_ROOT 권위 정의는 schema.py 단일 출처, L11-7).
+_BOOTSTRAP_ROOT = Path(__file__).resolve().parents[4]
+_VALIDATE_DIR = _BOOTSTRAP_ROOT / "plugins" / "harness" / "scripts" / "validate"
 if str(_VALIDATE_DIR) not in sys.path:
     sys.path.insert(0, str(_VALIDATE_DIR))
-from schema import validate_candidate_contract  # noqa: E402
+# 공유 contract 검증 + REPO_ROOT 단일 출처 — dir-on-path import(트리 관행·포터블).
+# 절대 `plugins.` 패키지 import 회피 → 외부 install 위치서도 무손상 (L11-2 fix).
+from schema import REPO_ROOT, validate_candidate_contract  # noqa: E402
+
+_DEFAULT_TELEMETRY_DIR = REPO_ROOT / "_workspace" / "_telemetry"
 
 # dedup 임계 — wiki rule 2-a(75% 중복 Emit 금지) *상속*. 정본=<wiki>/.../WIKI-SCHEMA §11 rule 2.
 # dharness 독립 숫자 fork 아님 — 미러. wiki 측 변경 시 본 상수 추종 (wiki-bridge.md §4).
@@ -170,7 +170,8 @@ def emit_candidate(candidates_dir: Path, slug: str, version: int,
         if changelog_rows:
             _append_changelog_rows(cand_dir / "changelog.md", changelog_rows)
         _emit_telemetry({"type": "wiki_bridge_emit", "session_id": session_id,
-                         "slug": slug, "outcome": "partial", "note": "exists-appended"},
+                         "slug": slug, "version": version, "path": cand_dir.name,
+                         "outcome": "partial", "note": "exists-appended"},
                         telemetry_dir)
         return {"status": "exists", "path": str(cand_dir)}
 
@@ -186,7 +187,8 @@ def emit_candidate(candidates_dir: Path, slug: str, version: int,
     errors = _validate_candidate_dir(cand_dir)
     if errors:
         _emit_telemetry({"type": "wiki_bridge_emit", "session_id": session_id,
-                         "slug": slug, "outcome": "failure",
+                         "slug": slug, "version": version, "path": cand_dir.name,
+                         "outcome": "failure",
                          "n_errors": len(errors), "errors": errors[:6]}, telemetry_dir)
         residual = None
         try:
@@ -200,7 +202,8 @@ def emit_candidate(candidates_dir: Path, slug: str, version: int,
         return {"status": "invalid", "errors": errors, "residual": residual}
 
     _emit_telemetry({"type": "wiki_bridge_emit", "session_id": session_id,
-                     "slug": slug, "outcome": "success"}, telemetry_dir)
+                     "slug": slug, "version": version, "path": cand_dir.name,
+                     "outcome": "success"}, telemetry_dir)
     return {"status": "emitted", "path": str(cand_dir)}
 
 
@@ -219,10 +222,16 @@ def pull_promoted(candidates_dir: Path, *, session_id: str = "self-host",
         return []
 
     promoted: list[dict] = []
+    n_scanned = 0
+    n_skipped = 0
     for eval_json in sorted(candidates_dir.glob("*/eval-results.json")):
+        n_scanned += 1
         try:
             data = json.loads(eval_json.read_text(encoding="utf-8-sig"))
         except (OSError, json.JSONDecodeError):
+            n_skipped += 1  # 무음 증발 차단 — 읽기 실패 candidate 추적 (L08-006)
+            _emit_skip("pull", "unreadable-candidate", session_id, telemetry_dir,
+                       path=eval_json.parent.name)
             continue
         evals = data.get("evals") or {}
         tiers_pass = all(
@@ -239,5 +248,7 @@ def pull_promoted(candidates_dir: Path, *, session_id: str = "self-host",
             })
 
     _emit_telemetry({"type": "wiki_bridge_pull", "session_id": session_id,
-                     "n_promoted": len(promoted)}, telemetry_dir)
+                     "n_promoted": len(promoted), "n_scanned": n_scanned,
+                     "n_skipped_unreadable": n_skipped,
+                     "slugs": [p["slug"] for p in promoted]}, telemetry_dir)
     return promoted
