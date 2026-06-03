@@ -36,8 +36,11 @@
 | `project_signal` | `signal`, `value`, `source` | Capture 시 프로젝트 스캔에서 baseline과 다른 값 발견 시 |
 | `user_bypass` | `expected_skill`, `actual_action`, `note` | 오케스트레이터 우회 감지 시 |
 | `user_feedback` | `session_id`, `category`, `text` | Phase 9 피드백 수집 시 (Phase 10에서도 활용) |
+| `wiki_bridge_emit` | `session_id`, `slug`, `outcome` | M1 Emit 직후 (`scripts/wiki/bridge.py:emit_candidate`) |
+| `wiki_bridge_skipped` | `session_id`, `milestone`, `reason` | wiki 다리 skip 시 — `milestone`=`emit`/`pull`, `reason`=`target-absent`/`not-reusable`/`dedup-hit` |
+| `wiki_bridge_pull` | `session_id`, `n_promoted` | M4 Feedback 조회 직후 (`scripts/wiki/bridge.py:pull_promoted`) |
 
-`outcome` 값: `success` / `partial` / `failure`.
+`outcome` 값: `success` / `partial` / `failure`. `wiki_bridge_*`는 self-host 전용(P5) — `bridge.py`가 자동 박제하며 wiki 미설정 vs skip 구분 신호를 보장한다(wiki-bridge.md §0).
 
 ## 3. 공통 규약
 

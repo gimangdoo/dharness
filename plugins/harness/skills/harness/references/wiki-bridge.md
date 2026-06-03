@@ -14,7 +14,7 @@ dharness가 합성한 reusable skill을 로컬 "harness" wiki의 평가 파이�
 
 **presence gate:** 로컬 wiki `<wiki>/harness/candidates/` 타겟이 **존재할 때만** 다리 작동. 부재 시 silent no-op — Emit/Feedback 생략, 합성 정상 진행. wiki 측 contract는 `<wiki>/harness/candidates/README.md` 단일 출처이며 본 doctrine은 dharness 측 단방향 정합(wiki 출력 형식 변경 0).
 
-**observability:** silent no-op은 추적 신호가 0이라 "wiki 미설정" vs "설정됐으나 skip"을 운영자가 구분 못 한다. derived 하네스가 telemetry 채널(`_workspace/_telemetry/`)을 가지면 게이트 미작동 시 `wiki_bridge_skipped {reason: target-absent|not-reusable|dedup-hit}` 1줄 로깅 권장(강제 아님). M1 Emit·M4 Feedback 각각의 skip 사유를 분리 기록.
+**observability (P5 강제):** silent no-op은 추적 신호가 0이라 "wiki 미설정" vs "설정됐으나 skip"을 운영자가 구분 못 한다. self-host 실행 경로(`bridge.py`)는 게이트 미작동·dedup·성공/실패 시 telemetry(`_workspace/_telemetry/`)를 **자동 박제**한다 — `wiki_bridge_skipped {milestone: emit|pull, reason: target-absent|not-reusable|dedup-hit}` · `wiki_bridge_emit {slug, outcome}` · `wiki_bridge_pull {n_promoted}` (runtime-telemetry.md §2 정본). M1 Emit·M4 Feedback skip 사유는 `milestone`으로 분리. 권장→강제 격상(2026-06-03). derived 하네스는 telemetry 채널 보유 시 동형 로깅 권장.
 
 **Layering invariant:** M1 Emit(SKILL Phase 7-7 trigger)·M5 gate(fixture-anchored)는 doctrine+fixture template의 *결정적 정합 검증*일 뿐 실제 wiki `candidates/` write가 아니다. 실 candidate 박제는 derived 런타임 post-synthesis + 사용자 gate 1회. wiki-bridge는 active dharness phase가 아니라 doctrine+fixture 정의 — runtime-execution.md의 marker 위치·게이트 구조가 바뀌어도 본 contract는 Phase 7 공유 컨텍스트만 참조하며 서로의 내부 구조에 의존하지 않는다.
 
