@@ -87,29 +87,33 @@ def _persist_dharness_event(
         print(f"[CM PostToolUse] dharness_event INSERT 실패: {e}", file=sys.stderr)
 
 
-def _detect_agent_failure(tool_response: object, serialized: str) -> bool:
-    """Task tool 응답에서 실패 신호 탐지.
+def _agent_failure_reason(tool_response: object, serialized: str) -> str | None:
+    """Task tool 응답에서 실패 사유 추출. 실패 아니면 None.
 
     failure 시그니처: is_error=True / type=='error' / 'Error:' prefix /
     error 필드 비어있지 않음. Task 응답이 dict일 때는 metadata 우선,
-    string fallback (마지막 보루)."""
+    string fallback (마지막 보루). 반환값은 telemetry `error` 필드에 박제(≤200자)."""
     if isinstance(tool_response, dict):
         if tool_response.get("is_error") is True:
-            return True
+            err = tool_response.get("error") or tool_response.get("message")
+            return str(err)[:200] if err else "is_error"
         if tool_response.get("type") == "error":
-            return True
+            err = tool_response.get("error") or tool_response.get("message")
+            return str(err)[:200] if err else "error"
         if tool_response.get("error"):
-            return True
+            return str(tool_response["error"])[:200]
         # Task 응답의 일반적인 구조 — content 또는 result 안에 error indicator
         for key in ("content", "result"):
             inner = tool_response.get(key)
             if isinstance(inner, str) and inner.lstrip().lower().startswith("error:"):
-                return True
+                return inner.strip()[:200]
     if isinstance(serialized, str):
-        head = serialized.lstrip()[:64].lower()
-        if head.startswith("error:") or '"is_error":true' in serialized:
-            return True
-    return False
+        stripped = serialized.lstrip()
+        if stripped[:64].lower().startswith("error:"):
+            return stripped[:200]
+        if '"is_error":true' in serialized:
+            return "is_error"
+    return None
 
 
 def _emit_agent_telemetry(
@@ -138,11 +142,17 @@ def _emit_agent_telemetry(
             "session_id": session_id, "subagent_type": subagent_type,
             "description": description[:120],
         }) + "\n")
-        if _detect_agent_failure(tool_response, serialized):
+        reason = _agent_failure_reason(tool_response, serialized)
+        if reason is not None:
             fh.write(json.dumps({
                 "ts": now_iso, "type": "agent_failure",
                 "session_id": session_id, "subagent_type": subagent_type,
                 "description": description[:120],
+                "error": reason,
+                # PostToolUse는 최종 tool_response만 관측 — agent_failure는 재시도가
+                # 모두 소진된 terminal failure 시에만 emit되므로 retry_succeeded는 항상
+                # False (recovered retry는 이 hook 지점에서 관측 불가).
+                "retry_succeeded": False,
             }) + "\n")
 
 
@@ -174,11 +184,16 @@ def _main_impl() -> int:
 
     sess_dir = MEMORY_ROOT / "sessions" / session_id
     if sess_dir.exists():
-        with open(sess_dir / "raw.jsonl", "a", encoding="utf-8") as fh:
-            fh.write(json.dumps({
-                "ts": now_iso, "kind": "tool_result",
-                "tool": tool_name, "output_size": output_size,
-            }) + "\n")
+        # IO 오류를 국소화 — append 실패가 이후 dharness_event INSERT·capture를
+        # 통째로 drop시키지 않도록 (전역 swallow의 generic hook_crash보다 정밀).
+        try:
+            with open(sess_dir / "raw.jsonl", "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({
+                    "ts": now_iso, "kind": "tool_result",
+                    "tool": tool_name, "output_size": output_size,
+                }) + "\n")
+        except OSError as e:
+            print(f"[CM PostToolUse] raw.jsonl append skipped: {e}", file=sys.stderr)
 
     event = classify_dharness_event(tool_name, tool_input)
     if event:

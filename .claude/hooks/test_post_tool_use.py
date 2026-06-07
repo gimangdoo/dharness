@@ -57,32 +57,45 @@ class Serialize(HookTestBase):
         self.assertEqual(out, "<weird>")
 
 
-class DetectAgentFailure(HookTestBase):
+class AgentFailureReason(HookTestBase):
     def test_is_error_true(self):
         ptu = self.hooks["post_tool_use"]
-        self.assertTrue(ptu._detect_agent_failure({"is_error": True}, "{}"))
+        self.assertEqual(ptu._agent_failure_reason({"is_error": True}, "{}"), "is_error")
+
+    def test_is_error_with_message(self):
+        ptu = self.hooks["post_tool_use"]
+        self.assertEqual(
+            ptu._agent_failure_reason({"is_error": True, "error": "boom"}, "{}"), "boom"
+        )
 
     def test_type_error(self):
         ptu = self.hooks["post_tool_use"]
-        self.assertTrue(ptu._detect_agent_failure({"type": "error"}, "{}"))
+        self.assertEqual(ptu._agent_failure_reason({"type": "error"}, "{}"), "error")
 
     def test_error_field_truthy(self):
         ptu = self.hooks["post_tool_use"]
-        self.assertTrue(ptu._detect_agent_failure({"error": "boom"}, "{}"))
+        self.assertEqual(ptu._agent_failure_reason({"error": "boom"}, "{}"), "boom")
 
     def test_string_error_prefix(self):
         ptu = self.hooks["post_tool_use"]
-        self.assertTrue(ptu._detect_agent_failure("Error: nope", "Error: nope"))
+        self.assertEqual(
+            ptu._agent_failure_reason("Error: nope", "Error: nope"), "Error: nope"
+        )
 
     def test_inner_content_error_prefix(self):
         ptu = self.hooks["post_tool_use"]
-        self.assertTrue(ptu._detect_agent_failure(
+        self.assertEqual(ptu._agent_failure_reason(
             {"content": "Error: bad input"}, '{"content": "Error: bad input"}'
-        ))
+        ), "Error: bad input")
 
-    def test_success_returns_false(self):
+    def test_reason_truncated_200(self):
         ptu = self.hooks["post_tool_use"]
-        self.assertFalse(ptu._detect_agent_failure({"ok": True}, '{"ok": true}'))
+        reason = ptu._agent_failure_reason({"error": "x" * 500}, "{}")
+        self.assertEqual(len(reason), 200)
+
+    def test_success_returns_none(self):
+        ptu = self.hooks["post_tool_use"]
+        self.assertIsNone(ptu._agent_failure_reason({"ok": True}, '{"ok": true}'))
 
 
 class EmitAgentTelemetry(HookTestBase):
@@ -138,6 +151,9 @@ class EmitAgentTelemetry(HookTestBase):
         types = [e["type"] for e in events]
         self.assertIn("agent_invocation", types)
         self.assertIn("agent_failure", types)
+        fail = next(e for e in events if e["type"] == "agent_failure")
+        self.assertEqual(fail["error"], "is_error")
+        self.assertIs(fail["retry_succeeded"], False)
 
     def test_description_truncated_120(self):
         ptu = self.hooks["post_tool_use"]
