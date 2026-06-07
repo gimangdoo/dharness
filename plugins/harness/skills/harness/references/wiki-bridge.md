@@ -14,7 +14,7 @@ dharness가 합성한 reusable skill을 로컬 "harness" wiki의 평가 파이�
 
 **presence gate:** 로컬 wiki `<wiki>/harness/candidates/` 타겟이 **존재할 때만** 다리 작동. 부재 시 silent no-op — Emit/Feedback 생략, 합성 정상 진행. wiki 측 contract는 `<wiki>/harness/candidates/README.md` 단일 출처이며 본 doctrine은 dharness 측 단방향 정합(wiki 출력 형식 변경 0).
 
-**observability:** silent no-op은 추적 신호가 0이라 "wiki 미설정" vs "설정됐으나 skip"을 운영자가 구분 못 한다. derived 하네스가 telemetry 채널(`_workspace/_telemetry/`)을 가지면 게이트 미작동 시 `wiki_bridge_skipped {reason: target-absent|not-reusable|dedup-hit}` 1줄 로깅 권장(강제 아님). M1 Emit·M4 Feedback 각각의 skip 사유를 분리 기록.
+**observability (P5 강제):** silent no-op은 추적 신호가 0이라 "wiki 미설정" vs "설정됐으나 skip"을 운영자가 구분 못 한다. self-host 실행 경로(`bridge.py`)는 게이트 미작동·dedup·성공/실패 시 telemetry(`_workspace/_telemetry/`)를 **자동 박제**한다 — `wiki_bridge_skipped {milestone: emit|pull, reason: target-absent|not-reusable|dedup-hit}` · `wiki_bridge_emit {slug, outcome}` · `wiki_bridge_pull {n_promoted}` (runtime-telemetry.md §2 정본). M1 Emit·M4 Feedback skip 사유는 `milestone`으로 분리. 권장→강제 격상(2026-06-03). derived 하네스는 telemetry 채널 보유 시 동형 로깅 권장.
 
 **Layering invariant:** M1 Emit(SKILL Phase 7-7 trigger)·M5 gate(fixture-anchored)는 doctrine+fixture template의 *결정적 정합 검증*일 뿐 실제 wiki `candidates/` write가 아니다. 실 candidate 박제는 derived 런타임 post-synthesis + 사용자 gate 1회. wiki-bridge는 active dharness phase가 아니라 doctrine+fixture 정의 — runtime-execution.md의 marker 위치·게이트 구조가 바뀌어도 본 contract는 Phase 7 공유 컨텍스트만 참조하며 서로의 내부 구조에 의존하지 않는다.
 
@@ -43,13 +43,17 @@ meta:
 
 **Emit trigger (self-host):** dharness가 *재사용 가치 있는* skill을 합성했을 때(특정 프로젝트 전용이 아닌 범용 패턴) + wiki candidates/ 존재 + 사용자 gate 1회. 특정 프로젝트 1회용 skill은 Emit 금지(wiki rule 2-a 75% 중복·inflation guard 정합).
 
+**실행 (P5, self-host 전용):** gate 통과 후 3파일 write·dedup·자가검증·telemetry는 산문 수기 대신 `scripts/wiki/bridge.py:emit_candidate`가 수행한다(기계적 I/O). 콘텐츠(SKILL 본문·eval shape)는 LLM이 저작해 인자로 넘기고, 헬퍼는 (1) presence-gate (2) dedup advisory soft-block(`_dedup_check` → `{overlap, conflict}`, 임계 `_DEDUP_THRESHOLD`=wiki rule 2-a 상속) (3) `<slug>-v<N>/` 멱등 write (4) `_validate_candidate_dir` 자가검증 FAIL 시 롤백(wiki 미오염) (5) `wiki_bridge_emit`/`wiki_bridge_skipped` telemetry 박제. dedup hit은 **hard-block 아님** — 헬퍼가 soft_block 반환 시 LLM이 사용자에 재확인.
+
 ## §2. M4 Feedback — wiki → dharness 재사용
 
-다음 합성 설계(Phase 5) 진입 시 wiki candidates/ + `pages/tools/` 에서 **promoted candidate**를 조회해, 재합성 대신 재사용을 우선한다.
+다음 합성 설계(Phase 5) 진입 시 wiki `candidates/`에서 **promoted candidate**를 조회해, 재합성 대신 재사용을 우선한다. (조회원은 `candidates/*/eval-results.json`의 promotion 박제 단일 — `pages/tools/`는 wiki 측 승격-후 hoist 위치이지 dharness pull source 아님. `bridge.py:pull_promoted` 정합.)
 
 - **pull 대상:** `candidates/<name>/eval-results.json`의 `promotion.verdict` + `evals.*.status`, 그리고 `meta.promoted_to`(`.claude/skills/<name>/` 승격분).
 - **tier 의미:** Static=구조 PASS / LLM-Judge=adversarial eval PASS / MonteCarlo=trigger F1 ≥ champion. **3 tier 전부 PASS + `promotion.verdict` 박제** 시에만 "검증된 재사용 후보".
 - **재사용 분기:** 합성하려는 skill이 promoted candidate와 의미 중복(트리거·목적) 시 → 재합성 대신 해당 candidate 재사용(또는 description 확장). 미승격(tier 미통과)분은 참고만, 재사용 강제 아님.
+
+**실행 (P5, self-host 전용):** promoted 조회는 `scripts/wiki/bridge.py:pull_promoted`가 수행한다 — `candidates/*/eval-results.json` glob → **3 tier 전부 `status: PASS` + `promotion.verdict` 박제**분만 `[{slug, version, promoted_to, verdict}]`로 반환 + `wiki_bridge_pull {n_promoted}` telemetry, presence-gate 부재 시 `[]` + skip. 재사용 판단(의미중복 → 재사용 제안)·사용자 confirm은 LLM 레이어 — 헬퍼는 read-only 조회만(자동 graft 0).
 
 ## §3. M5 Schema gate (deterministic, `chain.py:check_wiki_candidate_schema`, S18)
 

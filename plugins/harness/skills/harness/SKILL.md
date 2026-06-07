@@ -163,7 +163,7 @@ description: "전문 에이전트를 정의하고 그 에이전트가 사용할 
 
 > **🚧 Entry gate (필수 read):** [`references/phase-entry-gates.md`](./references/phase-entry-gates.md) §"Phase 5 — 🚧 entry 게이트 — Cardinality justification" 진입 직전 필수.
 
-> **Phase 5-0 — Wiki Feedback pull (self-host opt-in, M4, S18 doctrine, 2026-05-31):** 에이전트·스킬 설계 직전, 로컬 harness wiki `<wiki>/harness/candidates/` + `pages/tools/` 타겟이 존재하면 **promoted candidate를 조회해 재합성 대신 재사용을 우선**한다. pull 대상(`candidates/<name>/eval-results.json`의 `promotion.verdict` + `evals.*.status` + `meta.promoted_to`)·tier 의미(3 tier 전부 PASS + verdict 박제 시만 "검증된 재사용 후보")·재사용 분기는 [`references/wiki-bridge.md`](./references/wiki-bridge.md) §2 단일 출처. **presence gate**: wiki 타겟 부재 시 silent no-op — 정상 합성 진행(외부 install 파생 하네스는 wiki 위치 모르므로 무관). 재사용 판단은 *제안 후 사용자 confirm* — 자동 graft 0. M1 Emit(Phase 7-7)과 짝.
+> **Phase 5-0 — Wiki Feedback pull (self-host opt-in, M4, S18 doctrine, 2026-05-31):** 에이전트·스킬 설계 직전, 로컬 harness wiki `<wiki>/harness/candidates/` 타겟이 존재하면 **promoted candidate를 조회해 재합성 대신 재사용을 우선**한다. pull 대상(`candidates/<name>/eval-results.json`의 `promotion.verdict` + `evals.*.status` + `meta.promoted_to`)·tier 의미(3 tier 전부 PASS + verdict 박제 시만 "검증된 재사용 후보")·재사용 분기는 [`references/wiki-bridge.md`](./references/wiki-bridge.md) §2 단일 출처. **presence gate**: wiki 타겟 부재 시 silent no-op — 정상 합성 진행(외부 install 파생 하네스는 wiki 위치 모르므로 무관). 조회 자체는 `scripts/wiki/bridge.py:pull_promoted`가 수행(read-only glob + `wiki_bridge_pull` telemetry, P5 self-host 전용). 재사용 판단은 *제안 후 사용자 confirm* — 자동 graft 0. M1 Emit(Phase 7-7)과 짝.
 
 **모든 에이전트는 반드시 `프로젝트/.claude/agents/{name}.md` 파일로 정의한다.** 빌트인 타입(`general-purpose`, `Explore`, `Plan`)을 사용하더라도 정의 파일 생성 필수. Agent 도구의 prompt에 역할을 직접 넣는 것은 금지. 이유: 다음 세션 재사용성, 협업 프로토콜 명시, 에이전트(누가)와 스킬(어떻게) 분리.
 
@@ -324,7 +324,7 @@ CLAUDE.md 포인터 박제와 동시에 대상 파일 자체를 skeleton 형태�
 
 #### 7-7. Wiki Bridge Emit (self-host opt-in, S18 doctrine, 2026-05-30)
 
-**dharness self-host 한정** — 외부 install 파생 하네스는 본 단계 건너뛴다. 합성한 skill이 *재사용 가치 있는 범용 패턴*이고 로컬 harness wiki `<wiki>/harness/candidates/` 타겟이 존재하면, 사용자 gate 1회 후 candidate 디렉토리(`SKILL.md` frontmatter 9필드 + `eval-results.json` + `changelog.md`)를 Emit해 wiki 평가 파이프라인(Static/LLM-Judge/MonteCarlo tier)에 태운다(M1). 다음 합성 설계(Phase 5) 시 promoted candidate를 pull해 재합성 대신 재사용을 우선한다(M4). contract·gate·canonical fixture·안전 규약은 `references/wiki-bridge.md` 단일 출처이며 `chain.py:check_wiki_candidate_schema`(M5 schema gate)가 candidate 형태를 결정적 검증한다. **타겟 부재 시 silent no-op** — Emit 생략, 합성 정상 진행. wiki repo 쓰기는 outward-facing이라 사용자 gate 필수.
+**dharness self-host 한정** — 외부 install 파생 하네스는 본 단계 건너뛴다. 합성한 skill이 *재사용 가치 있는 범용 패턴*이고 로컬 harness wiki `<wiki>/harness/candidates/` 타겟이 존재하면, 사용자 gate 1회 후 candidate 디렉토리(`SKILL.md` frontmatter 9필드 + `eval-results.json` + `changelog.md`)를 Emit해 wiki 평가 파이프라인(Static/LLM-Judge/MonteCarlo tier)에 태운다(M1). 다음 합성 설계(Phase 5) 시 promoted candidate를 pull해 재합성 대신 재사용을 우선한다(M4). contract·gate·canonical fixture·안전 규약은 `references/wiki-bridge.md` 단일 출처이며 `chain.py:check_wiki_candidate_schema`(M5 schema gate)가 candidate 형태를 결정적 검증한다. **gate 통과 후 실 write·dedup·자가검증·telemetry는 `scripts/wiki/bridge.py:emit_candidate`가 수행**(P5, self-host 전용 — 산문 수기 아님). dedup hit 시 soft_block 반환 → 사용자 재확인. 합성 skill을 *재사용 가치 없음*으로 판단해 Emit 안 하면 `scripts/wiki/bridge.py:note_skip("emit","not-reusable",...)`를 호출해 추적 신호를 남긴다(§0 observability 보장 — "wiki 미설정 vs skip" 구분). **타겟 부재 시 silent no-op** — Emit 생략, 합성 정상 진행. wiki repo 쓰기는 outward-facing이라 사용자 gate 필수.
 
 ### Phase 7.5: Orchestrator Dry-Run Simulation
 

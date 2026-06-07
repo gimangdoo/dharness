@@ -41,6 +41,7 @@ dharness `harness` 플러그인 = **빌드타임 메타 팩토리** (Phase 0-10)
 | **P2** | #2 plan+todo 분해 | ✅ 완료(green) | runtime-execution §3 G2 plan분해(plan→atomic task→`TodoWrite` todo + 규모별 적용 + worked example) + 게이트 G2 sub-section inline self-contained(§1·§5) + SKILL 7-6/output-checklist wording — chain PASS·smoke 8/8·test_chain 160 |
 | **P3** | #3 advisor 산출물 생성 | ✅ 완료(green) | runtime-execution §4 G3(methodology 11종→task당 deliverable 형태·순서 매핑 + 적용 규약 + worked example) + 게이트 G3 sub-section inline self-contained(§1·§5, 게이트 완성) + advisor-integration §3 런타임 확장 cross-ref + SKILL 7-6/output-checklist wording — chain PASS·smoke 8/8·test_chain 160 |
 | **P4** | #5 wiki 양방향 다리 [CORE] | ✅ 완료(green) | `references/wiki-bridge.md`(M1 Emit·M4 Feedback·M5 schema gate, self-host opt-in presence-gated) + `chain.py:check_wiki_candidate_schema`(S18) + canonical fixture `wiki_candidate_example/`(3파일) + SKILL 7-7 hook + doctrine-registry S18 — chain PASS·smoke 8/8·test_chain 170. 범위=doctrine+gate+fixture(wiki repo 실쓰기 0, 사용자 결정 a) |
+| **P5** | #5 wiki 다리 **실행 자동화** | ✅ 완료(green) | `scripts/wiki/bridge.py`(emit_candidate 멱등+자가검증 롤백 / pull_promoted 3 tier 필터 / _dedup_check Jaccard advisory soft-block / telemetry) + `test_bridge.py` 9 + telemetry 3 이벤트(runtime-telemetry §2) + SKILL 7-7/5-0 산문→호출 + registry S18 bridge.py 등재 + e2e dogfood 6/6 — chain PASS·smoke 8/8·test_chain 170·test_bridge 9/9. **self-host 전용**(derived 주입 0)·dedup 임계 wiki rule 2-a 상속·wiki repo 실쓰기 0(tmpdir e2e)·사용자 gate 유지. commit C1~C4 |
 
 상태 범례: ⬜ 미착수 · 🔶 진행 중 · ✅ 완료(chain green).
 
@@ -112,6 +113,25 @@ dharness `harness` 플러그인 = **빌드타임 메타 팩토리** (Phase 0-10)
   - 검증 fn + checklist + registry + fixture.
 - **주의:** push 소스(런타임 산출물)가 P1-P3로 풍부해진 뒤라 양방향 가치 발생. 가장 큰 작업, 마지막.
 - **done:** schema gate green + Emit/Feedback 시연 + chain 전체 green.
+
+### P5 — #5 wiki 다리 실행 자동화 (P4 후속, self-host 전용)
+
+- **배경:** P4는 *계약+게이트+fixture*만 박제. 실 송수신은 SKILL 7-7/5-0 **산문 지시**뿐 — emit/pull/write 코드 0. 자동 round-trip 미완. P5 = 산문을 재사용 헬퍼로 박제 + observability 강제 + e2e 실증.
+- **확정 결정 (2026-06-03):**
+  - 범위 = **dharness self-host 전용**. derived 런타임 주입 0, `orchestrator-template.md` 불변. (전자 채택 — 후자는 작업 2배·외부 install wiki 위치 부재 문제 재등장.)
+  - **자동화 ≠ 사용자 gate 제거.** wiki write = outward-facing → 승인 유지. 자동화 = 기계적 I/O·dedup·telemetry 박제.
+  - dedup 임계 = **wiki rule 2-a 상속(현 75%)**, dharness 독립 숫자 fork 금지(count-drift 차단). 메트릭 = 트리거 구 Jaccard overlap. 동작 = **advisory soft-block**(hard-block 아님 — 사용자 gate tie-break, 무음 over-block 차단).
+- **deliverable:**
+  - `scripts/wiki/bridge.py` 신규 — fn 4: `emit_candidate`(3파일 멱등 write, write 전 `check_wiki_candidate_schema` 자가검증→FAIL시 abort) / `pull_promoted`(promotion.verdict + 3 tier PASS 필터 read-only) / `_dedup_check`(→`{overlap, conflict}`, bool 아님) / `_emit_skip_telemetry`.
+  - `scripts/wiki/test_bridge.py` 신규 — emit/pull/dedup/skip 단위.
+  - `references/wiki-bridge.md` §1·§2 갱신 — 산문 → `bridge.py:<fn>` 호출. §0 telemetry 권장 → 강제 격상.
+  - `references/runtime-telemetry.md` §2 표 +3 이벤트: `wiki_bridge_emit`(slug/outcome) · `wiki_bridge_skipped`(milestone=emit/pull, reason=target-absent/not-reusable/dedup-hit) · `wiki_bridge_pull`(n_promoted).
+  - `SKILL.md` 7-7/5-0 — "LLM이 손으로" → "gate 후 `bridge.py` 호출".
+  - `doctrine-registry.md` S18 행에 `bridge.py` fn 인용 + §6 역색인 (R6 정합).
+  - `_dogfood/2026-06-03_wiki_bridge_e2e/` — mock wiki → emit→schema→promotion 주입→pull→presence-gate skip 4 체크 + `verification.md`.
+  - **`chain.py:check_wiki_candidate_schema` 불변** — validator 그대로, 헬퍼가 호출만.
+- **commit 단위:** C1 bridge.py+test (+wiki-bridge §1·§2) → C2 telemetry 3 이벤트 (+§0 강제) → C3 SKILL 7-7/5-0 전환 + registry R6 → C4 e2e dogfood.
+- **done:** `py -3 scripts/wiki/test_bridge.py` PASS + chain green(S18 불변) + smoke 8/8 + dogfood verification 4 체크 ✅ + telemetry 3 이벤트 lint 통과 + registry R6 green.
 
 ---
 
